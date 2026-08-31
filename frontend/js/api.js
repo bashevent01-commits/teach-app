@@ -187,7 +187,7 @@
        // logo_path is served directly by the static /uploads mount — this
        // must stay unauthenticated since <img> tags can't send credentials
        // cross-origin the way fetch can.
-       logoUrl: (school) => (school?.logo_path ? `${API_BASE}/${school.logo_path}` : null),
+       logoUrl: (school) => (school?.logo_path ? (/^https?:\/\//.test(school.logo_path) ? school.logo_path : `${API_BASE}/${school.logo_path}`) : null),
        async uploadLogo(id, file) {
          const form = new FormData();
          form.append("file", file);
@@ -206,7 +206,7 @@
    
      transactions: {
        list: (params = {}) => apiFetch(`/api/transactions?${new URLSearchParams(params)}`),
-       imageUrl: (txn) => (txn?.image_path ? `${API_BASE}/${txn.image_path}` : null),
+       imageUrl: (txn) => (txn?.image_path ? (/^https?:\/\//.test(txn.image_path) ? txn.image_path : `${API_BASE}/${txn.image_path}`) : null),
        /** Multipart: type, method, category, amount, description?, image? (File). Date is set server-side. */
        async create({ type, method, category, description, amount, image }) {
          const form = new FormData();
@@ -244,7 +244,7 @@
    
      posts: {
        list: (params = {}) => apiFetch(`/api/posts?${new URLSearchParams(params)}`),
-       imageUrl: (post) => (post?.image_path ? `${API_BASE}/${post.image_path}` : null),
+       imageUrl: (post) => (post?.image_path ? (/^https?:\/\//.test(post.image_path) ? post.image_path : `${API_BASE}/${post.image_path}`) : null),
        /** Multipart: title, body, image? (File, no video support). */
        async create({ title, body, image }) {
          const form = new FormData();

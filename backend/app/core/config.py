@@ -25,6 +25,15 @@ class Settings(BaseSettings):
     TRANSACTION_UPLOAD_DIR: str = "uploads/transactions"
     MAX_TRANSACTION_IMAGE_SIZE_BYTES: int = 5 * 1024 * 1024  # 5 MB
 
+    # Uploaded images (logos, post/transaction photos) are stored in
+    # Supabase Storage rather than local disk — Render's free tier wipes
+    # local files on every restart. SUPABASE_SERVICE_ROLE_KEY is a secret;
+    # it's only used server-side to write to the storage bucket, never
+    # sent to the frontend.
+    SUPABASE_URL: str | None = None
+    SUPABASE_SERVICE_ROLE_KEY: str | None = None
+    SUPABASE_STORAGE_BUCKET: str = "uploads"
+
     CORS_ORIGINS: str = "http://localhost:5500"
 
     # Brute-force protection: after this many consecutive failed logins for
