@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Teach — Super admin sign in</title>
+    <meta name="description" content="Super admin sign-in for Teach: onboard schools, set portal icons, and issue teacher credentials." />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body data-page="admin-login">
+    <div class="auth-shell">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <img src="./assets/logo.svg" alt="Teach logo" />
+          <div>
+            <strong>Teach — Super admin</strong>
+            <span>Schools, portal icons &amp; teacher credentials</span>
+          </div>
+        </div>
+
+        <p class="form-error" id="authError"></p>
+
+        <form id="loginForm">
+          <label class="field"><span>Username</span><input type="text" id="loginUsername" autocomplete="username" required autofocus /></label>
+          <label class="field"><span>Password</span><input type="password" id="loginPassword" autocomplete="current-password" required /></label>
+          <button class="primary-btn auth-submit" type="submit" id="loginSubmit">Log in</button>
+        </form>
+
+        <p class="hint">Not a super admin? <a href="login.html">Teacher sign-in</a>.</p>
+      </div>
+    </div>
+
+    <script src="./js/api.js"></script>
+    <script>
+      if (Session.isAuthenticated()) {
+        location.href = Session.get().role === "super_admin" ? "dashboard.html" : "home.html";
+      }
+
+      const form = document.getElementById("loginForm");
+      const msg = document.getElementById("authError");
+      const submitBtn = document.getElementById("loginSubmit");
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        handleLoginSubmit({
+          username: document.getElementById("loginUsername").value.trim(),
+          password: document.getElementById("loginPassword").value,
+          expectedRole: "super_admin",
+          wrongRoleMessage: "This sign-in is for super admins only. Use the teacher sign-in page instead.",
+          form, msgEl: msg, submitBtn,
+        });
+      });
+    </script>
+  </body>
+</html>

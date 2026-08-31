@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Teach</title>
+    <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
+    <script src="./js/api.js"></script>
+    <script>
+      const session = Session.get();
+      const dest = !Session.isAuthenticated()
+        ? "login.html"
+        : session.role === "super_admin" ? "dashboard.html" : "home.html";
+      location.replace(dest);
+    </script>
+  </head>
+  <body>
+    <p>Redirecting to <a href="./login.html">Teach</a>&hellip;</p>
+  </body>
+</html>

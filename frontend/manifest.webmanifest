@@ -1,0 +1,14 @@
+{
+  "name": "Teach — School Financial Accountability",
+  "short_name": "Teach",
+  "description": "School financial audit and communication portal: teachers record transactions, submit audits, and post news; super admins onboard schools and issue credentials.",
+  "start_url": "./login.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7f6",
+  "theme_color": "#0f766e",
+  "orientation": "any",
+  "icons": [
+    { "src": "./assets/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Teach — Review</title>
+    <meta name="description" content="Review posts and reports from teachers." />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body data-page="review">
+    <div class="app-shell" id="appShell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-logo" id="sidebarLogo" src="./assets/logo.svg" alt="Teach logo" />
+          <div class="brand-text">
+            <strong id="sidebarSchool">Teach</strong>
+            <span>Super admin</span>
+          </div>
+        </div>
+        <nav class="side-nav" aria-label="Main"></nav>
+        <div class="side-foot">
+          <p class="principle">&ldquo;Schools, accounts and content review, each in their own place.&rdquo;</p>
+        </div>
+      </aside>
+
+      <main class="main" id="main">
+        <header class="topbar">
+          <div class="topbar-id">
+            <img class="topbar-logo" id="topLogo" src="./assets/logo.svg" alt="Teach logo" />
+            <div class="topbar-copy">
+              <p class="greeting" id="greeting">Good morning</p>
+              <p class="subtle" id="schoolLine">Super admin console</p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn" id="modeToggle" aria-label="Toggle light or dark mode" title="Light / dark mode">
+              <span class="ico" data-ico="mode"></span>
+            </button>
+          </div>
+        </header>
+
+        <section class="page is-active" data-page="review">
+          <div class="card role-banner">
+            <div>
+              <p class="subtle">Content review for</p>
+              <h2>every school</h2>
+            </div>
+            <span class="pill" id="openReportsPill">0 open reports</span>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Reports</h2>
+              <span class="subtle">Filed by teachers against a specific post</span>
+            </div>
+            <div id="reportsList" class="feed"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>All posts</h2>
+              <div class="filters" id="postFilters">
+                <button class="filter is-active" data-filter="all">All</button>
+                <button class="filter" data-filter="images">With photos</button>
+              </div>
+            </div>
+            <p class="hint">Browse every post across every school, whether or not it's been reported. Removal here can only be done through a report (Remove post) — flag it first if it needs to come down.</p>
+            <div id="postsList" class="feed"></div>
+          </div>
+        </section>
+      </main>
+
+      <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="./js/api.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/review.js"></script>
+  </body>
+</html>

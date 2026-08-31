@@ -1,0 +1,102 @@
+from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+
+from app.core.bootstrap import ensure_super_admin
+from app.core.config import settings
+from app.core.database import Base, engine, SessionLocal
+from app.core.limiter import limiter
+from app.routers import auth, schools, users, transactions, audits, posts, reports, moderation, activity_log
+
+app = FastAPI(title="Teach", description="School financial audit & communication portal")
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+_DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    # Sent unconditionally: browsers only honor HSTS on responses actually
+    # delivered over HTTPS, so this is inert over local plain HTTP and
+    # active as soon as this sits behind TLS.
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+
+    if not any(request.url.path.startswith(p) for p in _DOCS_PATHS):
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+
+    return response
+
+
+_UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+_CSRF_EXEMPT_PATHS = ("/api/auth/login",)
+
+
+@app.middleware("http")
+async def csrf_protection(request: Request, call_next):
+    """
+    Double-submit CSRF check for cookie-authenticated requests. If the
+    request carries its own Authorization: Bearer header, it's exempt —
+    browsers never attach that header automatically on a cross-site
+    request, so it isn't vulnerable to CSRF the way an automatically-sent
+    cookie is. /api/auth/login is exempt because there's no session yet
+    to compare against.
+    """
+    if request.method in _UNSAFE_METHODS and not any(request.url.path.startswith(p) for p in _CSRF_EXEMPT_PATHS):
+        if "authorization" not in request.headers:
+            cookie_token = request.cookies.get("csrf_token")
+            header_token = request.headers.get("x-csrf-token")
+            if not cookie_token or not header_token or cookie_token != header_token:
+                return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "CSRF validation failed"})
+    return await call_next(request)
+
+
+app.include_router(auth.router)
+app.include_router(schools.router)
+app.include_router(users.router)
+app.include_router(transactions.router)
+app.include_router(audits.router)
+app.include_router(posts.router)
+app.include_router(reports.router)
+app.include_router(moderation.router)
+app.include_router(activity_log.router)
+
+# School logos are not sensitive, so they're served as plain static files —
+# this lets the frontend use them directly in <img src> without attaching
+# credentials the way fetch can.
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+
+@app.on_event("startup")
+def on_startup():
+    # In production, prefer Alembic migrations over create_all. This is kept
+    # for fast local setup; see README for the migration-based path.
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        ensure_super_admin(db)
+    finally:
+        db.close()
+
+
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok"}

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Teach logo">
+  <rect width="96" height="96" rx="24" fill="#0f766e"/>
+  <path d="M26 34h44M48 34v36" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="70" cy="64" r="9" fill="#eab308"/>
+</svg>

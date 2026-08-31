@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Teach — Settings</title>
+    <meta name="description" content="Account and appearance." />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body data-page="settings">
+    <div class="app-shell" id="appShell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-logo" id="sidebarLogo" src="./assets/logo.svg" alt="School logo" />
+          <div class="brand-text">
+            <strong id="sidebarSchool">Teach</strong>
+            <span>Accountability</span>
+          </div>
+        </div>
+        <nav class="side-nav" aria-label="Main"></nav>
+        <div class="side-foot">
+          <p class="principle">&ldquo;Record money once, then let Teach organize it everywhere else.&rdquo;</p>
+        </div>
+      </aside>
+
+      <main class="main" id="main">
+        <header class="topbar">
+          <div class="topbar-id">
+            <img class="topbar-logo" id="topLogo" src="./assets/logo.svg" alt="School logo" />
+            <div class="topbar-copy">
+              <p class="greeting" id="greeting">Good morning</p>
+              <p class="subtle" id="schoolLine">Teach</p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn" id="modeToggle" aria-label="Toggle light or dark mode" title="Light / dark mode">
+              <span class="ico" data-ico="mode"></span>
+            </button>
+          </div>
+        </header>
+
+        <section class="page is-active" data-page="settings">
+          <div class="settings-grid">
+            <div class="card">
+              <h2>Account</h2>
+              <div class="kv-row"><span class="subtle">Full name</span><strong id="acctName">—</strong></div>
+              <div class="kv-row"><span class="subtle">Username</span><strong id="acctUsername">—</strong></div>
+              <div class="kv-row"><span class="subtle">Role</span><strong id="acctRole">—</strong></div>
+              <div class="kv-row" id="acctSchoolRow"><span class="subtle">School</span><strong id="acctSchool">—</strong></div>
+              <p class="hint">Passwords are issued and reset by your school's super admin.</p>
+              <div class="form-actions">
+                <button class="ghost-btn" id="logoutBtn" type="button">Log out</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2>Appearance</h2>
+              <div class="toggle-row">
+                <div><strong>Theme</strong><p class="subtle">Applies on this device only</p></div>
+                <div class="segmented" id="modeSegmented">
+                  <button data-mode="light">Light</button>
+                  <button data-mode="dark">Dark</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="./js/api.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/settings.js"></script>
+  </body>
+</html>

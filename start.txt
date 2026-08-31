@@ -1,0 +1,91 @@
+TEACH - START THE WEBSITE (Windows PowerShell)
+===============================================
+
+The project has two parts. Start both at the same time:
+
+  Backend API:  http://localhost:8000
+  Website:     http://localhost:5500
+
+
+ONE-TIME SETUP
+==============
+
+1. Install Python 3.12+ and PostgreSQL.
+
+2. Create the PostgreSQL database named "teach". In SQL Shell (psql), run:
+
+   CREATE DATABASE teach;
+
+3. From the project folder, create the virtual environment and install the
+   backend dependencies:
+
+   Set-Location "C:\Users\Mr.Godsman\OneDrive\Desktop\Teachers\backend"
+   py -3.12 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+
+4. Make sure backend\.env exists and contains the correct PostgreSQL password
+   in DATABASE_URL. The supplied .env.example can be copied first:
+
+   Copy-Item .env.example .env
+
+   Change SECRET_KEY and the bootstrap admin password before using the app
+   outside local development.
+
+   If PowerShell blocks virtual-environment activation, run once:
+
+   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+
+
+EVERY TIME YOU START THE WEBSITE
+=================================
+
+Open two PowerShell terminals.
+
+TERMINAL 1 - BACKEND API
+------------------------
+
+Set-Location "C:\Users\Mr.Godsman\OneDrive\Desktop\Obsidian Jobs\Teachers\backend"
+python -m uvicorn app.main:app --reload
+
+Wait for "Application startup complete". Useful backend URLs:
+
+   API:     http://localhost:8000
+   Health:  http://localhost:8000/api/health
+   Docs:    http://localhost:8000/docs
+
+TERMINAL 2 - WEBSITE
+--------------------
+
+Set-Location "C:\Users\Mr.Godsman\OneDrive\Desktop\Obsidian Jobs\Teachers\frontend"
+py -m http.server 5500
+
+Open the website at:
+
+   http://localhost:5500/index.html
+
+Keep both terminals running while using the website. Press Ctrl+C in each
+terminal when finished.
+
+
+TROUBLESHOOTING
+===============
+
+- "password authentication failed for user postgres"
+  Update DATABASE_URL in backend\.env with the PostgreSQL password.
+
+- "database \"teach\" does not exist"
+  Run CREATE DATABASE teach; in SQL Shell (psql).
+
+- Port 8000 is already in use
+  Stop the other API process, or use:
+
+   uvicorn app.main:app --reload --port 8001
+
+  Then set window.TEACH_API_BASE to http://localhost:8001 before loading the
+  frontend.
+
+- The website opens but API requests fail
+  Confirm the backend is running and open http://localhost:8000/api/health.
+

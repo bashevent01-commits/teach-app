@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Teach — News</title>
+    <meta name="description" content="School community feed." />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body data-page="news">
+    <div class="app-shell" id="appShell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-logo" id="sidebarLogo" src="./assets/logo.svg" alt="School logo" />
+          <div class="brand-text">
+            <strong id="sidebarSchool">Teach</strong>
+            <span>Accountability</span>
+          </div>
+        </div>
+        <nav class="side-nav" aria-label="Main"></nav>
+        <div class="side-foot">
+          <p class="principle">&ldquo;Record money once, then let Teach organize it everywhere else.&rdquo;</p>
+        </div>
+      </aside>
+
+      <main class="main" id="main">
+        <header class="topbar">
+          <div class="topbar-id">
+            <img class="topbar-logo" id="topLogo" src="./assets/logo.svg" alt="School logo" />
+            <div class="topbar-copy">
+              <p class="greeting" id="greeting">Good morning</p>
+              <p class="subtle" id="schoolLine">Teach</p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn" id="modeToggle" aria-label="Toggle light or dark mode" title="Light / dark mode">
+              <span class="ico" data-ico="mode"></span>
+            </button>
+          </div>
+        </header>
+
+        <section class="page is-active" data-page="news">
+          <div class="card composer">
+            <div class="card-head">
+              <h2>Post an update</h2>
+              <button class="ghost-btn" id="newPostBtn">+ New post</button>
+            </div>
+            <form id="postForm" style="display:none;">
+              <p class="form-error" id="postMsg"></p>
+              <label class="field"><span>Title</span><input type="text" id="postTitle" required /></label>
+              <label class="field"><span>Body</span><textarea id="postBody" rows="3" required></textarea></label>
+              <label class="chip-input wide">
+                <span class="ico" data-ico="image"></span> <span id="postImageLabel">Add a photo (optional, images only)</span>
+                <input type="file" id="postImage" accept="image/png,image/jpeg,image/webp" hidden />
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="primary-btn" id="postSubmitBtn">Publish</button>
+                <button type="button" class="ghost-btn" id="postCancelBtn">Cancel</button>
+              </div>
+            </form>
+          </div>
+          <div class="feed" id="feed"></div>
+        </section>
+      </main>
+
+      <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+    </div>
+
+    <div class="sheet-backdrop" id="sheetBackdrop" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+        <div class="sheet-head">
+          <h2 id="sheetTitle">Report post</h2>
+          <button class="icon-btn" id="sheetClose" aria-label="Close">&#10005;</button>
+        </div>
+        <div class="sheet-body" id="sheetBody"></div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="./js/api.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/news.js"></script>
+  </body>
+</html>

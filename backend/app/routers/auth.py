@@ -1,0 +1,119 @@
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+
+from app.core.activity_log import log_activity
+from app.core.config import settings
+from app.core.database import get_db
+from app.core.deps import ACCESS_TOKEN_COOKIE
+from app.core.limiter import limiter
+from app.core.security import verify_password, create_access_token, generate_csrf_token
+from app.models.user import User
+from app.schemas.auth import TokenResponse
+
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+CSRF_COOKIE = "csrf_token"
+
+
+def _set_session_cookies(response: Response, token: str, csrf_token: str) -> None:
+    max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    response.set_cookie(
+        key=ACCESS_TOKEN_COOKIE,
+        value=token,
+        max_age=max_age,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        path="/",
+    )
+    # Deliberately NOT httponly — the frontend reads this to echo it back as
+    # an X-CSRF-Token header on state-changing requests (double-submit
+    # pattern). It authenticates nothing by itself; it only proves the
+    # request came from a script that could read this origin's cookies.
+    response.set_cookie(
+        key=CSRF_COOKIE,
+        value=csrf_token,
+        max_age=max_age,
+        httponly=False,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        path="/",
+    )
+
+
+@router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
+def login(request: Request, response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """
+    Credential-based login. Accounts are provisioned by a super admin —
+    there is no self-service signup.
+
+    Two layers of brute-force protection stack here: the slowapi limit
+    above throttles by IP, and the per-account lockout below stops a
+    distributed attack against one specific username regardless of
+    how many IPs it comes from.
+    """
+    user = db.query(User).filter(User.username == form_data.username).first()
+
+    if user and user.locked_until and user.locked_until > datetime.now(timezone.utc):
+        minutes_left = max(1, int((user.locked_until - datetime.now(timezone.utc)).total_seconds() // 60) + 1)
+        log_activity(db, action="login_blocked_locked", actor_username=form_data.username, request=request)
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail=f"Too many failed attempts. Try again in about {minutes_left} minute(s).",
+        )
+
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        if user:
+            user.failed_login_attempts += 1
+            if user.failed_login_attempts >= settings.LOGIN_MAX_ATTEMPTS:
+                user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+                user.failed_login_attempts = 0
+                db.commit()
+                log_activity(db, action="account_locked", actor=user, request=request,
+                             detail=f"Locked for {settings.LOGIN_LOCKOUT_MINUTES} minutes after repeated failures.")
+            else:
+                db.commit()
+        log_activity(db, action="login_failed", actor_username=form_data.username, request=request)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        log_activity(db, action="login_blocked_inactive", actor=user, request=request)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled")
+
+    if user.failed_login_attempts or user.locked_until:
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        db.commit()
+
+    log_activity(db, action="login_success", actor=user, request=request)
+
+    token = create_access_token(data={"sub": str(user.id), "role": user.role.value, "tv": user.token_version})
+    csrf_token = generate_csrf_token()
+    _set_session_cookies(response, token, csrf_token)
+
+    return TokenResponse(
+        access_token=token,
+        user_id=user.id,
+        role=user.role.value,
+        full_name=user.full_name,
+        school_id=user.school_id,
+    )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(response: Response):
+    """
+    Clears the session cookies. Doesn't require a valid session — logging
+    out should always succeed, even against an already-expired or tampered
+    cookie.
+    """
+    response.delete_cookie(ACCESS_TOKEN_COOKIE, path="/")
+    response.delete_cookie(CSRF_COOKIE, path="/")

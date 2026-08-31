@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Teach — Audit</title>
+    <meta name="description" content="Audit records and printable statements." />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body data-page="audit">
+    <div class="app-shell" id="appShell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-logo" id="sidebarLogo" src="./assets/logo.svg" alt="School logo" />
+          <div class="brand-text">
+            <strong id="sidebarSchool">Teach</strong>
+            <span>Accountability</span>
+          </div>
+        </div>
+        <nav class="side-nav" aria-label="Main"></nav>
+        <div class="side-foot">
+          <p class="principle">&ldquo;Record money once, then let Teach organize it everywhere else.&rdquo;</p>
+        </div>
+      </aside>
+
+      <main class="main" id="main">
+        <header class="topbar">
+          <div class="topbar-id">
+            <img class="topbar-logo" id="topLogo" src="./assets/logo.svg" alt="School logo" />
+            <div class="topbar-copy">
+              <p class="greeting" id="greeting">Good morning</p>
+              <p class="subtle" id="schoolLine">Teach</p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn" id="modeToggle" aria-label="Toggle light or dark mode" title="Light / dark mode">
+              <span class="ico" data-ico="mode"></span>
+            </button>
+          </div>
+        </header>
+
+        <!-- ================= RECORDS + STATEMENTS ================= -->
+        <section class="page is-active" data-page="audit" id="auditRecordsView">
+          <div class="card role-banner">
+            <div>
+              <p class="subtle">Audit view for</p>
+              <h2 id="auditRoleName">Teacher</h2>
+            </div>
+            <span class="pill" id="auditTotalsPill">Net &middot; KES 0.00</span>
+          </div>
+
+          <div class="kpi-row" id="methodKpis">
+            <div class="kpi"><strong id="kpiCash">—</strong><span>Cash net</span></div>
+            <div class="kpi"><strong id="kpiMpesa">—</strong><span>M-Pesa net</span></div>
+            <div class="kpi"><strong id="kpiBank">—</strong><span>Bank net</span></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2 id="auditPanelTitle">My records</h2>
+              <div class="filters" id="auditFilters">
+                <button class="filter is-active" data-filter="all">All</button>
+                <button class="filter" data-filter="cash">Cash</button>
+                <button class="filter" data-filter="mpesa">M-Pesa</button>
+                <button class="filter" data-filter="bank">Bank</button>
+              </div>
+            </div>
+            <table class="data-table">
+              <thead><tr><th>Date</th><th>Type</th><th>Method</th><th>Category</th><th>Description</th><th>Amount</th><th></th><th></th></tr></thead>
+              <tbody id="auditPanelBody"></tbody>
+            </table>
+          </div>
+
+          <div class="card statements-card">
+            <div class="card-head">
+              <h2>Statements</h2>
+              <span class="subtle">Printable movement statements by method and date range</span>
+            </div>
+            <div class="statements-range">
+              <label>From <input type="date" id="stmtFrom" /></label>
+              <label>To <input type="date" id="stmtTo" /></label>
+            </div>
+            <div class="statements-grid" id="statementsGrid">
+              <div class="statement-row">
+                <button class="statement-btn" data-statement="cash">
+                  <span class="ico" data-ico="cash"></span>
+                  <span><strong>Cash Movement</strong><span class="subtle">All cash in / out</span></span>
+                </button>
+                <button class="statement-icon-btn" data-print="cash" title="Print" aria-label="Print Cash Movement statement">
+                  <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><path d="M6 17v4h12v-4"/></svg>
+                </button>
+                <button class="statement-icon-btn" data-download="cash" title="Download" aria-label="Download Cash Movement statement">
+                  <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
+                </button>
+              </div>
+              <div class="statement-row">
+                <button class="statement-btn" data-statement="mpesa">
+                  <span class="ico" data-ico="mpesa"></span>
+                  <span><strong>M-Pesa Movement</strong><span class="subtle">All M-Pesa in / out</span></span>
+                </button>
+                <button class="statement-icon-btn" data-print="mpesa" title="Print" aria-label="Print M-Pesa Movement statement">
+                  <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><path d="M6 17v4h12v-4"/></svg>
+                </button>
+                <button class="statement-icon-btn" data-download="mpesa" title="Download" aria-label="Download M-Pesa Movement statement">
+                  <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
+                </button>
+              </div>
+              <div class="statement-row">
+                <button class="statement-btn" data-statement="bank">
+                  <span class="ico" data-ico="bank"></span>
+                  <span><strong>Bank Movement</strong><span class="subtle">All bank in / out</span></span>
+                </button>
+                <button class="statement-icon-btn" data-print="bank" title="Print" aria-label="Print Bank Movement statement">
+                  <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><path d="M6 17v4h12v-4"/></svg>
+                </button>
+                <button class="statement-icon-btn" data-download="bank" title="Download" aria-label="Download Bank Movement statement">
+                  <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
+                </button>
+              </div>
+              <div class="statement-row">
+                <button class="statement-btn" data-statement="all">
+                  <span class="ico" data-ico="audit"></span>
+                  <span><strong>Combined Statement</strong><span class="subtle">Cash, M-Pesa and Bank together</span></span>
+                </button>
+                <button class="statement-icon-btn" data-print="all" title="Print" aria-label="Print Combined statement">
+                  <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><path d="M6 17v4h12v-4"/></svg>
+                </button>
+                <button class="statement-icon-btn" data-download="all" title="Download" aria-label="Download Combined statement">
+                  <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Audit reports</h2>
+              <button class="primary-btn" id="newAuditBtn">+ New audit</button>
+            </div>
+            <p class="subtle" style="margin-top:-6px;">Signed-off, titled reports covering a period — separate from the live statements above.</p>
+            <div class="audit-grid" id="auditGrid"></div>
+          </div>
+        </section>
+
+        <!-- ================= AUDIT REPORT DETAIL ================= -->
+        <section class="page" id="auditDetailView">
+          <button class="ghost-btn" id="backToAudits" style="margin-bottom:14px;">&larr; All records</button>
+
+          <div class="card role-banner">
+            <div>
+              <p class="subtle" id="detailPeriod">Period</p>
+              <h2 id="detailTitle">Audit</h2>
+            </div>
+            <span class="pill" id="detailStatus">draft</span>
+          </div>
+
+          <div class="card"><div class="kpi-row" id="detailKpis"></div></div>
+
+          <div class="card">
+            <div class="card-head"><h2>Transactions in this period</h2></div>
+            <table class="data-table">
+              <thead><tr><th>Date</th><th>Type</th><th>Method</th><th>Category</th><th>Amount</th></tr></thead>
+              <tbody id="detailTxBody"></tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Report</h2></div>
+            <div class="form-actions" style="margin-top:0;">
+              <button class="ghost-btn" id="editAuditBtn">Edit audit</button>
+              <button class="primary-btn" id="finalizeBtn">Finalize audit</button>
+              <button class="ghost-btn" id="downloadReportBtn">Download report (PDF)</button>
+              <button class="danger-btn" id="deleteAuditBtn">Delete audit</button>
+            </div>
+            <p class="hint" id="finalizedHint" style="display:none;">This audit is finalized and locked from further edits.</p>
+          </div>
+        </section>
+      </main>
+
+      <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+    </div>
+
+    <div class="sheet-backdrop" id="sheetBackdrop" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+        <div class="sheet-head">
+          <h2 id="sheetTitle">New audit</h2>
+          <button class="icon-btn" id="sheetClose" aria-label="Close">&#10005;</button>
+        </div>
+        <div class="sheet-body" id="sheetBody"></div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="./js/api.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/audit.js"></script>
+  </body>
+</html>
