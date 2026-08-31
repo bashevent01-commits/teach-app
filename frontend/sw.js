@@ -1,4 +1,4 @@
-const CACHE = "teach-v2";
+const CACHE = "teach-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -9,6 +9,11 @@ const ASSETS = [
   "./audit.html",
   "./dashboard.html",
   "./settings.html",
+  "./accounts.html",
+  "./activity.html",
+  "./review.html",
+  "./schools.html",
+  "./config.js",
   "./css/styles.css",
   "./js/api.js",
   "./js/ui.js",
@@ -17,6 +22,10 @@ const ASSETS = [
   "./js/news.js",
   "./js/dashboard.js",
   "./js/settings.js",
+  "./js/accounts.js",
+  "./js/activity.js",
+  "./js/review.js",
+  "./js/schools.js",
   "./assets/logo.svg",
   "./manifest.webmanifest",
 ];
@@ -36,13 +45,21 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
 
-  // Never intercept the backend API (a different origin — see API_BASE
-  // in js/api.js). Let those requests succeed or fail on their own so a
-  // real network error isn't masked by a cached HTML page.
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
 
   e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request).catch(() => caches.match("./login.html")))
+    caches.match(e.request).then((hit) => {
+      if (hit) return hit;
+      return fetch(e.request)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(e.request, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match("./login.html"));
+    })
   );
 });

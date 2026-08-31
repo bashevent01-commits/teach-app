@@ -198,6 +198,7 @@
      users: {
        list: () => apiFetch("/api/users"),
        create: (payload) => apiFetch("/api/users", { method: "POST", body: payload }),
+       update: (id, payload) => apiFetch(`/api/users/${id}`, { method: "PATCH", body: payload }),
        deactivate: (id) => apiFetch(`/api/users/${id}/deactivate`, { method: "PATCH" }),
        reactivate: (id) => apiFetch(`/api/users/${id}/reactivate`, { method: "PATCH" }),
        resetPassword: (id, new_password) => apiFetch(`/api/users/${id}/reset-password`, { method: "POST", body: { new_password } }),

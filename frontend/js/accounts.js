@@ -28,6 +28,7 @@
         <td><span class="badge badge-${u.is_active ? "active" : "inactive"}">${u.is_active ? "Active" : "Deactivated"}</span></td>
         <td>
           <div class="row-actions">
+            <button class="ghost-btn" data-edit="${u.id}">Edit</button>
             <button class="ghost-btn" data-reset="${u.id}">Reset password</button>
             ${u.id === session.user_id ? "" : (u.is_active
               ? `<button class="danger-btn" data-deactivate="${u.id}">Deactivate</button>`
@@ -47,6 +48,54 @@
       catch (err) { toast(err.message); }
     }));
     $$("[data-reset]", body).forEach((btn) => btn.addEventListener("click", () => openResetSheet(btn.dataset.reset)));
+    $$("[data-edit]", body).forEach((btn) => btn.addEventListener("click", () => openEditSheet(btn.dataset.edit)));
+  }
+
+  /* ---------------- Edit account sheet ---------------- */
+
+  function openEditSheet(userId) {
+    const user = users.find((u) => String(u.id) === String(userId));
+    if (!user) return;
+    const isTeacher = user.role === "teacher";
+    const schoolOptions = schools.map((s) =>
+      `<option value="${s.id}" ${s.id === user.school_id ? "selected" : ""}>${escapeHtml(s.name)}</option>`
+    ).join("");
+
+    Sheet.open("Edit account", `
+      <p class="form-error" id="editMsg"></p>
+      <form id="editForm">
+        <label class="field"><span>Full name</span><input type="text" id="editFullname" value="${escapeHtml(user.full_name)}" required /></label>
+        <label class="field"><span>Username</span><input type="text" id="editUsername" value="${escapeHtml(user.username)}" required /></label>
+        ${isTeacher ? `<label class="field"><span>School</span><select id="editSchool">${schoolOptions}</select></label>` : ""}
+        <div class="form-actions">
+          <button type="submit" class="primary-btn" id="editSubmit">Save changes</button>
+        </div>
+      </form>
+    `);
+
+    $("#editForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = $("#editMsg");
+      hideFormMessage(msg);
+      const submitBtn = $("#editSubmit");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Saving…";
+      try {
+        const payload = {
+          full_name: $("#editFullname").value.trim(),
+          username: $("#editUsername").value.trim(),
+        };
+        if (isTeacher) payload.school_id = parseInt($("#editSchool").value, 10);
+        await Api.users.update(userId, payload);
+        Sheet.close();
+        toast("Account updated.");
+        await loadAll();
+      } catch (err) {
+        showFormMessage(msg, err.message || "Could not update the account.");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Save changes";
+      }
+    });
   }
 
   /* ---------------- Issue credentials sheet ---------------- */

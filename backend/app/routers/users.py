@@ -7,7 +7,7 @@ from app.core.deps import require_super_admin
 from app.core.security import hash_password
 from app.models.school import School
 from app.models.user import User, UserRole
-from app.schemas.user import UserCreate, UserOut, PasswordReset
+from app.schemas.user import UserCreate, UserOut, PasswordReset, UserUpdate
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -46,6 +46,43 @@ def create_user(payload: UserCreate, request: Request, db: Session = Depends(get
 @router.get("", response_model=list[UserOut])
 def list_users(db: Session = Depends(get_db), _: User = Depends(require_super_admin)):
     return db.query(User).order_by(User.created_at.desc()).all()
+
+
+@router.patch("/{user_id}", response_model=UserOut)
+def update_user(user_id: int, payload: UserUpdate, request: Request, db: Session = Depends(get_db), admin: User = Depends(require_super_admin)):
+    """Super admin edits an existing account's username, display name, or school assignment."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    changes = []
+
+    if payload.username is not None and payload.username != user.username:
+        existing = db.query(User).filter(User.username == payload.username, User.id != user_id).first()
+        if existing:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
+        changes.append(f"username '{user.username}' -> '{payload.username}'")
+        user.username = payload.username
+
+    if payload.full_name is not None and payload.full_name != user.full_name:
+        changes.append(f"full name '{user.full_name}' -> '{payload.full_name}'")
+        user.full_name = payload.full_name
+
+    if payload.school_id is not None and payload.school_id != user.school_id:
+        if user.role != UserRole.TEACHER:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only teacher accounts have a school assignment")
+        school = db.query(School).filter(School.id == payload.school_id).first()
+        if not school:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="School not found")
+        changes.append(f"school {user.school_id} -> {payload.school_id}")
+        user.school_id = payload.school_id
+
+    if changes:
+        db.commit()
+        db.refresh(user)
+        log_activity(db, action="user_updated", actor=admin, target_type="user", target_id=user.id,
+                     detail="; ".join(changes), request=request)
+    return user
 
 
 @router.patch("/{user_id}/deactivate", response_model=UserOut)

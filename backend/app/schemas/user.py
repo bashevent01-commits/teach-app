@@ -41,6 +41,31 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
+class UserUpdate(BaseModel):
+    """Used by super_admin to edit an existing user's identity/assignment.
+    All fields optional so a caller can patch just one at a time."""
+    username: str | None = None
+    full_name: str | None = None
+    school_id: int | None = None
+
+    @field_validator("username")
+    @classmethod
+    def username_format(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip()
+        if len(v) < 3:
+            raise ValueError("username must be at least 3 characters")
+        return v
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_not_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("full_name cannot be blank")
+        return v
+
+
 class PasswordReset(BaseModel):
     new_password: str
 
