@@ -1,4 +1,4 @@
-const CACHE = "teach-v3";
+const CACHE = "teach-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -45,21 +45,24 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
 
+  // Never intercept the backend API (a different origin — see API_BASE
+  // in js/api.js). Let those requests succeed or fail on their own so a
+  // real network error isn't masked by a cached HTML page.
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
 
+  // Network-first: always prefer the live version so a new deploy takes
+  // effect immediately instead of being masked by a stale cache. Cache
+  // is only a fallback for when there's no network at all.
   e.respondWith(
-    caches.match(e.request).then((hit) => {
-      if (hit) return hit;
-      return fetch(e.request)
-        .then((res) => {
-          if (res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(e.request, copy));
-          }
-          return res;
-        })
-        .catch(() => caches.match("./login.html"));
-    })
+    fetch(e.request)
+      .then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(e.request).then((hit) => hit || caches.match("./login.html")))
   );
 });
