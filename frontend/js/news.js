@@ -109,7 +109,8 @@
       await Api.posts.create({
         title: $("#postTitle").value.trim(),
         body: $("#postBody").value.trim(),
-      }, imageFile);
+        image: imageFile,
+      });
       form.reset();
       form.style.display = "none";
       $("#postImageLabel").textContent = "Add a photo (optional, images only)";
