@@ -1,4 +1,4 @@
-const CACHE = "teach-v4";
+const CACHE = "know-v1";
 const ASSETS = [
   "./",
   "./index.html",
@@ -12,7 +12,8 @@ const ASSETS = [
   "./accounts.html",
   "./activity.html",
   "./review.html",
-  "./schools.html",
+  "./institutions.html",
+  "./stock.html",
   "./config.js",
   "./css/styles.css",
   "./js/api.js",
@@ -25,7 +26,8 @@ const ASSETS = [
   "./js/accounts.js",
   "./js/activity.js",
   "./js/review.js",
-  "./js/schools.js",
+  "./js/institutions.js",
+  "./js/stock.js",
   "./assets/logo.svg",
   "./manifest.webmanifest",
 ];

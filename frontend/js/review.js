@@ -25,7 +25,7 @@
             <div class="avatar">${initials(r.reporter_name || "?")}</div>
             <div class="who">
               <strong>Reported by ${escapeHtml(r.reporter_name || "Unknown")}</strong>
-              <p class="subtle">${formatDate(r.created_at, true)} &middot; ${r.post ? escapeHtml(r.post.school_name || "Unknown school") : "Post no longer exists"}</p>
+              <p class="subtle">${formatDate(r.created_at, true)} &middot; ${r.post ? escapeHtml(r.post.institution_name || "Unknown institution") : "Post no longer exists"}</p>
             </div>
             <span class="pill ${r.resolved_at ? "ok" : "warn"}" style="margin-left:auto;">${r.resolved_at ? "Resolved" : "Open"}</span>
           </div>
@@ -35,7 +35,7 @@
               <strong>${escapeHtml(r.post.title)}</strong>
               <p class="post-body">${escapeHtml(r.post.body)}</p>
               ${r.post.image_path ? `<img src="${postImageUrl(r.post.image_path)}" alt="" style="width:100%;border-radius:10px;margin:8px 0;display:block;max-height:340px;object-fit:cover;" />` : ""}
-              <p class="subtle">By ${escapeHtml(r.post.author_name || "Unknown teacher")}</p>
+              <p class="subtle">By ${escapeHtml(r.post.author_name || "Unknown staff")}</p>
             </div>
           ` : `<p class="hint">The reported post has already been removed.</p>`}
           ${!r.resolved_at ? `
@@ -45,7 +45,7 @@
             </div>
           ` : `<p class="hint">Resolution: ${escapeHtml(r.resolution || "—")}</p>`}
         </div>
-      `).join("") : `<div class="empty-state"><div class="display">No reports yet</div><p>Anything a teacher flags will show up here.</p></div>`;
+      `).join("") : `<div class="empty-state"><div class="display">No reports yet</div><p>Anything a staff member flags will show up here.</p></div>`;
 
       $$("[data-dismiss]", wrap).forEach((btn) => btn.addEventListener("click", () => resolve(btn.dataset.dismiss, "dismiss")));
       $$("[data-remove]", wrap).forEach((btn) => btn.addEventListener("click", () => {
@@ -81,7 +81,7 @@
             <div class="avatar">${initials(p.author_name || "?")}</div>
             <div class="who">
               <strong>${escapeHtml(p.title)}</strong>
-              <p class="subtle">${escapeHtml(p.author_name || "Unknown")} &middot; ${escapeHtml(p.school_name || "Unknown school")} &middot; ${formatDate(p.created_at, true)}</p>
+              <p class="subtle">${escapeHtml(p.author_name || "Unknown")} &middot; ${escapeHtml(p.institution_name || "Unknown institution")} &middot; ${formatDate(p.created_at, true)}</p>
             </div>
             ${p.open_report_count > 0 ? `<span class="badge badge-inactive" style="margin-left:auto;">${p.open_report_count} report${p.open_report_count === 1 ? "" : "s"}</span>` : ""}
           </div>

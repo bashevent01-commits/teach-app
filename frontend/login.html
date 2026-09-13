@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Teach — Log in</title>
-    <meta name="description" content="Teach is a school financial tracking and accountability portal for teachers: record transactions, submit audits, and post school news." />
+    <title>K.N.O.W. — Log in</title>
+    <meta name="description" content="K.N.O.W. is a financial tracking, inventory and accountability portal for institutions: record transactions, manage stock, submit audits, and post news." />
     <meta name="theme-color" content="#0f766e" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
@@ -17,10 +17,10 @@
     <div class="auth-shell">
       <div class="auth-card">
         <div class="auth-brand">
-          <img src="./assets/logo.svg" alt="Teach logo" />
+          <img src="./assets/logo.svg" alt="K.N.O.W. logo" />
           <div>
-            <strong>Teach</strong>
-            <span>School financial audit &amp; records portal</span>
+            <strong>K.N.O.W.</strong>
+            <span>Institution financial audit &amp; records portal</span>
           </div>
         </div>
 
@@ -32,7 +32,7 @@
           <button class="primary-btn auth-submit" type="submit" id="loginSubmit">Log in</button>
         </form>
 
-        <p class="hint">Accounts are issued by your school's super admin. Contact them if you need access.</p>
+        <p class="hint">Accounts are issued by your institution's super admin. Contact them if you need access.</p>
         <p class="hint">Super admin? <a href="admin-login.html">Sign in here</a>.</p>
       </div>
     </div>
@@ -53,8 +53,8 @@
         handleLoginSubmit({
           username: document.getElementById("loginUsername").value.trim(),
           password: document.getElementById("loginPassword").value,
-          expectedRole: "teacher",
-          wrongRoleMessage: "This sign-in is for teachers. Use the super admin sign-in page instead.",
+          expectedRole: "staff",
+          wrongRoleMessage: "This sign-in is for staff. Use the super admin sign-in page instead.",
           form, msgEl: msg, submitBtn,
         });
       });

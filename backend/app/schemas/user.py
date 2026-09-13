@@ -6,12 +6,12 @@ from app.models.user import UserRole
 
 
 class UserCreate(BaseModel):
-    """Used by super_admin to issue credentials to a new teacher/user."""
+    """Used by super_admin to issue credentials to a new staff/user."""
     username: str
     full_name: str
     password: str
-    role: UserRole = UserRole.TEACHER
-    school_id: int | None = None
+    role: UserRole = UserRole.STAFF
+    institution_id: int | None = None
 
     @field_validator("password")
     @classmethod
@@ -37,8 +37,15 @@ class UserOut(BaseModel):
     full_name: str
     role: UserRole
     is_active: bool
-    school_id: int | None
+    institution_id: int | None
+    share_audits: bool
     created_at: datetime
+
+
+class AuditSharingUpdate(BaseModel):
+    """Self-service toggle: a staff member opting their own audits in/out of
+    same-institution visibility. Never touches edit/delete rights."""
+    share_audits: bool
 
 
 class UserUpdate(BaseModel):
@@ -46,7 +53,7 @@ class UserUpdate(BaseModel):
     All fields optional so a caller can patch just one at a time."""
     username: str | None = None
     full_name: str | None = None
-    school_id: int | None = None
+    institution_id: int | None = None
 
     @field_validator("username")
     @classmethod
@@ -67,6 +74,20 @@ class UserUpdate(BaseModel):
 
 
 class PasswordReset(BaseModel):
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("password must be at least 8 characters")
+        return v
+
+
+class SelfPasswordChange(BaseModel):
+    """A user changing their own password (as opposed to PasswordReset,
+    which is a super_admin resetting someone else's)."""
+    current_password: str
     new_password: str
 
     @field_validator("new_password")

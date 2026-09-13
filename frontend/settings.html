@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Teach — Settings</title>
+    <title>K.N.O.W. — Settings</title>
     <meta name="description" content="Account and appearance." />
     <meta name="theme-color" content="#0f766e" />
     <link rel="manifest" href="./manifest.webmanifest" />
@@ -17,25 +17,25 @@
     <div class="app-shell" id="appShell">
       <aside class="sidebar">
         <div class="brand">
-          <img class="brand-logo" id="sidebarLogo" src="./assets/logo.svg" alt="School logo" />
+          <img class="brand-logo" id="sidebarLogo" src="./assets/logo.svg" alt="Institution logo" />
           <div class="brand-text">
-            <strong id="sidebarSchool">Teach</strong>
+            <strong id="sidebarSchool">K.N.O.W.</strong>
             <span>Accountability</span>
           </div>
         </div>
         <nav class="side-nav" aria-label="Main"></nav>
         <div class="side-foot">
-          <p class="principle">&ldquo;Record money once, then let Teach organize it everywhere else.&rdquo;</p>
+          <p class="principle">&ldquo;Record money once, then let K.N.O.W. organize it everywhere else.&rdquo;</p>
         </div>
       </aside>
 
       <main class="main" id="main">
         <header class="topbar">
           <div class="topbar-id">
-            <img class="topbar-logo" id="topLogo" src="./assets/logo.svg" alt="School logo" />
+            <img class="topbar-logo" id="topLogo" src="./assets/logo.svg" alt="Institution logo" />
             <div class="topbar-copy">
               <p class="greeting" id="greeting">Good morning</p>
-              <p class="subtle" id="schoolLine">Teach</p>
+              <p class="subtle" id="schoolLine">K.N.O.W.</p>
             </div>
           </div>
           <div class="topbar-actions">
@@ -52,10 +52,34 @@
               <div class="kv-row"><span class="subtle">Full name</span><strong id="acctName">—</strong></div>
               <div class="kv-row"><span class="subtle">Username</span><strong id="acctUsername">—</strong></div>
               <div class="kv-row"><span class="subtle">Role</span><strong id="acctRole">—</strong></div>
-              <div class="kv-row" id="acctSchoolRow"><span class="subtle">School</span><strong id="acctSchool">—</strong></div>
-              <p class="hint">Passwords are issued and reset by your school's super admin.</p>
+              <div class="kv-row" id="acctSchoolRow"><span class="subtle">Institution</span><strong id="acctSchool">—</strong></div>
+              <p class="hint">Passwords are issued and reset by your institution's super admin.</p>
               <div class="form-actions">
                 <button class="ghost-btn" id="logoutBtn" type="button">Log out</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2>Change password</h2>
+              <p class="form-error" id="pwMsg"></p>
+              <form id="pwForm">
+                <label class="field"><span>Current password</span><input type="password" id="pwCurrent" required autocomplete="current-password" /></label>
+                <label class="field"><span>New password</span><input type="password" id="pwNew" required minlength="8" autocomplete="new-password" /></label>
+                <p class="hint">At least 8 characters. You'll be logged out and asked to sign back in afterward.</p>
+                <div class="form-actions">
+                  <button type="submit" class="primary-btn" id="pwSubmit">Update password</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="card" id="auditSharingCard" hidden>
+              <h2>Audit privacy</h2>
+              <div class="toggle-row">
+                <div><strong>Share my audits</strong><p class="subtle">When on, other staff at your institution can view (not edit) your audits.</p></div>
+                <div class="segmented" id="auditSharingSegmented">
+                  <button data-share="off">Private</button>
+                  <button data-share="on">Shared</button>
+                </div>
               </div>
             </div>
 

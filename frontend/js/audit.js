@@ -1,5 +1,5 @@
 (async function () {
-  const session = await initShell("audit", ["teacher"]);
+  const session = await initShell("audit", ["staff"]);
   $("#auditRoleName").textContent = session.full_name;
 
   let allTransactions = [];
@@ -28,7 +28,7 @@
    * A transaction isn't linked to an audit by id — a finalized audit's
    * statements are whatever fell inside its period_start/period_end (see
    * the backend). So a transaction counts as locked once ANY finalized
-   * audit for this school covers its date; editing it afterward would
+   * audit for this institution covers its date; editing it afterward would
    * silently change a report that's already been signed off.
    */
   function txnIsLocked(t) {

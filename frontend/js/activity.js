@@ -8,16 +8,21 @@
     login_blocked_inactive: "Sign-in blocked (disabled)",
     account_locked: "Account locked",
     user_created: "Account created",
+    user_updated: "Account edited",
     user_deactivated: "Account deactivated",
     user_reactivated: "Account reactivated",
     password_reset: "Password reset",
-    school_created: "School added",
-    school_logo_updated: "School icon changed",
+    self_password_change: "Changed own password",
+    institution_created: "Institution added",
+    institution_logo_updated: "Institution icon changed",
     audit_updated: "Audit edited",
     audit_deleted: "Audit deleted",
     audit_finalized: "Audit finalized",
     transaction_updated: "Transaction edited",
     transaction_deleted: "Transaction deleted",
+    stock_item_created: "Stock item added",
+    stock_item_updated: "Stock item edited",
+    stock_item_deleted: "Stock item deleted",
   };
 
   try {

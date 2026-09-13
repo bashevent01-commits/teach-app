@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.core.security import hash_password
 from app.models.user import User, UserRole
 
-logger = logging.getLogger("teach.bootstrap")
+logger = logging.getLogger("know.bootstrap")
 
 
 def ensure_super_admin(db: Session) -> None:
@@ -33,7 +33,7 @@ def ensure_super_admin(db: Session) -> None:
         full_name="Super Admin",
         hashed_password=hash_password(settings.BOOTSTRAP_SUPER_ADMIN_PASSWORD),
         role=UserRole.SUPER_ADMIN,
-        school_id=None,
+        institution_id=None,
     )
     db.add(admin)
     db.commit()

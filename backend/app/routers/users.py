@@ -3,16 +3,54 @@ from sqlalchemy.orm import Session
 
 from app.core.activity_log import log_activity
 from app.core.database import get_db
-from app.core.deps import require_super_admin
-from app.core.security import hash_password
-from app.models.school import School
+from app.core.deps import require_super_admin, require_institution_scope
+from app.core.limiter import limiter
+from app.core.security import hash_password, verify_password
+from app.models.institution import Institution
 from app.models.user import User, UserRole
-from app.schemas.user import UserCreate, UserOut, PasswordReset, UserUpdate
+from app.schemas.user import UserCreate, UserOut, PasswordReset, UserUpdate, AuditSharingUpdate, SelfPasswordChange
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
+@router.get("/me", response_model=UserOut)
+def get_my_profile(current_user: User = Depends(require_institution_scope)):
+    return current_user
+
+
+@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("5/minute")
+def change_my_password(payload: SelfPasswordChange, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_institution_scope)):
+    """Any user (staff or super_admin) changing their own password.
+    Requires the current password, unlike the super_admin reset-password
+    endpoint which is for issuing someone else's password without it."""
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+    current_user.hashed_password = hash_password(payload.new_password)
+    # Bumping this invalidates the token used for this very request too, so
+    # the frontend must treat a successful change as an implicit logout —
+    # the old cookie/bearer token stops working on the next call regardless.
+    current_user.token_version += 1
+    db.commit()
+    log_activity(db, action="self_password_change", actor=current_user, target_type="user", target_id=current_user.id,
+                 detail="Changed own password", request=request)
+
+
+@router.patch("/me/audit-sharing", response_model=UserOut)
+@limiter.limit("20/minute")
+def update_audit_sharing(payload: AuditSharingUpdate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_institution_scope)):
+    """Staff self-service: opt their own audits in/out of same-institution
+    visibility for other staff. Never affects edit/delete rights."""
+    if current_user.role != UserRole.STAFF:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only staff accounts have audits to share")
+    current_user.share_audits = payload.share_audits
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 def create_user(payload: UserCreate, request: Request, db: Session = Depends(get_db), admin: User = Depends(require_super_admin)):
     """
     A super admin issues login credentials for a new user directly here.
@@ -21,18 +59,18 @@ def create_user(payload: UserCreate, request: Request, db: Session = Depends(get
     if db.query(User).filter(User.username == payload.username).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
 
-    if payload.role == UserRole.TEACHER:
-        if payload.school_id is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="school_id is required for a teacher account")
-        if not db.query(School).filter(School.id == payload.school_id).first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="School not found")
+    if payload.role == UserRole.STAFF:
+        if payload.institution_id is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="institution_id is required for a staff account")
+        if not db.query(Institution).filter(Institution.id == payload.institution_id).first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institution not found")
 
     user = User(
         username=payload.username,
         full_name=payload.full_name,
         hashed_password=hash_password(payload.password),
         role=payload.role,
-        school_id=payload.school_id if payload.role == UserRole.TEACHER else None,
+        institution_id=payload.institution_id if payload.role == UserRole.STAFF else None,
         created_by_id=admin.id,
     )
     db.add(user)
@@ -49,8 +87,9 @@ def list_users(db: Session = Depends(get_db), _: User = Depends(require_super_ad
 
 
 @router.patch("/{user_id}", response_model=UserOut)
+@limiter.limit("20/minute")
 def update_user(user_id: int, payload: UserUpdate, request: Request, db: Session = Depends(get_db), admin: User = Depends(require_super_admin)):
-    """Super admin edits an existing account's username, display name, or school assignment."""
+    """Super admin edits an existing account's username, display name, or institution assignment."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -68,14 +107,14 @@ def update_user(user_id: int, payload: UserUpdate, request: Request, db: Session
         changes.append(f"full name '{user.full_name}' -> '{payload.full_name}'")
         user.full_name = payload.full_name
 
-    if payload.school_id is not None and payload.school_id != user.school_id:
-        if user.role != UserRole.TEACHER:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only teacher accounts have a school assignment")
-        school = db.query(School).filter(School.id == payload.school_id).first()
-        if not school:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="School not found")
-        changes.append(f"school {user.school_id} -> {payload.school_id}")
-        user.school_id = payload.school_id
+    if payload.institution_id is not None and payload.institution_id != user.institution_id:
+        if user.role != UserRole.STAFF:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only staff accounts have an institution assignment")
+        institution = db.query(Institution).filter(Institution.id == payload.institution_id).first()
+        if not institution:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institution not found")
+        changes.append(f"institution {user.institution_id} -> {payload.institution_id}")
+        user.institution_id = payload.institution_id
 
     if changes:
         db.commit()
@@ -86,6 +125,7 @@ def update_user(user_id: int, payload: UserUpdate, request: Request, db: Session
 
 
 @router.patch("/{user_id}/deactivate", response_model=UserOut)
+@limiter.limit("20/minute")
 def deactivate_user(user_id: int, request: Request, db: Session = Depends(get_db), admin: User = Depends(require_super_admin)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -106,6 +146,7 @@ def deactivate_user(user_id: int, request: Request, db: Session = Depends(get_db
 
 
 @router.patch("/{user_id}/reactivate", response_model=UserOut)
+@limiter.limit("20/minute")
 def reactivate_user(user_id: int, request: Request, db: Session = Depends(get_db), admin: User = Depends(require_super_admin)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -119,6 +160,7 @@ def reactivate_user(user_id: int, request: Request, db: Session = Depends(get_db
 
 
 @router.post("/{user_id}/reset-password", response_model=UserOut)
+@limiter.limit("10/minute")
 def reset_password(user_id: int, payload: PasswordReset, request: Request, db: Session = Depends(get_db), admin: User = Depends(require_super_admin)):
     """Super admin issues a new password for a user (e.g. after a reset request)."""
     user = db.query(User).filter(User.id == user_id).first()

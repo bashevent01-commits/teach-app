@@ -61,15 +61,15 @@ def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-def require_school_scope(current_user: User = Depends(get_current_user)) -> User:
+def require_institution_scope(current_user: User = Depends(get_current_user)) -> User:
     """
-    Any authenticated, active user whose account is tied to a school
-    (i.e. teachers). Super admins manage accounts/schools but don't
+    Any authenticated, active user whose account is tied to an institution
+    (i.e. staff). Super admins manage accounts/institutions but don't
     submit audits/transactions/posts themselves.
     """
-    if current_user.role == UserRole.TEACHER and current_user.school_id is None:
+    if current_user.role == UserRole.STAFF and current_user.institution_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is not assigned to a school",
+            detail="Account is not assigned to an institution",
         )
     return current_user

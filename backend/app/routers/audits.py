@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.core.activity_log import log_activity
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_school_scope
+from app.core.deps import get_current_user, require_institution_scope
+from app.core.limiter import limiter
 from app.models.audit import Audit, AuditStatus
 from app.models.transaction import Transaction
 from app.models.user import User, UserRole
@@ -16,12 +17,13 @@ router = APIRouter(prefix="/api/audits", tags=["audits"])
 
 
 @router.post("", response_model=AuditOut, status_code=status.HTTP_201_CREATED)
-def create_audit(payload: AuditCreate, db: Session = Depends(get_db), current_user: User = Depends(require_school_scope)):
-    if current_user.role != UserRole.TEACHER:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only teachers submit audits")
+@limiter.limit("10/minute")
+def create_audit(request: Request, payload: AuditCreate, db: Session = Depends(get_db), current_user: User = Depends(require_institution_scope)):
+    if current_user.role != UserRole.STAFF:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only staff submit audits")
 
     audit = Audit(
-        school_id=current_user.school_id,
+        institution_id=current_user.institution_id,
         title=payload.title,
         period_start=payload.period_start,
         period_end=payload.period_end,
@@ -36,46 +38,74 @@ def create_audit(payload: AuditCreate, db: Session = Depends(get_db), current_us
 
 @router.get("", response_model=list[AuditOut])
 def list_audits(
-    school_id: int | None = None,
+    institution_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role == UserRole.TEACHER:
-        scoped_school_id = current_user.school_id
-    else:
-        if school_id is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="school_id is required")
-        scoped_school_id = school_id
-    return db.query(Audit).filter(Audit.school_id == scoped_school_id).order_by(Audit.created_at.desc()).all()
+    if current_user.role == UserRole.STAFF:
+        # Private by default: a staff member always sees their own audits,
+        # plus any other same-institution staff member's audits only if
+        # that person has opted in via share_audits.
+        return (
+            db.query(Audit)
+            .join(User, Audit.submitted_by_id == User.id)
+            .filter(
+                Audit.institution_id == current_user.institution_id,
+                (Audit.submitted_by_id == current_user.id) | (User.share_audits.is_(True)),
+            )
+            .order_by(Audit.created_at.desc())
+            .all()
+        )
+    if institution_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="institution_id is required")
+    return db.query(Audit).filter(Audit.institution_id == institution_id).order_by(Audit.created_at.desc()).all()
 
 
-def _get_audit_scoped(audit_id: int, current_user: User, db: Session) -> Audit:
+def _get_audit_visible(audit_id: int, current_user: User, db: Session) -> Audit:
+    """Read access: owner, a super_admin, or (for staff) anyone at the
+    same institution if the submitter has opted into sharing."""
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit not found")
-    if current_user.role == UserRole.TEACHER and audit.school_id != current_user.school_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to access this audit")
+    if current_user.role == UserRole.STAFF:
+        if audit.institution_id != current_user.institution_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to access this audit")
+        if audit.submitted_by_id != current_user.id:
+            submitter = db.query(User).filter(User.id == audit.submitted_by_id).first()
+            if not submitter or not submitter.share_audits:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to access this audit")
+    return audit
+
+
+def _get_audit_owned(audit_id: int, current_user: User, db: Session) -> Audit:
+    """Write access (edit/delete/finalize): only the submitter or a
+    super_admin — sharing only ever affects visibility, never edit rights."""
+    audit = db.query(Audit).filter(Audit.id == audit_id).first()
+    if not audit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit not found")
+    if current_user.role == UserRole.STAFF and audit.submitted_by_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the staff member who submitted this audit can modify it")
     return audit
 
 
 @router.get("/{audit_id}", response_model=AuditOut)
 def get_audit(audit_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return _get_audit_scoped(audit_id, current_user, db)
+    return _get_audit_visible(audit_id, current_user, db)
 
 
 @router.get("/{audit_id}/transactions", response_model=list[TransactionOut])
 def get_audit_transactions(audit_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
-    An audit isn't a manual bucket teachers file transactions into — it's a
-    signed-off snapshot of whatever the school recorded during its
+    An audit isn't a manual bucket staff file transactions into — it's a
+    signed-off snapshot of whatever the institution recorded during its
     period_start/period_end. So "the audit's transactions" are computed
     from that date range, not stored via a foreign key.
     """
-    audit = _get_audit_scoped(audit_id, current_user, db)
+    audit = _get_audit_visible(audit_id, current_user, db)
     return (
         db.query(Transaction)
         .filter(
-            Transaction.school_id == audit.school_id,
+            Transaction.institution_id == audit.institution_id,
             Transaction.transaction_date >= audit.period_start,
             Transaction.transaction_date <= audit.period_end,
         )
@@ -85,8 +115,9 @@ def get_audit_transactions(audit_id: int, db: Session = Depends(get_db), current
 
 
 @router.patch("/{audit_id}", response_model=AuditOut)
-def update_audit(audit_id: int, payload: AuditUpdate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_school_scope)):
-    audit = _get_audit_scoped(audit_id, current_user, db)
+@limiter.limit("20/minute")
+def update_audit(audit_id: int, payload: AuditUpdate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_institution_scope)):
+    audit = _get_audit_owned(audit_id, current_user, db)
     if audit.status == AuditStatus.FINALIZED:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a finalized audit")
 
@@ -113,14 +144,15 @@ def update_audit(audit_id: int, payload: AuditUpdate, request: Request, db: Sess
 
 
 @router.delete("/{audit_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_audit(audit_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_school_scope)):
+@limiter.limit("10/minute")
+def delete_audit(audit_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_institution_scope)):
     """
     Deletes a draft audit. Since transactions aren't linked to an audit by
     foreign key (they're matched by date range at read time — see
     get_audit_transactions above), deleting the audit row is all that's
     needed; no transactions are touched either way.
     """
-    audit = _get_audit_scoped(audit_id, current_user, db)
+    audit = _get_audit_owned(audit_id, current_user, db)
     if audit.status == AuditStatus.FINALIZED:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete a finalized audit")
 
@@ -132,14 +164,15 @@ def delete_audit(audit_id: int, request: Request, db: Session = Depends(get_db),
 
 
 @router.post("/{audit_id}/finalize", response_model=AuditOut)
-def finalize_audit(audit_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_school_scope)):
+@limiter.limit("10/minute")
+def finalize_audit(audit_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_institution_scope)):
     """
     Locks the audit so it (and its report) reflects a fixed, signed-off
     state. Since an audit's "transactions" are computed from its date range
     rather than stored, finalizing also freezes every transaction that
     currently falls in that range — see transactions.py's locking check.
     """
-    audit = _get_audit_scoped(audit_id, current_user, db)
+    audit = _get_audit_owned(audit_id, current_user, db)
     if audit.status == AuditStatus.FINALIZED:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Audit is already finalized")
     audit.status = AuditStatus.FINALIZED

@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>K.N.O.W. — Activity</title>
-    <meta name="description" content="Security and accountability log." />
+    <title>K.N.O.W. — Stock</title>
+    <meta name="description" content="Manage your institution's stock items and running inventory levels." />
     <meta name="theme-color" content="#0f766e" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
@@ -13,19 +13,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./css/styles.css" />
   </head>
-  <body data-page="activity">
+  <body data-page="stock">
     <div class="app-shell" id="appShell">
       <aside class="sidebar">
         <div class="brand">
           <img class="brand-logo" id="sidebarLogo" src="./assets/logo.svg" alt="K.N.O.W. logo" />
           <div class="brand-text">
             <strong id="sidebarSchool">K.N.O.W.</strong>
-            <span>Super admin</span>
+            <span>Staff</span>
           </div>
         </div>
         <nav class="side-nav" aria-label="Main"></nav>
         <div class="side-foot">
-          <p class="principle">&ldquo;Institutions, accounts and content review, each in their own place.&rdquo;</p>
+          <p class="principle">&ldquo;Every item, every quantity, accounted for.&rdquo;</p>
         </div>
       </aside>
 
@@ -35,7 +35,7 @@
             <img class="topbar-logo" id="topLogo" src="./assets/logo.svg" alt="K.N.O.W. logo" />
             <div class="topbar-copy">
               <p class="greeting" id="greeting">Good morning</p>
-              <p class="subtle" id="schoolLine">Super admin console</p>
+              <p class="subtle" id="schoolLine">Institution</p>
             </div>
           </div>
           <div class="topbar-actions">
@@ -45,26 +45,19 @@
           </div>
         </header>
 
-        <section class="page is-active" data-page="activity">
-          <div class="card role-banner">
-            <div>
-              <p class="subtle">Security &amp; accountability log for</p>
-              <h2>every institution</h2>
-            </div>
-            <span class="pill" id="activityCountPill">0 entries</span>
-          </div>
-
+        <section class="page is-active" data-page="stock">
           <div class="card">
             <div class="card-head">
-              <h2>Activity</h2>
-              <span class="subtle">Logins, lockouts, and account/institution/audit changes</span>
+              <h2>Stock</h2>
+              <button class="primary-btn" id="newStockBtn">+ Add item</button>
             </div>
             <div class="table-scroll">
             <table class="data-table">
-              <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Detail</th><th>IP</th></tr></thead>
-              <tbody id="activityBody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
+              <thead><tr><th>Item</th><th>Description</th><th>Unit price</th><th>In stock</th><th></th></tr></thead>
+              <tbody id="stockBody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
             </table>
             </div>
+            <p class="file-hint">Quantity only changes through recorded transactions (a Receiving = sale, a Paying = restock) — it can't be edited directly here, so every change always has a transaction behind it.</p>
           </div>
         </section>
       </main>
@@ -72,11 +65,21 @@
       <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
     </div>
 
+    <div class="sheet-backdrop" id="sheetBackdrop" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+        <div class="sheet-head">
+          <h2 id="sheetTitle">Add item</h2>
+          <button class="icon-btn" id="sheetClose" aria-label="Close">&#10005;</button>
+        </div>
+        <div class="sheet-body" id="sheetBody"></div>
+      </div>
+    </div>
+
     <div class="toast" id="toast" hidden></div>
 
     <script src="config.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/ui.js"></script>
-    <script src="./js/activity.js"></script>
+    <script src="./js/stock.js"></script>
   </body>
 </html>

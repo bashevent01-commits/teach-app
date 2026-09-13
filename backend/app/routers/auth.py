@@ -104,7 +104,7 @@ def login(request: Request, response: Response, form_data: OAuth2PasswordRequest
         user_id=user.id,
         role=user.role.value,
         full_name=user.full_name,
-        school_id=user.school_id,
+        institution_id=user.institution_id,
     )
 
 

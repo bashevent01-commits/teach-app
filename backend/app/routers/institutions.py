@@ -1,0 +1,69 @@
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, status
+from sqlalchemy.orm import Session
+
+from app.core.activity_log import log_activity
+from app.core.database import get_db
+from app.core.deps import require_super_admin, get_current_user
+from app.core.limiter import limiter
+from app.models.institution import Institution
+from app.models.user import User
+from app.schemas.institution import InstitutionCreate, InstitutionOut
+from app.utils.uploads import save_school_logo, delete_storage_object
+
+router = APIRouter(prefix="/api/institutions", tags=["institutions"])
+
+
+@router.post("", response_model=InstitutionOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+def create_institution(payload: InstitutionCreate, request: Request, db: Session = Depends(get_db), admin: User = Depends(require_super_admin)):
+    if db.query(Institution).filter(Institution.name == payload.name).first():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An institution with this name already exists")
+    institution = Institution(name=payload.name, type=payload.type, address=payload.address)
+    db.add(institution)
+    db.commit()
+    db.refresh(institution)
+    log_activity(db, action="institution_created", actor=admin, target_type="institution", target_id=institution.id,
+                 detail=f"Created {institution.type} '{institution.name}'", request=request)
+    return institution
+
+
+@router.get("", response_model=list[InstitutionOut])
+def list_institutions(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    return db.query(Institution).order_by(Institution.name).all()
+
+
+@router.get("/{institution_id}", response_model=InstitutionOut)
+def get_institution(institution_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    institution = db.query(Institution).filter(Institution.id == institution_id).first()
+    if not institution:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institution not found")
+    return institution
+
+
+@router.post("/{institution_id}/logo", response_model=InstitutionOut)
+@limiter.limit("10/minute")
+def upload_institution_logo(
+    institution_id: int,
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_super_admin),
+):
+    """
+    Sets the icon shown across the portal (and later, on generated reports)
+    for this institution. Only a super admin can change an institution's icon.
+    """
+    institution = db.query(Institution).filter(Institution.id == institution_id).first()
+    if not institution:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institution not found")
+
+    contents = file.file.read()
+    old_logo_path = institution.logo_path
+    path = save_school_logo(file, contents)
+    institution.logo_path = path
+    db.commit()
+    db.refresh(institution)
+    delete_storage_object(old_logo_path)
+    log_activity(db, action="institution_logo_updated", actor=admin, target_type="institution", target_id=institution.id,
+                 detail=f"Updated icon for '{institution.name}'", request=request)
+    return institution

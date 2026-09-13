@@ -1,0 +1,25 @@
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Text, func
+from sqlalchemy.orm import relationship
+
+from app.core.database import Base
+
+
+class StockItem(Base):
+    """
+    An inventory line for an institution's shop-style stock (e.g. items
+    sold in a school canteen, or a supermarket/shop's actual product
+    catalog). Quantity is a running count: transactions of category
+    STOCK adjust it up (a restock, an expense) or down (a sale, income).
+    """
+    __tablename__ = "stock_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    institution_id = Column(Integer, ForeignKey("institutions.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(150), nullable=False)
+    description = Column(Text, nullable=True)
+    unit_price = Column(Numeric(12, 2), nullable=True)
+    quantity = Column(Numeric(12, 2), nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    institution = relationship("Institution", back_populates="stock_items")
+    transactions = relationship("Transaction", back_populates="stock_item")

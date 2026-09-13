@@ -1,5 +1,5 @@
 (async function () {
-  const session = await initShell("news", ["teacher"]);
+  const session = await initShell("news", ["staff"]);
 
   await loadPosts();
 
@@ -21,7 +21,7 @@
             ${p.author_id === session.user_id ? `<button class="danger-btn" data-delete="${p.id}">Delete</button>` : `<button class="ghost-btn" data-report="${p.id}">Report</button>`}
           </div>
         </div>
-      `).join("") : `<div class="empty-state"><div class="display">No news yet</div><p>Post the first update for your school portal.</p></div>`;
+      `).join("") : `<div class="empty-state"><div class="display">No news yet</div><p>Post the first update for your institution portal.</p></div>`;
 
       $$("[data-delete]", wrap).forEach((btn) => {
         btn.addEventListener("click", async () => {

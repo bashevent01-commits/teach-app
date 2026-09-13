@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Teach — Super admin sign in</title>
-    <meta name="description" content="Super admin sign-in for Teach: onboard schools, set portal icons, and issue teacher credentials." />
+    <title>K.N.O.W. — Super admin sign in</title>
+    <meta name="description" content="Super admin sign-in for K.N.O.W.: onboard institutions, set portal icons, and issue staff credentials." />
     <meta name="theme-color" content="#0f766e" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
@@ -17,10 +17,10 @@
     <div class="auth-shell">
       <div class="auth-card">
         <div class="auth-brand">
-          <img src="./assets/logo.svg" alt="Teach logo" />
+          <img src="./assets/logo.svg" alt="K.N.O.W. logo" />
           <div>
-            <strong>Teach — Super admin</strong>
-            <span>Schools, portal icons &amp; teacher credentials</span>
+            <strong>K.N.O.W. — Super admin</strong>
+            <span>Institutions, portal icons &amp; staff credentials</span>
           </div>
         </div>
 
@@ -32,7 +32,7 @@
           <button class="primary-btn auth-submit" type="submit" id="loginSubmit">Log in</button>
         </form>
 
-        <p class="hint">Not a super admin? <a href="login.html">Teacher sign-in</a>.</p>
+        <p class="hint">Not a super admin? <a href="login.html">Staff sign-in</a>.</p>
       </div>
     </div>
 
@@ -53,7 +53,7 @@
           username: document.getElementById("loginUsername").value.trim(),
           password: document.getElementById("loginPassword").value,
           expectedRole: "super_admin",
-          wrongRoleMessage: "This sign-in is for super admins only. Use the teacher sign-in page instead.",
+          wrongRoleMessage: "This sign-in is for super admins only. Use the staff sign-in page instead.",
           form, msgEl: msg, submitBtn,
         });
       });

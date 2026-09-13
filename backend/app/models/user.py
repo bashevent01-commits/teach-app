@@ -7,8 +7,8 @@ from app.core.database import Base
 
 
 class UserRole(str, enum.Enum):
-    SUPER_ADMIN = "super_admin"   # creates schools + accounts, not tied to one school
-    TEACHER = "teacher"           # enters audits, views transactions, posts news
+    SUPER_ADMIN = "super_admin"   # creates institutions + accounts, not tied to one institution
+    STAFF = "staff"               # enters audits/transactions, views stock, posts news
 
 
 class User(Base):
@@ -18,7 +18,7 @@ class User(Base):
     username = Column(String(80), nullable=False, unique=True, index=True)
     full_name = Column(String(150), nullable=False)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.TEACHER)
+    role = Column(Enum(UserRole), nullable=False, default=UserRole.STAFF)
     is_active = Column(Boolean, nullable=False, default=True)
 
     # Brute-force protection: incremented on each wrong password, reset on
@@ -31,13 +31,19 @@ class User(Base):
     # blocklist. Embedded in the JWT as "tv" and checked on every request.
     token_version = Column(Integer, nullable=False, default=0)
 
-    # Nullable because a super_admin is not scoped to a single school.
-    school_id = Column(Integer, ForeignKey("schools.id"), nullable=True)
+    # Nullable because a super_admin is not scoped to a single institution.
+    institution_id = Column(Integer, ForeignKey("institutions.id"), nullable=True)
+
+    # Staff self-service toggle: when False (default), only this staff
+    # member and super_admins can see their audits. When True, other staff
+    # at the same institution can also see them. Never affects edit/delete
+    # rights — only the submitter (or a super_admin) can modify an audit.
+    share_audits = Column(Boolean, nullable=False, default=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     # Track who issued the credentials, for accountability.
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    school = relationship("School", back_populates="users")
+    institution = relationship("Institution", back_populates="users")
     transactions_recorded = relationship("Transaction", back_populates="recorded_by", foreign_keys="Transaction.recorded_by_id")
     posts = relationship("Post", back_populates="author")

@@ -49,7 +49,7 @@ class AuditOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    school_id: int
+    institution_id: int
     title: str
     period_start: datetime
     period_end: datetime

@@ -9,9 +9,9 @@ from app.core.bootstrap import ensure_super_admin
 from app.core.config import settings
 from app.core.database import Base, engine, SessionLocal
 from app.core.limiter import limiter
-from app.routers import auth, schools, users, transactions, audits, posts, reports, moderation, activity_log
+from app.routers import auth, institutions, users, transactions, audits, posts, reports, moderation, activity_log, stock, mpesa
 
-app = FastAPI(title="Teach", description="School financial audit & communication portal")
+app = FastAPI(title="K.N.O.W.", description="Institution financial audit, inventory & communication portal")
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -70,7 +70,7 @@ async def csrf_protection(request: Request, call_next):
 
 
 app.include_router(auth.router)
-app.include_router(schools.router)
+app.include_router(institutions.router)
 app.include_router(users.router)
 app.include_router(transactions.router)
 app.include_router(audits.router)
@@ -78,10 +78,12 @@ app.include_router(posts.router)
 app.include_router(reports.router)
 app.include_router(moderation.router)
 app.include_router(activity_log.router)
+app.include_router(stock.router)
+app.include_router(mpesa.router)
 
-# School logos are not sensitive, so they're served as plain static files —
-# this lets the frontend use them directly in <img src> without attaching
-# credentials the way fetch can.
+# Institution logos are not sensitive, so they're served as plain static
+# files — this lets the frontend use them directly in <img src> without
+# attaching credentials the way fetch can.
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 

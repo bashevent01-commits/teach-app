@@ -1,7 +1,7 @@
 (async function () {
   const session = await initShell("accounts", ["super_admin"]);
 
-  let schools = [];
+  let institutions = [];
   let users = [];
 
   await loadAll();
@@ -9,7 +9,7 @@
   async function loadAll() {
     const body = $("#usersBody");
     try {
-      [schools, users] = await Promise.all([Api.schools.list(), Api.users.list()]);
+      [institutions, users] = await Promise.all([Api.institutions.list(), Api.users.list()]);
       renderUsers();
     } catch (err) {
       body.innerHTML = `<tr class="empty-row"><td colspan="6">${escapeHtml(err.message)}</td></tr>`;
@@ -17,14 +17,14 @@
   }
 
   function renderUsers() {
-    const schoolNameById = Object.fromEntries(schools.map((s) => [s.id, s.name]));
+    const institutionNameById = Object.fromEntries(institutions.map((s) => [s.id, s.name]));
     const body = $("#usersBody");
     body.innerHTML = users.length ? users.map((u) => `
       <tr>
         <td>${escapeHtml(u.full_name)}</td>
         <td><code>${escapeHtml(u.username)}</code></td>
-        <td><span class="badge badge-${u.role}">${u.role === "super_admin" ? "Super admin" : "Teacher"}</span></td>
-        <td>${u.role === "teacher" ? escapeHtml(schoolNameById[u.school_id] || "—") : "—"}</td>
+        <td><span class="badge badge-${u.role}">${u.role === "super_admin" ? "Super admin" : "Staff"}</span></td>
+        <td>${u.role === "staff" ? escapeHtml(institutionNameById[u.institution_id] || "—") : "—"}</td>
         <td><span class="badge badge-${u.is_active ? "active" : "inactive"}">${u.is_active ? "Active" : "Deactivated"}</span></td>
         <td>
           <div class="row-actions">
@@ -56,9 +56,9 @@
   function openEditSheet(userId) {
     const user = users.find((u) => String(u.id) === String(userId));
     if (!user) return;
-    const isTeacher = user.role === "teacher";
-    const schoolOptions = schools.map((s) =>
-      `<option value="${s.id}" ${s.id === user.school_id ? "selected" : ""}>${escapeHtml(s.name)}</option>`
+    const isStaff = user.role === "staff";
+    const institutionOptions = institutions.map((s) =>
+      `<option value="${s.id}" ${s.id === user.institution_id ? "selected" : ""}>${escapeHtml(s.name)}</option>`
     ).join("");
 
     Sheet.open("Edit account", `
@@ -66,7 +66,7 @@
       <form id="editForm">
         <label class="field"><span>Full name</span><input type="text" id="editFullname" value="${escapeHtml(user.full_name)}" required /></label>
         <label class="field"><span>Username</span><input type="text" id="editUsername" value="${escapeHtml(user.username)}" required /></label>
-        ${isTeacher ? `<label class="field"><span>School</span><select id="editSchool">${schoolOptions}</select></label>` : ""}
+        ${isStaff ? `<label class="field"><span>Institution</span><select id="editSchool">${institutionOptions}</select></label>` : ""}
         <div class="form-actions">
           <button type="submit" class="primary-btn" id="editSubmit">Save changes</button>
         </div>
@@ -85,7 +85,7 @@
           full_name: $("#editFullname").value.trim(),
           username: $("#editUsername").value.trim(),
         };
-        if (isTeacher) payload.school_id = parseInt($("#editSchool").value, 10);
+        if (isStaff) payload.institution_id = parseInt($("#editSchool").value, 10);
         await Api.users.update(userId, payload);
         Sheet.close();
         toast("Account updated.");
@@ -101,25 +101,25 @@
   /* ---------------- Issue credentials sheet ---------------- */
 
   $("#newUserBtn").addEventListener("click", () => {
-    const schoolOptions = schools.length
-      ? schools.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("")
-      : `<option value="">Add a school first</option>`;
+    const institutionOptions = institutions.length
+      ? institutions.map((s) => `<option value="${s.id}">${escapeHtml(s.name)} (${escapeHtml(s.type)})</option>`).join("")
+      : `<option value="">Add an institution first</option>`;
 
     Sheet.open("Issue credentials", `
       <p class="form-error" id="userMsg"></p>
       <form id="userForm">
         <label class="field"><span>Account type</span>
           <select id="userRole">
-            <option value="teacher">Teacher</option>
+            <option value="staff">Staff</option>
             <option value="super_admin">Super admin</option>
           </select>
         </label>
-        <p class="file-hint" id="roleHint">Scoped to one school — records transactions, audits, and news for that school only.</p>
+        <p class="file-hint" id="roleHint">Scoped to one institution — records transactions, stock, audits, and news for that institution only.</p>
         <label class="field"><span>Full name</span><input type="text" id="userFullname" required /></label>
         <label class="field"><span>Username</span><input type="text" id="userUsername" required /></label>
         <label class="field"><span>Temporary password</span><input type="text" id="userPassword" required minlength="8" /></label>
         <p class="file-hint">Share this with them directly. A new one can be issued anytime from Reset password.</p>
-        <label class="field" id="userSchoolField"><span>School</span><select id="userSchool">${schoolOptions}</select></label>
+        <label class="field" id="userSchoolField"><span>Institution</span><select id="userSchool">${institutionOptions}</select></label>
         <div class="form-actions">
           <button type="submit" class="primary-btn" id="userSubmit">Create account</button>
         </div>
@@ -128,14 +128,14 @@
 
     function applyRoleFieldVisibility() {
       const role = $("#userRole").value;
-      const schoolField = $("#userSchoolField");
+      const institutionField = $("#userSchoolField");
       const hint = $("#roleHint");
       if (role === "super_admin") {
-        schoolField.style.display = "none";
-        hint.textContent = "Full access: manages every school, its portal icon, and all account credentials.";
+        institutionField.style.display = "none";
+        hint.textContent = "Full access: manages every institution, its portal icon, and all account credentials.";
       } else {
-        schoolField.style.display = "";
-        hint.textContent = "Scoped to one school — records transactions, audits, and news for that school only.";
+        institutionField.style.display = "";
+        hint.textContent = "Scoped to one institution — records transactions, stock, audits, and news for that institution only.";
       }
     }
     $("#userRole").addEventListener("change", applyRoleFieldVisibility);
@@ -156,7 +156,7 @@
           username: $("#userUsername").value.trim(),
           password: $("#userPassword").value,
           role,
-          school_id: role === "teacher" ? parseInt($("#userSchool").value, 10) : null,
+          institution_id: role === "staff" ? parseInt($("#userSchool").value, 10) : null,
         });
         Sheet.close();
         toast("Account created.");

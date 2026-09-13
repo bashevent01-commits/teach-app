@@ -13,8 +13,8 @@ embedded inline, in a small bordered box.
 import io
 from datetime import datetime
 from decimal import Decimal
-from pathlib import Path
 
+import httpx
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -24,7 +24,7 @@ from reportlab.platypus import (
 )
 
 from app.models.audit import Audit
-from app.models.school import School
+from app.models.institution import Institution
 from app.models.transaction import Transaction, TransactionType, TransactionMethod
 
 INCOME_COLOR = colors.HexColor("#0f766e")
@@ -49,11 +49,29 @@ def _money(value) -> str:
     return f"{Decimal(value):,.2f}"
 
 
+def _fetch_image_bytes(url: str | None) -> io.BytesIO | None:
+    """
+    Images now live in Supabase Storage (a public URL), not on local
+    disk, so they have to be fetched over HTTP rather than opened by
+    path. Best-effort: a slow/unreachable image should degrade to the
+    placeholder dash, never fail the whole report.
+    """
+    if not url:
+        return None
+    try:
+        res = httpx.get(url, timeout=10)
+        res.raise_for_status()
+        return io.BytesIO(res.content)
+    except httpx.HTTPError:
+        return None
+
+
 def _evidence_cell(txn: Transaction):
     """A small bordered thumbnail if the row has an evidence photo, else a dash."""
-    if txn.image_path and Path(txn.image_path).exists():
+    image_bytes = _fetch_image_bytes(txn.image_path)
+    if image_bytes:
         try:
-            img = RLImage(txn.image_path, width=14 * mm, height=14 * mm)
+            img = RLImage(image_bytes, width=14 * mm, height=14 * mm)
             cell = Table([[img]], colWidths=[16 * mm], rowHeights=[16 * mm])
             cell.setStyle(TableStyle([
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
@@ -178,19 +196,20 @@ def _build_statement_table(transactions: list[Transaction], body_style, combined
     return data, style
 
 
-def _header_block(story, styles, school: School, title: str, meta_line: str):
+def _header_block(story, styles, institution: Institution, title: str, meta_line: str):
     title_style = ParagraphStyle("ReportTitle", parent=styles["Title"], fontSize=18, spaceAfter=4)
-    school_style = ParagraphStyle("SchoolName", parent=styles["Normal"], fontSize=13, textColor=colors.HexColor("#1a1a1a"))
+    institution_style = ParagraphStyle("InstitutionName", parent=styles["Normal"], fontSize=13, textColor=colors.HexColor("#1a1a1a"))
     meta_style = ParagraphStyle("Meta", parent=styles["Normal"], fontSize=9, textColor=colors.HexColor("#555555"))
 
     logo_cell = ""
-    if school.logo_path and Path(school.logo_path).exists():
+    logo_bytes = _fetch_image_bytes(institution.logo_path)
+    if logo_bytes:
         try:
-            logo_cell = RLImage(school.logo_path, width=22 * mm, height=22 * mm)
+            logo_cell = RLImage(logo_bytes, width=22 * mm, height=22 * mm)
         except Exception:
             logo_cell = ""
 
-    identity_block = [Paragraph(title, title_style), Paragraph(school.name, school_style), Paragraph(meta_line, meta_style)]
+    identity_block = [Paragraph(title, title_style), Paragraph(institution.name, institution_style), Paragraph(meta_line, meta_style)]
     header_table = Table([[logo_cell, identity_block]], colWidths=[26 * mm, None])
     header_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -205,7 +224,7 @@ def _header_block(story, styles, school: School, title: str, meta_line: str):
     story.append(Spacer(1, 6 * mm))
 
 
-def build_audit_report_pdf(school: School, audit: Audit, transactions: list[Transaction]) -> bytes:
+def build_audit_report_pdf(institution: Institution, audit: Audit, transactions: list[Transaction]) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm, leftMargin=18 * mm, rightMargin=18 * mm)
     styles = getSampleStyleSheet()
@@ -213,7 +232,7 @@ def build_audit_report_pdf(school: School, audit: Audit, transactions: list[Tran
 
     story = []
     period = f"{audit.period_start.strftime('%d %b %Y')} &ndash; {audit.period_end.strftime('%d %b %Y')}"
-    _header_block(story, styles, school, audit.title, f"{period} &middot; {audit.status.value.title()}")
+    _header_block(story, styles, institution, audit.title, f"{period} &middot; {audit.status.value.title()}")
 
     if audit.summary:
         story.append(Paragraph(audit.summary, body_style))
@@ -228,7 +247,7 @@ def build_audit_report_pdf(school: School, audit: Audit, transactions: list[Tran
     return buffer.getvalue()
 
 
-def build_statement_pdf(school: School, method_label: str, start: datetime, end: datetime, transactions: list[Transaction]) -> bytes:
+def build_statement_pdf(institution: Institution, method_label: str, start: datetime, end: datetime, transactions: list[Transaction]) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm, leftMargin=18 * mm, rightMargin=18 * mm)
     styles = getSampleStyleSheet()
@@ -237,7 +256,7 @@ def build_statement_pdf(school: School, method_label: str, start: datetime, end:
     story = []
     title = "Combined Statement" if method_label == "Combined" else f"{method_label} Movement Statement"
     meta = f"{start.strftime('%d %b %Y')} &ndash; {end.strftime('%d %b %Y')}"
-    _header_block(story, styles, school, title, meta)
+    _header_block(story, styles, institution, title, meta)
 
     data, style_cmds = _build_statement_table(transactions, body_style, combined=(method_label == "Combined"))
     table = Table(data, colWidths=_COL_WIDTHS, repeatRows=1)

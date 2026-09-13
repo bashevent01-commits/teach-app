@@ -20,4 +20,4 @@ class TokenResponse(BaseModel):
     user_id: int
     role: str
     full_name: str
-    school_id: int | None = None
+    institution_id: int | None = None

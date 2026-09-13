@@ -27,7 +27,7 @@ class PostOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    school_id: int
+    institution_id: int
     author_id: int
     title: str
     body: str

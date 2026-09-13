@@ -1,5 +1,5 @@
 /* ============================================================
-   Teach — shared page chrome
+   K.N.O.W. — shared page chrome
    Auth guarding, role-based nav (sidebar + tabbar), theme,
    toasts and small formatting helpers. Loaded after api.js on
    every app page (not on login.html / admin-login.html).
@@ -95,7 +95,8 @@ const ICONS = {
   audit: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   settings: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.3-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1.4z"/>',
   dashboard: '<path d="M12 2 3 6.5V12c0 5.2 3.6 9.4 9 10.5 5.4-1.1 9-5.3 9-10.5V6.5L12 2z"/><path d="m9 12 2 2 4-4"/>',
-  school: '<path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M6 10.5V16c0 1.4 2.7 3 6 3s6-1.6 6-3v-5.5"/><path d="M22 8v6"/>',
+  institution: '<path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M6 10.5V16c0 1.4 2.7 3 6 3s6-1.6 6-3v-5.5"/><path d="M22 8v6"/>',
+  stock: '<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',
   accounts: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.6"/><path d="M15.5 14.2c2.6.4 4.5 2.6 4.5 5.3"/>',
   flag: '<path d="M5 3v18"/><path d="M5 4h13l-3 4.5L18 13H5"/>',
   activity: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
@@ -120,7 +121,7 @@ function paintIcons(root = document) {
 
 /* ---------------- theme (light/dark) ---------------- */
 
-const THEME_KEY = "teach.theme";
+const THEME_KEY = "know.theme";
 
 function getTheme() {
   return localStorage.getItem(THEME_KEY) || "light";
@@ -148,15 +149,16 @@ function bindThemeToggle() {
 /* ---------------- nav (sidebar + tabbar), per role ---------------- */
 
 const NAV_ITEMS = {
-  teacher: [
+  staff: [
     { href: "home.html", nav: "home", label: "Home", icon: "home" },
+    { href: "stock.html", nav: "stock", label: "Stock", icon: "stock" },
     { href: "news.html", nav: "news", label: "News", icon: "news" },
     { href: "audit.html", nav: "audit", label: "Audit", icon: "audit" },
     { href: "settings.html", nav: "settings", label: "Settings", icon: "settings" },
   ],
   super_admin: [
     { href: "dashboard.html", nav: "dashboard", label: "Dashboard", icon: "dashboard" },
-    { href: "schools.html", nav: "schools", label: "Schools", icon: "school" },
+    { href: "institutions.html", nav: "institutions", label: "Institutions", icon: "institution" },
     { href: "accounts.html", nav: "accounts", label: "Accounts", icon: "accounts" },
     { href: "review.html", nav: "review", label: "Review", icon: "flag" },
     { href: "activity.html", nav: "activity", label: "Activity", icon: "activity" },
@@ -165,7 +167,7 @@ const NAV_ITEMS = {
 };
 
 function renderNav(session, activePage) {
-  const items = NAV_ITEMS[session.role] || NAV_ITEMS.teacher;
+  const items = NAV_ITEMS[session.role] || NAV_ITEMS.staff;
 
   const sideNav = $(".side-nav");
   if (sideNav) {
@@ -197,35 +199,35 @@ function greetingFor(fullName) {
 }
 
 /**
- * Fills in the topbar/sidebar identity (greeting, school name + logo)
- * for the current session. Teachers show their school's name and
- * portal icon; super admins aren't tied to one school, so they get a
- * generic admin identity instead.
+ * Fills in the topbar/sidebar identity (greeting, institution name +
+ * logo) for the current session. Staff show their institution's name
+ * and portal icon; super admins aren't tied to one institution, so they
+ * get a generic admin identity instead.
  */
 async function renderIdentity(session) {
   const greetingEl = $("#greeting");
-  const schoolLineEl = $("#schoolLine");
+  const institutionLineEl = $("#schoolLine");
   const topLogo = $("#topLogo");
   const sidebarLogo = $("#sidebarLogo");
-  const sidebarSchool = $("#sidebarSchool");
+  const sidebarInstitution = $("#sidebarSchool");
 
   if (greetingEl) greetingEl.textContent = greetingFor(session.full_name);
 
   if (session.role === "super_admin") {
-    if (schoolLineEl) schoolLineEl.textContent = "Super admin console";
-    if (sidebarSchool) sidebarSchool.textContent = "Teach";
+    if (institutionLineEl) institutionLineEl.textContent = "Super admin console";
+    if (sidebarInstitution) sidebarInstitution.textContent = "K.N.O.W.";
     return;
   }
 
-  let school = null;
-  if (session.school_id) {
-    try { school = await Api.schools.get(session.school_id); } catch { /* non-fatal */ }
+  let institution = null;
+  if (session.institution_id) {
+    try { institution = await Api.institutions.get(session.institution_id); } catch { /* non-fatal */ }
   }
 
-  if (schoolLineEl) schoolLineEl.textContent = school?.name || "Teach";
-  if (sidebarSchool) sidebarSchool.textContent = school?.name || "Teach";
+  if (institutionLineEl) institutionLineEl.textContent = institution?.name || "K.N.O.W.";
+  if (sidebarInstitution) sidebarInstitution.textContent = institution?.name || "K.N.O.W.";
 
-  const logoUrl = school ? Api.schools.logoUrl(school) : null;
+  const logoUrl = institution ? Api.institutions.logoUrl(institution) : null;
   if (logoUrl) {
     if (topLogo) topLogo.src = logoUrl;
     if (sidebarLogo) sidebarLogo.src = logoUrl;

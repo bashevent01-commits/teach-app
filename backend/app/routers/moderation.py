@@ -1,13 +1,15 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import require_super_admin
+from app.core.limiter import limiter
 from app.models.post import Post
 from app.models.post_report import PostReport, ReportStatus
 from app.models.user import User
+from app.utils.uploads import delete_storage_object
 
 router = APIRouter(prefix="/api/moderation", tags=["moderation"])
 
@@ -15,8 +17,8 @@ router = APIRouter(prefix="/api/moderation", tags=["moderation"])
 def _post_summary(post: Post) -> dict:
     return {
         "id": post.id,
-        "school_id": post.school_id,
-        "school_name": post.school.name if post.school else None,
+        "institution_id": post.institution_id,
+        "institution_name": post.institution.name if post.institution else None,
         "author_id": post.author_id,
         "author_name": post.author.full_name if post.author else None,
         "title": post.title,
@@ -29,15 +31,15 @@ def _post_summary(post: Post) -> dict:
 
 @router.get("/posts")
 def list_all_posts(
-    school_id: int | None = None,
+    institution_id: int | None = None,
     has_image: bool | None = None,
     db: Session = Depends(get_db),
     _: User = Depends(require_super_admin),
 ):
-    """Every teacher post, across every school, for the super admin review queue."""
+    """Every staff post, across every institution, for the super admin review queue."""
     query = db.query(Post)
-    if school_id is not None:
-        query = query.filter(Post.school_id == school_id)
+    if institution_id is not None:
+        query = query.filter(Post.institution_id == institution_id)
     if has_image is not None:
         query = query.filter(Post.image_path.isnot(None)) if has_image else query.filter(Post.image_path.is_(None))
     posts = query.order_by(Post.created_at.desc()).all()
@@ -73,8 +75,10 @@ def list_reports(
 
 
 @router.post("/reports/{report_id}/resolve")
+@limiter.limit("20/minute")
 def resolve_report(
     report_id: int,
+    request: Request,
     action: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_super_admin),
@@ -90,7 +94,9 @@ def resolve_report(
     if not report:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
 
+    removed_image_path = None
     if action == "remove_post" and report.post:
+        removed_image_path = report.post.image_path
         db.delete(report.post)
 
     report.status = ReportStatus.RESOLVED
@@ -98,4 +104,5 @@ def resolve_report(
     report.resolved_by_id = current_user.id
     report.resolution = "dismissed" if action == "dismiss" else "post_removed"
     db.commit()
+    delete_storage_object(removed_image_path)
     return {"ok": True}
