@@ -19,5 +19,6 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     user_id: int
     role: str
+    staff_type: str | None = None
     full_name: str
     institution_id: int | None = None

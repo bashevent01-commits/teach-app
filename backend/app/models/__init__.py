@@ -1,5 +1,5 @@
 from app.models.institution import Institution
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, StaffType
 from app.models.transaction import Transaction, TransactionType, TransactionMethod, TransactionCategoryType
 from app.models.stock_item import StockItem
 from app.models.audit import Audit, AuditStatus
@@ -11,6 +11,7 @@ __all__ = [
     "Institution",
     "User",
     "UserRole",
+    "StaffType",
     "Transaction",
     "TransactionType",
     "TransactionMethod",

@@ -1,16 +1,19 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from app.models.user import UserRole
+from app.models.user import UserRole, StaffType
 
 
 class UserCreate(BaseModel):
-    """Used by super_admin to issue credentials to a new staff/user."""
+    """Used by a super_admin (any institution) or an institution_admin
+    (their own institution only — enforced in the router, not here) to
+    issue credentials for a new account."""
     username: str
     full_name: str
     password: str
     role: UserRole = UserRole.STAFF
+    staff_type: StaffType | None = None
     institution_id: int | None = None
 
     @field_validator("password")
@@ -28,6 +31,12 @@ class UserCreate(BaseModel):
             raise ValueError("username must be at least 3 characters")
         return v
 
+    @model_validator(mode="after")
+    def staff_type_required_for_staff(self):
+        if self.role == UserRole.STAFF and self.staff_type is None:
+            raise ValueError("staff_type is required for a staff account (teacher or general)")
+        return self
+
 
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -36,6 +45,7 @@ class UserOut(BaseModel):
     username: str
     full_name: str
     role: UserRole
+    staff_type: StaffType | None
     is_active: bool
     institution_id: int | None
     share_audits: bool
@@ -49,11 +59,15 @@ class AuditSharingUpdate(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    """Used by super_admin to edit an existing user's identity/assignment.
-    All fields optional so a caller can patch just one at a time."""
+    """Used by a super_admin or institution_admin to edit an existing
+    user's identity/assignment, or promote/demote them between STAFF and
+    INSTITUTION_ADMIN (router enforces who can set which role). All
+    fields optional so a caller can patch just one at a time."""
     username: str | None = None
     full_name: str | None = None
     institution_id: int | None = None
+    staff_type: StaffType | None = None
+    role: UserRole | None = None
 
     @field_validator("username")
     @classmethod

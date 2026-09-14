@@ -1,14 +1,21 @@
 (async function () {
-  const session = await initShell("settings", ["staff", "super_admin"]);
+  const session = await initShell("settings", ["staff", "institution_admin", "super_admin"]);
+
+  function roleLabel(role) {
+    if (role === "super_admin") return "Super admin";
+    if (role === "institution_admin") return "Sub-admin";
+    return session.staff_type === "teacher" ? "Staff (Teacher)" : "Staff";
+  }
 
   $("#acctName").textContent = session.full_name;
-  $("#acctRole").textContent = session.role === "super_admin" ? "Super admin" : "Staff";
+  $("#acctRole").textContent = roleLabel(session.role);
 
   // Username isn't in the login response — pull it from /api/users if we
-  // have access (super admin only); staff just see role + institution.
+  // have access (super_admin or institution_admin); plain staff just see
+  // role + institution.
   const usernameEl = $("#acctUsername");
   usernameEl.textContent = "—";
-  if (session.role === "super_admin") {
+  if (session.role === "super_admin" || session.role === "institution_admin") {
     try {
       const users = await Api.users.list();
       const me = users.find((u) => u.id === session.user_id);
@@ -19,6 +26,7 @@
   const institutionRow = $("#acctSchoolRow");
   if (session.role === "super_admin") {
     institutionRow.style.display = "none";
+    $("#acctPasswordHint").textContent = "Only another super admin can reset your password.";
   } else {
     try {
       const institution = await Api.institutions.get(session.institution_id);
@@ -26,6 +34,32 @@
     } catch {
       $("#acctSchool").textContent = "—";
     }
+  }
+
+  if (session.role === "institution_admin") {
+    $("#institutionIconCard").hidden = false;
+    $("#iconFile").addEventListener("change", () => {
+      const file = $("#iconFile").files[0];
+      $("#iconFileName").textContent = file ? `Selected: ${file.name}` : "No file selected yet.";
+    });
+    $("#iconForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const file = $("#iconFile").files[0];
+      if (!file) return;
+      const submitBtn = $("#iconSubmit");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Uploading…";
+      try {
+        await Api.institutions.uploadLogo(session.institution_id, file);
+        toast("Portal icon updated.");
+        await renderIdentity(session);
+      } catch (err) {
+        toast(err.message || "Could not upload the icon.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Upload";
+      }
+    });
   }
 
   if (session.role === "staff") {

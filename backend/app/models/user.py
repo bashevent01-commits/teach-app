@@ -7,8 +7,18 @@ from app.core.database import Base
 
 
 class UserRole(str, enum.Enum):
-    SUPER_ADMIN = "super_admin"   # creates institutions + accounts, not tied to one institution
-    STAFF = "staff"               # enters audits/transactions, views stock, posts news
+    SUPER_ADMIN = "super_admin"           # creates institutions, everything, everywhere
+    INSTITUTION_ADMIN = "institution_admin"  # onboards staff, manages stock/logo — for their OWN institution only
+    STAFF = "staff"                       # enters audits/transactions; STAFF whose staff_type is TEACHER never touch stock
+
+
+class StaffType(str, enum.Enum):
+    """Only meaningful when role=STAFF. TEACHER accounts never see or use
+    the stock/inventory feature — enforced both in the UI and server-side,
+    since a school's finances (fees, rent) are a different concern from a
+    shop's inventory even when they share the same platform."""
+    TEACHER = "teacher"
+    GENERAL = "general"
 
 
 class User(Base):
@@ -19,6 +29,7 @@ class User(Base):
     full_name = Column(String(150), nullable=False)
     hashed_password = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.STAFF)
+    staff_type = Column(Enum(StaffType), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
 
     # Brute-force protection: incremented on each wrong password, reset on

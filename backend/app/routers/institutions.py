@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 
 from app.core.activity_log import log_activity
 from app.core.database import get_db
-from app.core.deps import require_super_admin, get_current_user
+from app.core.deps import require_super_admin, require_admin_scope, get_current_user
 from app.core.limiter import limiter
 from app.models.institution import Institution
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.institution import InstitutionCreate, InstitutionOut
 from app.utils.uploads import save_school_logo, delete_storage_object
 
@@ -47,12 +47,16 @@ def upload_institution_logo(
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_super_admin),
+    admin: User = Depends(require_admin_scope),
 ):
     """
-    Sets the icon shown across the portal (and later, on generated reports)
-    for this institution. Only a super admin can change an institution's icon.
+    Sets the icon shown across the portal (and on generated reports) for
+    this institution. A super_admin can change any institution's icon; an
+    institution_admin can only change their own.
     """
+    if admin.role == UserRole.INSTITUTION_ADMIN and admin.institution_id != institution_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to change this institution's icon")
+
     institution = db.query(Institution).filter(Institution.id == institution_id).first()
     if not institution:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institution not found")

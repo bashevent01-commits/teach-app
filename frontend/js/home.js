@@ -59,8 +59,11 @@
   async function openTxnSheet(flow) {
     const title = flow === "income" ? "Receiving" : "Paying";
     const stockVerb = flow === "income" ? "Sale (removes from stock)" : "Restock (adds to stock)";
+    const isTeacher = session.staff_type === "teacher";
 
-    try { stockItems = await Api.stock.list(); } catch { stockItems = []; }
+    if (!isTeacher) {
+      try { stockItems = await Api.stock.list(); } catch { stockItems = []; }
+    }
 
     const stockOptions = stockItems.map((s) =>
       `<option value="${s.id}" data-price="${s.unit_price || 0}" data-qty="${s.quantity}">${escapeHtml(s.name)} (${s.quantity} in stock)</option>`
@@ -77,10 +80,11 @@
           </select>
         </label>
 
+        ${isTeacher ? "" : `
         <div class="segmented" id="categoryTypeSegmented">
           <button type="button" data-type="OTHER" class="is-active">Other</button>
           <button type="button" data-type="STOCK">Stock item</button>
-        </div>
+        </div>`}
 
         <div id="mpesaPasteBlock" hidden>
           <label class="field"><span>Paste M-Pesa message</span><textarea id="mpesaMessage" rows="3" placeholder="Paste the confirmation SMS here to auto-fill amount, code, and payer name"></textarea></label>

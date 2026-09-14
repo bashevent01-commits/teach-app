@@ -1,5 +1,9 @@
 (async function () {
-  await initShell("stock", ["staff"]);
+  const session = await initShell("stock", ["staff", "institution_admin"]);
+  if (session.role === "staff" && session.staff_type === "teacher") {
+    location.href = "home.html";
+    return;
+  }
 
   let items = [];
 

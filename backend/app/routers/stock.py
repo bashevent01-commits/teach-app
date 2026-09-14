@@ -3,18 +3,18 @@ from sqlalchemy.orm import Session
 
 from app.core.activity_log import log_activity
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_institution_scope
+from app.core.deps import get_current_user, require_stock_access
 from app.core.limiter import limiter
 from app.models.stock_item import StockItem
 from app.models.transaction import Transaction
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, StaffType
 from app.schemas.stock import StockItemCreate, StockItemUpdate, StockItemOut
 
 router = APIRouter(prefix="/api/stock", tags=["stock"])
 
 
 def _scoped_institution_id(current_user: User, requested_institution_id: int | None) -> int:
-    if current_user.role == UserRole.STAFF:
+    if current_user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN):
         return current_user.institution_id
     if requested_institution_id is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="institution_id is required")
@@ -23,10 +23,7 @@ def _scoped_institution_id(current_user: User, requested_institution_id: int | N
 
 @router.post("", response_model=StockItemOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/minute")
-def create_stock_item(payload: StockItemCreate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_institution_scope)):
-    if current_user.role != UserRole.STAFF:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only staff manage stock")
-
+def create_stock_item(payload: StockItemCreate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_stock_access)):
     if db.query(StockItem).filter(StockItem.institution_id == current_user.institution_id, StockItem.name == payload.name).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A stock item with this name already exists")
 
@@ -47,6 +44,11 @@ def create_stock_item(payload: StockItemCreate, request: Request, db: Session = 
 
 @router.get("", response_model=list[StockItemOut])
 def list_stock_items(institution_id: int | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Read access: any staff (non-teacher)/institution_admin sees their own
+    institution; super_admin can view any institution's stock (oversight,
+    read-only) by passing institution_id explicitly."""
+    if current_user.role == UserRole.STAFF and current_user.staff_type == StaffType.TEACHER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher accounts don't use stock")
     scoped_institution_id = _scoped_institution_id(current_user, institution_id)
     return db.query(StockItem).filter(StockItem.institution_id == scoped_institution_id).order_by(StockItem.name).all()
 
@@ -65,20 +67,22 @@ def get_stock_item(item_id: int, db: Session = Depends(get_db), current_user: Us
     item = db.query(StockItem).filter(StockItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock item not found")
-    if current_user.role == UserRole.STAFF and item.institution_id != current_user.institution_id:
+    if current_user.role == UserRole.STAFF:
+        if current_user.staff_type == StaffType.TEACHER:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher accounts don't use stock")
+        if item.institution_id != current_user.institution_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to view this stock item")
+    elif current_user.role == UserRole.INSTITUTION_ADMIN and item.institution_id != current_user.institution_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to view this stock item")
     return item
 
 
 @router.patch("/{item_id}", response_model=StockItemOut)
 @limiter.limit("20/minute")
-def update_stock_item(item_id: int, payload: StockItemUpdate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_institution_scope)):
+def update_stock_item(item_id: int, payload: StockItemUpdate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_stock_access)):
     """Edits catalog info only (name/description/price) — quantity is never
     set directly here; it only moves through recorded transactions, so
     every change to it has a transaction behind it."""
-    if current_user.role != UserRole.STAFF:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only staff manage stock")
-
     item = _get_stock_item_scoped(item_id, current_user, db)
     if payload.name is not None and payload.name != item.name:
         if db.query(StockItem).filter(StockItem.institution_id == item.institution_id, StockItem.name == payload.name, StockItem.id != item_id).first():
@@ -98,10 +102,7 @@ def update_stock_item(item_id: int, payload: StockItemUpdate, request: Request, 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("10/minute")
-def delete_stock_item(item_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_institution_scope)):
-    if current_user.role != UserRole.STAFF:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only staff manage stock")
-
+def delete_stock_item(item_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_stock_access)):
     item = _get_stock_item_scoped(item_id, current_user, db)
     if db.query(Transaction).filter(Transaction.stock_item_id == item_id).first():
         raise HTTPException(

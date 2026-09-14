@@ -103,6 +103,7 @@ def login(request: Request, response: Response, form_data: OAuth2PasswordRequest
         access_token=token,
         user_id=user.id,
         role=user.role.value,
+        staff_type=user.staff_type.value if user.staff_type else None,
         full_name=user.full_name,
         institution_id=user.institution_id,
     )

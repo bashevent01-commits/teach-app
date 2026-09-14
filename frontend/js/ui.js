@@ -18,11 +18,17 @@ function requireAuth(fallbackLoginPage = "login.html") {
   return Session.get();
 }
 
+function homePageFor(role) {
+  if (role === "super_admin") return "dashboard.html";
+  if (role === "institution_admin") return "accounts.html";
+  return "home.html";
+}
+
 function requireRole(...roles) {
   const fallbackLoginPage = roles.length === 1 ? Session.loginPageFor(roles[0]) : "login.html";
   const session = requireAuth(fallbackLoginPage);
   if (!roles.includes(session.role)) {
-    location.href = session.role === "super_admin" ? "dashboard.html" : "home.html";
+    location.href = homePageFor(session.role);
     throw new Error("redirecting: insufficient role");
   }
   return session;
@@ -156,6 +162,11 @@ const NAV_ITEMS = {
     { href: "audit.html", nav: "audit", label: "Audit", icon: "audit" },
     { href: "settings.html", nav: "settings", label: "Settings", icon: "settings" },
   ],
+  institution_admin: [
+    { href: "accounts.html", nav: "accounts", label: "Accounts", icon: "accounts" },
+    { href: "stock.html", nav: "stock", label: "Stock", icon: "stock" },
+    { href: "settings.html", nav: "settings", label: "Settings", icon: "settings" },
+  ],
   super_admin: [
     { href: "dashboard.html", nav: "dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "institutions.html", nav: "institutions", label: "Institutions", icon: "institution" },
@@ -167,7 +178,10 @@ const NAV_ITEMS = {
 };
 
 function renderNav(session, activePage) {
-  const items = NAV_ITEMS[session.role] || NAV_ITEMS.staff;
+  let items = NAV_ITEMS[session.role] || NAV_ITEMS.staff;
+  if (session.role === "staff" && session.staff_type === "teacher") {
+    items = items.filter((item) => item.nav !== "stock");
+  }
 
   const sideNav = $(".side-nav");
   if (sideNav) {

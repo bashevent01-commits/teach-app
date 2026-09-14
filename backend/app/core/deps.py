@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, StaffType
 
 ACCESS_TOKEN_COOKIE = "access_token"
 
@@ -73,3 +73,35 @@ def require_institution_scope(current_user: User = Depends(get_current_user)) ->
             detail="Account is not assigned to an institution",
         )
     return current_user
+
+
+def require_admin_scope(current_user: User = Depends(get_current_user)) -> User:
+    """
+    A super_admin (unrestricted) or an institution_admin (restricted to
+    their own institution_id — callers must still check that explicitly;
+    this only confirms the account TYPE is allowed to administer at all).
+    """
+    if current_user.role not in (UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only a super admin or institution admin can perform this action",
+        )
+    return current_user
+
+
+def require_stock_access(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Stock is for institution_admins and GENERAL staff only. TEACHER-type
+    staff never touch it — their dashboard stays exactly the simple
+    income/expense ledger it always was, enforced here rather than only
+    hidden in the UI.
+    """
+    if current_user.role == UserRole.STAFF:
+        if current_user.institution_id is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not assigned to an institution")
+        if current_user.staff_type == StaffType.TEACHER:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher accounts don't use stock")
+        return current_user
+    if current_user.role == UserRole.INSTITUTION_ADMIN:
+        return current_user
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to access stock")

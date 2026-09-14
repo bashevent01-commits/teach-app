@@ -131,7 +131,8 @@ async function handleLoginSubmit({ username, password, expectedRole, wrongRoleMe
 
   try {
     const data = await Api.login(username, password);
-    if (data.role !== expectedRole) {
+    const allowedRoles = Array.isArray(expectedRole) ? expectedRole : [expectedRole];
+    if (!allowedRoles.includes(data.role)) {
       // Wrong-role login still set session cookies server-side — clear
       // them immediately so a half-authenticated cookie doesn't linger.
       await Api.logout().catch(() => {});
@@ -146,10 +147,10 @@ async function handleLoginSubmit({ username, password, expectedRole, wrongRoleMe
     // state-changing requests can authenticate via the Authorization
     // header when the CSRF cookie isn't readable cross-site — see the
     // TokenStore comment above.
-    const { user_id, role, full_name, institution_id, access_token } = data;
+    const { user_id, role, staff_type, full_name, institution_id, access_token } = data;
     TokenStore.set(access_token);
-    Session.set({ user_id, role, full_name, institution_id });
-    location.href = expectedRole === "super_admin" ? "dashboard.html" : "home.html";
+    Session.set({ user_id, role, staff_type, full_name, institution_id });
+    location.href = homePageFor(data.role);
   } catch (err) {
     msgEl.textContent = err.status === 401 || err.status === 400
       ? "Incorrect username or password."

@@ -53,8 +53,8 @@
         handleLoginSubmit({
           username: document.getElementById("loginUsername").value.trim(),
           password: document.getElementById("loginPassword").value,
-          expectedRole: "staff",
-          wrongRoleMessage: "This sign-in is for staff. Use the super admin sign-in page instead.",
+          expectedRole: ["staff", "institution_admin"],
+          wrongRoleMessage: "This sign-in is for staff and sub-admins. Use the super admin sign-in page instead.",
           form, msgEl: msg, submitBtn,
         });
       });

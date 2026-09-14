@@ -53,10 +53,25 @@
               <div class="kv-row"><span class="subtle">Username</span><strong id="acctUsername">—</strong></div>
               <div class="kv-row"><span class="subtle">Role</span><strong id="acctRole">—</strong></div>
               <div class="kv-row" id="acctSchoolRow"><span class="subtle">Institution</span><strong id="acctSchool">—</strong></div>
-              <p class="hint">Passwords are issued and reset by your institution's super admin.</p>
+              <p class="hint" id="acctPasswordHint">Passwords are issued and reset by your institution's super admin.</p>
               <div class="form-actions">
                 <button class="ghost-btn" id="logoutBtn" type="button">Log out</button>
               </div>
+            </div>
+
+            <div class="card" id="institutionIconCard" hidden>
+              <h2>Institution portal icon</h2>
+              <p class="file-hint">Shown in the sidebar and on generated audit reports for your institution.</p>
+              <form id="iconForm">
+                <label class="chip-input wide">
+                  <span class="ico" data-ico="image"></span> Upload new icon (PNG, JPG, WebP)
+                  <input type="file" id="iconFile" accept="image/png,image/jpeg,image/webp" hidden required />
+                </label>
+                <p class="file-hint" id="iconFileName">No file selected yet.</p>
+                <div class="form-actions">
+                  <button type="submit" class="primary-btn" id="iconSubmit">Upload</button>
+                </div>
+              </form>
             </div>
 
             <div class="card">

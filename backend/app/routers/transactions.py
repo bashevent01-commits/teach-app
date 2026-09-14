@@ -11,7 +11,7 @@ from app.core.limiter import limiter
 from app.models.audit import Audit, AuditStatus
 from app.models.stock_item import StockItem
 from app.models.transaction import Transaction, TransactionType, TransactionMethod, TransactionCategoryType
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, StaffType
 from app.schemas.transaction import TransactionOut
 from app.utils.uploads import save_transaction_image, delete_storage_object
 
@@ -91,6 +91,8 @@ def create_transaction(
 
     stock_item = None
     if category_type == TransactionCategoryType.STOCK:
+        if current_user.staff_type == StaffType.TEACHER:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher accounts don't use stock")
         if stock_item_id is None or quantity is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="stock_item_id and quantity are required for a stock entry")
         if quantity <= 0:
@@ -236,6 +238,8 @@ def update_transaction(
     new_quantity = quantity if quantity is not None else txn.quantity
 
     if txn.category_type == TransactionCategoryType.STOCK and (type is not None or quantity is not None):
+        if current_user.staff_type == StaffType.TEACHER:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher accounts don't use stock")
         if new_quantity is None or new_quantity <= 0:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="quantity must be greater than 0")
         item = db.query(StockItem).filter(StockItem.id == txn.stock_item_id).first()
