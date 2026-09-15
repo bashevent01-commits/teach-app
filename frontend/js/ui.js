@@ -20,7 +20,7 @@ function requireAuth(fallbackLoginPage = "login.html") {
 
 function homePageFor(role) {
   if (role === "super_admin") return "dashboard.html";
-  if (role === "institution_admin") return "accounts.html";
+  if (role === "institution_admin") return "admin-home.html";
   return "home.html";
 }
 
@@ -103,6 +103,7 @@ const ICONS = {
   dashboard: '<path d="M12 2 3 6.5V12c0 5.2 3.6 9.4 9 10.5 5.4-1.1 9-5.3 9-10.5V6.5L12 2z"/><path d="m9 12 2 2 4-4"/>',
   institution: '<path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M6 10.5V16c0 1.4 2.7 3 6 3s6-1.6 6-3v-5.5"/><path d="M22 8v6"/>',
   stock: '<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',
+  privacy: '<path d="M12 3 4 6.5v5c0 5 3.4 8.9 8 10 4.6-1.1 8-5 8-10v-5L12 3z"/><path d="m9.5 12 1.8 1.8L15 10"/>',
   accounts: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.6"/><path d="M15.5 14.2c2.6.4 4.5 2.6 4.5 5.3"/>',
   flag: '<path d="M5 3v18"/><path d="M5 4h13l-3 4.5L18 13H5"/>',
   activity: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
@@ -163,6 +164,7 @@ const NAV_ITEMS = {
     { href: "settings.html", nav: "settings", label: "Settings", icon: "settings" },
   ],
   institution_admin: [
+    { href: "admin-home.html", nav: "admin-home", label: "Overview", icon: "dashboard" },
     { href: "accounts.html", nav: "accounts", label: "Accounts", icon: "accounts" },
     { href: "stock.html", nav: "stock", label: "Stock", icon: "stock" },
     { href: "settings.html", nav: "settings", label: "Settings", icon: "settings" },
@@ -173,6 +175,7 @@ const NAV_ITEMS = {
     { href: "accounts.html", nav: "accounts", label: "Accounts", icon: "accounts" },
     { href: "review.html", nav: "review", label: "Review", icon: "flag" },
     { href: "activity.html", nav: "activity", label: "Activity", icon: "activity" },
+    { href: "privacy.html", nav: "privacy", label: "Data & Privacy", icon: "privacy" },
     { href: "settings.html", nav: "settings", label: "Settings", icon: "settings" },
   ],
 };

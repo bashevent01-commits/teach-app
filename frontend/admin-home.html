@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>K.N.O.W. — Dashboard</title>
-    <meta name="description" content="Super admin overview." />
+    <title>K.N.O.W. — Overview</title>
+    <meta name="description" content="Sub-admin overview for your institution." />
     <meta name="theme-color" content="#0f766e" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
@@ -13,19 +13,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./css/styles.css" />
   </head>
-  <body data-page="dashboard">
+  <body data-page="admin-home">
     <div class="app-shell" id="appShell">
       <aside class="sidebar">
         <div class="brand">
           <img class="brand-logo" id="sidebarLogo" src="./assets/logo.svg" alt="K.N.O.W. logo" />
           <div class="brand-text">
             <strong id="sidebarSchool">K.N.O.W.</strong>
-            <span>Super admin</span>
+            <span>Sub-admin</span>
           </div>
         </div>
         <nav class="side-nav" aria-label="Main"></nav>
         <div class="side-foot">
-          <p class="principle">&ldquo;Institutions, accounts and content review, each in their own place.&rdquo;</p>
+          <p class="principle">&ldquo;Your institution, your accounts, your call.&rdquo;</p>
         </div>
       </aside>
 
@@ -35,7 +35,7 @@
             <img class="topbar-logo" id="topLogo" src="./assets/logo.svg" alt="K.N.O.W. logo" />
             <div class="topbar-copy">
               <p class="greeting" id="greeting">Good morning</p>
-              <p class="subtle" id="schoolLine">Super admin console</p>
+              <p class="subtle" id="schoolLine">Institution</p>
             </div>
           </div>
           <div class="topbar-actions">
@@ -45,44 +45,37 @@
           </div>
         </header>
 
-        <section class="page is-active" data-page="dashboard">
+        <section class="page is-active" data-page="admin-home">
           <div class="card">
             <h2>Overview</h2>
             <div class="kpi-row" id="dashKpis">
-              <div class="kpi"><strong id="kpiSchools">—</strong><span>Institutions</span></div>
-              <div class="kpi"><strong id="kpiTeachers">—</strong><span>Staff accounts</span></div>
+              <div class="kpi"><strong id="kpiStaff">—</strong><span>Staff accounts</span></div>
               <div class="kpi"><strong id="kpiActive">—</strong><span>Active accounts</span></div>
-              <div class="kpi"><strong id="kpiReports">—</strong><span>Open reports</span></div>
+              <div class="kpi"><strong id="kpiTeacherCount">—</strong><span>Teachers</span></div>
+              <div class="kpi"><strong id="kpiStockItems">—</strong><span>Stock items</span></div>
             </div>
           </div>
 
           <div class="action-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
-            <a class="action-card receive" href="institutions.html">
-              <span class="action-ico"><span class="ico" data-ico="institution"></span></span>
-              <span class="action-copy">
-                <strong>Institutions</strong>
-                <small>Onboard institutions, set portal icons</small>
-              </span>
-            </a>
             <a class="action-card pay" href="accounts.html">
               <span class="action-ico"><span class="ico" data-ico="accounts"></span></span>
               <span class="action-copy">
                 <strong>Accounts</strong>
-                <small>Issue credentials, reset passwords</small>
+                <small>Onboard staff, reset passwords, promote to sub-admin</small>
               </span>
             </a>
-            <a class="action-card" href="review.html" style="background: var(--surface); border: 1px solid var(--line);">
-              <span class="action-ico"><span class="ico" data-ico="flag"></span></span>
+            <a class="action-card receive" href="stock.html">
+              <span class="action-ico"><span class="ico" data-ico="stock"></span></span>
               <span class="action-copy">
-                <strong>Review</strong>
-                <small>Posts, images &amp; reports from staff</small>
+                <strong>Stock</strong>
+                <small>Manage your institution's item catalog</small>
               </span>
             </a>
-            <a class="action-card" href="privacy.html" style="background: var(--surface); border: 1px solid var(--line);">
-              <span class="action-ico"><span class="ico" data-ico="privacy"></span></span>
+            <a class="action-card" href="settings.html" style="background: var(--surface); border: 1px solid var(--line);">
+              <span class="action-ico"><span class="ico" data-ico="settings"></span></span>
               <span class="action-copy">
-                <strong>Data &amp; Privacy</strong>
-                <small>What's legal to collect, and what to avoid</small>
+                <strong>Settings</strong>
+                <small>Update your institution's portal icon</small>
               </span>
             </a>
           </div>
@@ -97,6 +90,6 @@
     <script src="config.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/ui.js"></script>
-    <script src="./js/dashboard.js"></script>
+    <script src="./js/admin-home.js"></script>
   </body>
 </html>

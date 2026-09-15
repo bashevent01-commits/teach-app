@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>K.N.O.W. — Data & Privacy</title>
+    <meta name="description" content="What personal data this platform handles under Kenya's Data Protection Act 2019, and what's legal and useful to collect." />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./css/styles.css" />
+    <style>
+      .privacy-page .card { margin-bottom: 16px; }
+      .privacy-page h3 { margin: 0 0 8px; font-size: 1rem; }
+      .privacy-page table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+      .privacy-page th, .privacy-page td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 0.88rem; vertical-align: top; }
+      .privacy-page th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }
+      .privacy-page .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+      .privacy-page .tag-ok { background: #dcfce7; color: #166534; }
+      .privacy-page .tag-caution { background: #fef3c7; color: #92400e; }
+      .privacy-page .tag-avoid { background: #fee2e2; color: #991b1b; }
+      .privacy-page .checklist li { margin-bottom: 8px; }
+      .privacy-page .disclaimer { font-size: 0.82rem; color: var(--ink-soft); border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; }
+    </style>
+  </head>
+  <body data-page="privacy">
+    <div class="app-shell" id="appShell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-logo" id="sidebarLogo" src="./assets/logo.svg" alt="K.N.O.W. logo" />
+          <div class="brand-text">
+            <strong id="sidebarSchool">K.N.O.W.</strong>
+            <span>Super admin</span>
+          </div>
+        </div>
+        <nav class="side-nav" aria-label="Main"></nav>
+        <div class="side-foot">
+          <p class="principle">&ldquo;Collect only what you can justify, and can keep safe.&rdquo;</p>
+        </div>
+      </aside>
+
+      <main class="main" id="main">
+        <header class="topbar">
+          <div class="topbar-id">
+            <img class="topbar-logo" id="topLogo" src="./assets/logo.svg" alt="K.N.O.W. logo" />
+            <div class="topbar-copy">
+              <p class="greeting" id="greeting">Good morning</p>
+              <p class="subtle" id="schoolLine">Super admin console</p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn" id="modeToggle" aria-label="Toggle light or dark mode" title="Light / dark mode">
+              <span class="ico" data-ico="mode"></span>
+            </button>
+          </div>
+        </header>
+
+        <section class="page is-active privacy-page" data-page="privacy">
+
+          <div class="card">
+            <h2>Data & Privacy</h2>
+            <p>K.N.O.W. operates in Kenya, so the law that governs everything here is the <strong>Data Protection Act, 2019</strong> (DPA), enforced by the <strong>Office of the Data Protection Commissioner (ODPC)</strong>. It applies to any organisation handling personal data of people in Kenya — there's no small-business exemption from the Act itself, only from certain registration paperwork (below).</p>
+          </div>
+
+          <div class="card">
+            <h3>Who's the "data controller" here?</h3>
+            <p>This matters because the DPA puts different duties on different roles:</p>
+            <ul>
+              <li><strong>Each institution</strong> (a school, shop, or supermarket using K.N.O.W.) is its own <strong>data controller</strong> for the people it deals with day to day — students' parents, customers, suppliers. It decides why that data is collected.</li>
+              <li><strong>K.N.O.W. itself acts as a data processor</strong> for that institution data — it stores and moves it, but doesn't decide why it's collected.</li>
+              <li><strong>K.N.O.W. is the data controller</strong> for one thing directly: the staff/admin accounts used to log in (usernames, names, roles, activity logs) — that's data the platform itself decides how to use.</li>
+            </ul>
+            <p class="file-hint">In practice: an institution onboarding onto K.N.O.W. should know it likely has its own registration and privacy-notice obligations for its own customers/parents — separate from K.N.O.W.'s obligations for the account/login data.</p>
+          </div>
+
+          <div class="card">
+            <h3>Do institutions need to register with the ODPC?</h3>
+            <p>Under the Data Protection (Registration of Data Controllers and Data Processors) Regulations, 2021, registration is required <strong>unless</strong> an entity has both:</p>
+            <ul>
+              <li>Annual turnover/revenue under KES 5,000,000, <strong>and</strong></li>
+              <li>Fewer than 10 employees</li>
+            </ul>
+            <p><strong>Schools are on the mandatory-registration list regardless of size</strong> — so any school institution onboarded here should register with the ODPC even if it's tiny. Shops and supermarkets fall under the general turnover/headcount exemption unless they separately trigger a mandatory category (e.g. running CCTV, which many retail premises do).</p>
+            <p class="file-hint">Registration is done directly with the ODPC (odpc.go.ke), not through this platform — it's the institution's own responsibility, not K.N.O.W.'s.</p>
+          </div>
+
+          <div class="card">
+            <h3>The core rules, in plain terms</h3>
+            <table>
+              <thead><tr><th>Principle</th><th>What it means here</th></tr></thead>
+              <tbody>
+                <tr><td>Lawfulness &amp; transparency</td><td>Only collect data with a real reason, and don't hide what you're doing with it.</td></tr>
+                <tr><td>Purpose limitation</td><td>Data collected for payroll shouldn't quietly get reused for marketing, etc.</td></tr>
+                <tr><td>Data minimisation</td><td>If a field isn't actually needed, don't add it "just in case."</td></tr>
+                <tr><td>Accuracy</td><td>Wrong data (a misspelled name, stale phone number) should be correctable.</td></tr>
+                <tr><td>Storage limitation</td><td>Don't keep data forever — delete or archive it once it's served its purpose.</td></tr>
+                <tr><td>Security</td><td>Passwords hashed, connections encrypted, access limited to who actually needs it.</td></tr>
+                <tr><td>Accountability</td><td>Be able to show what you collect and why, if the ODPC ever asks.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3>What K.N.O.W. already collects</h3>
+            <table>
+              <thead><tr><th>Data</th><th>Category</th><th>Why it's collected</th></tr></thead>
+              <tbody>
+                <tr><td>Staff/admin name, username</td><td><span class="tag tag-ok">Ordinary</span></td><td>Account identity — needed to log in and attribute actions</td></tr>
+                <tr><td>Password (hashed, never stored in plain text)</td><td><span class="tag tag-ok">Ordinary</span></td><td>Authentication</td></tr>
+                <tr><td>Role, staff type, institution assignment</td><td><span class="tag tag-ok">Ordinary</span></td><td>Access control — who can do what, where</td></tr>
+                <tr><td>Transaction amounts, categories, descriptions</td><td><span class="tag tag-ok">Ordinary</span></td><td>The financial ledger itself — the core purpose of the platform</td></tr>
+                <tr><td>M-Pesa payer name &amp; transaction code</td><td><span class="tag tag-caution">Ordinary, but third-party</span></td><td>Reconciling a payment against the ledger. This is data about someone who isn't a K.N.O.W. user — collected on the institution's behalf, not K.N.O.W.'s</td></tr>
+                <tr><td>Activity log (who did what, when, IP address)</td><td><span class="tag tag-ok">Ordinary</span></td><td>Security &amp; accountability — a legitimate interest under the DPA</td></tr>
+              </tbody>
+            </table>
+            <p class="file-hint">None of this falls into the DPA's narrower "sensitive personal data" category (health, biometric, genetic, ethnic origin, religion, sexual orientation, etc.) — that's intentional. Keeping it that way is the single easiest way to stay low-risk.</p>
+          </div>
+
+          <div class="card">
+            <h3>What would be legal <em>and</em> useful to add</h3>
+            <table>
+              <thead><tr><th>Data</th><th>Status</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td>Staff phone number / email</td><td><span class="tag tag-ok">Legal, useful</span></td><td>Account recovery, urgent contact. Basis: necessary for the account relationship — no separate consent form needed.</td></tr>
+                <tr><td>Institution's official contact email/phone</td><td><span class="tag tag-ok">Legal, useful</span></td><td>Organisational, not personal data of an individual — lowest-risk addition possible.</td></tr>
+                <tr><td>A visible privacy notice in-app</td><td><span class="tag tag-ok">Legal, useful</span></td><td>Satisfies the "transparency" principle directly — tell people what's collected and why, right where they sign up.</td></tr>
+                <tr><td>Data retention settings (auto-archive old activity logs)</td><td><span class="tag tag-ok">Legal, useful</span></td><td>Directly satisfies "storage limitation" — currently logs are kept indefinitely, which is a gap worth closing eventually.</td></tr>
+                <tr><td>National ID number</td><td><span class="tag tag-avoid">Avoid</span></td><td>Higher-risk identifier with no clear benefit for a ledger/inventory tool. Needs a strong justification and its own safeguards if ever added.</td></tr>
+                <tr><td>Full M-Pesa phone numbers</td><td><span class="tag tag-avoid">Avoid</span></td><td>The transaction code + payer name is already enough to reconcile a payment — the phone number adds risk without adding value. The current M-Pesa parser deliberately doesn't extract it.</td></tr>
+                <tr><td>Biometric or health data</td><td><span class="tag tag-avoid">Avoid</span></td><td>"Sensitive personal data" under the DPA — requires explicit consent and much stronger safeguards. Nothing about this platform's purpose needs it.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3>People's rights — what's built, what's not yet</h3>
+            <ul>
+              <li><span class="tag tag-ok">Built</span> Right to rectification — accounts can edit their own name/username, and admins can correct staff records.</li>
+              <li><span class="tag tag-ok">Built</span> Right to access their own account — <code>/api/users/me</code> and the Settings page.</li>
+              <li><span class="tag tag-caution">Partial</span> Right to erasure — accounts can be deactivated, but there's no full "delete my data" flow yet. Worth building if the platform grows.</li>
+              <li><span class="tag tag-caution">Partial</span> Data portability — no self-service export of one's own data yet.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h3>Action checklist for you as super admin</h3>
+            <ol class="checklist">
+              <li>Confirm which onboarded institutions are schools (mandatory ODPC registration) and flag it to them directly — most won't know.</li>
+              <li>For shop/supermarket institutions, check whether they run CCTV or otherwise fall into a mandatory-registration category before assuming the small-business exemption applies.</li>
+              <li>Publish a short privacy notice institutions can point their own customers/parents to, covering the M-Pesa payer-name/code capture.</li>
+              <li>Periodically review the activity log's size and consider archiving entries older than a set period (e.g. 2 years) once volume grows.</li>
+              <li>Avoid adding any new fields to account or transaction forms without checking they're actually necessary — this page is a good place to start that conversation.</li>
+            </ol>
+          </div>
+
+          <p class="disclaimer">This page summarises Kenya's Data Protection Act, 2019 and its 2021 registration regulations as they apply to this platform's actual data model — it is general information, not legal advice. For formal compliance sign-off (especially before registering with the ODPC or scaling to more institutions), consult a Kenyan data protection lawyer or the ODPC directly at odpc.go.ke.</p>
+
+        </section>
+      </main>
+
+      <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="config.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/privacy.js"></script>
+  </body>
+</html>
