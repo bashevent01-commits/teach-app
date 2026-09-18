@@ -58,11 +58,17 @@ the real ones via the Resource Manager font picker.
 - **Transactions** — `GET /api/transactions`, scoped server-side to the
   user's institution automatically (same as the web app), rendered as
   category-badged cards with green/orange amounts.
+- **Stock** — `GET /api/stock`, category badge + unit price/quantity as a
+  KPI row per item. Hidden from teacher-type staff on Home (server still
+  enforces this — see `require_stock_access` — this is just matching UX).
+- **News** — `GET /api/posts`, post cards with title/body and an optional
+  photo (Coil `AsyncImage`, same `image_path`-resolves-to-full-URL logic as
+  `Api.posts.imageUrl` in `frontend/js/api.js`).
 
 ## Deliberately not yet built
 
-Stock, Audits, Posts/News, Market Analysis (super admin), Institutions/
-Accounts management (super admin) — same shape as the above (repository +
+Audits, Market Analysis (super admin), Institutions/Accounts management
+(super admin) — same shape as the above (repository +
 ViewModel + screen, styled with the same `ui/theme`/`ui/components` tokens),
 not yet wired up. Add them the same way as
 Transactions: a model in `data/model`, an endpoint in `ApiService`, a

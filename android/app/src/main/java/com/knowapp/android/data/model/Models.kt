@@ -37,3 +37,35 @@ data class TransactionOut(
     @SerialName("recorded_by_id") val recordedById: Int,
     @SerialName("created_at") val createdAt: String,
 )
+
+@Serializable
+data class StockItemOut(
+    val id: Int,
+    @SerialName("institution_id") val institutionId: Int,
+    @SerialName("category_id") val categoryId: Int? = null,
+    @SerialName("category_name") val categoryName: String? = null,
+    val name: String,
+    val description: String? = null,
+    @SerialName("unit_price") val unitPrice: String? = null,
+    val quantity: String,
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class PostOut(
+    val id: Int,
+    @SerialName("institution_id") val institutionId: Int,
+    @SerialName("author_id") val authorId: Int,
+    val title: String,
+    val body: String,
+    @SerialName("image_path") val imagePath: String? = null,
+    @SerialName("created_at") val createdAt: String,
+)
+
+/** Matches Api.posts.imageUrl / Api.institutions.logoUrl in frontend/js/api.js:
+ * image_path is either already a full URL or a path relative to the API host. */
+fun resolveMediaUrl(path: String?): String? {
+    if (path.isNullOrBlank()) return null
+    return if (path.startsWith("http://") || path.startsWith("https://")) path else "${com.knowapp.android.BuildConfig.API_BASE_URL}/$path"
+}
+

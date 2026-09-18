@@ -1,6 +1,7 @@
 package com.knowapp.android.ui.home
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,6 +32,8 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     viewModel: HomeViewModel,
     onViewTransactions: () -> Unit,
+    onViewStock: () -> Unit,
+    onViewNews: () -> Unit,
     onLoggedOut: () -> Unit,
 ) {
     val session by viewModel.session.collectAsState()
@@ -50,6 +53,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             // Matches .greeting: display font, bold.
             Text(
@@ -58,37 +62,66 @@ fun HomeScreen(
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.headlineSmall,
             )
-            Badge(
-                text = roleLabel(session?.role, session?.staffType),
-                modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
+            Badge(text = roleLabel(session?.role, session?.staffType))
+
+            HomeMenuCard(
+                title = "Transactions",
+                description = "View the income and expense ledger for your institution.",
+                buttonLabel = "View transactions",
+                onClick = onViewTransactions,
             )
 
-            AppCard(modifier = Modifier.fillMaxWidth()) {
-                Text("Transactions", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "View the income and expense ledger for your institution.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
+            val isTeacher = session?.role == "staff" && session?.staffType == "teacher"
+            if (!isTeacher) {
+                HomeMenuCard(
+                    title = "Stock",
+                    description = "Browse items, unit prices, and current quantities.",
+                    buttonLabel = "View stock",
+                    onClick = onViewStock,
                 )
-                Button(
-                    onClick = onViewTransactions,
-                    shape = PillShape,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("View transactions", fontWeight = FontWeight.SemiBold)
-                }
             }
+
+            HomeMenuCard(
+                title = "News",
+                description = "Institution announcements and updates.",
+                buttonLabel = "View news",
+                onClick = onViewNews,
+            )
 
             // Matches .ghost-btn: outlined pill, no fill.
             OutlinedButton(
                 onClick = { scope.launch { viewModel.logout(); onLoggedOut() } },
                 shape = PillShape,
-                modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
             ) {
                 Text("Sign out", fontWeight = FontWeight.SemiBold)
             }
+        }
+    }
+}
+
+@Composable
+private fun HomeMenuCard(
+    title: String,
+    description: String,
+    buttonLabel: String,
+    onClick: () -> Unit,
+) {
+    AppCard(modifier = Modifier.fillMaxWidth()) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(
+            description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
+        )
+        Button(
+            onClick = onClick,
+            shape = PillShape,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(buttonLabel, fontWeight = FontWeight.SemiBold)
         }
     }
 }

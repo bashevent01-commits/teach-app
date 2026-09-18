@@ -12,6 +12,10 @@ import com.knowapp.android.ui.home.HomeScreen
 import com.knowapp.android.ui.home.HomeViewModel
 import com.knowapp.android.ui.login.LoginScreen
 import com.knowapp.android.ui.login.LoginViewModel
+import com.knowapp.android.ui.news.NewsScreen
+import com.knowapp.android.ui.news.NewsViewModel
+import com.knowapp.android.ui.stock.StockScreen
+import com.knowapp.android.ui.stock.StockViewModel
 import com.knowapp.android.ui.transactions.TransactionsScreen
 import com.knowapp.android.ui.transactions.TransactionsViewModel
 
@@ -44,6 +48,8 @@ fun KnowNavGraph(container: AppContainer) {
             HomeScreen(
                 viewModel = viewModel,
                 onViewTransactions = { navController.navigate(Routes.TRANSACTIONS) },
+                onViewStock = { navController.navigate(Routes.STOCK) },
+                onViewNews = { navController.navigate(Routes.NEWS) },
                 onLoggedOut = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
@@ -54,6 +60,20 @@ fun KnowNavGraph(container: AppContainer) {
         composable(Routes.TRANSACTIONS) {
             val viewModel: TransactionsViewModel = viewModel(factory = vmFactory { TransactionsViewModel(container.transactionRepository) })
             TransactionsScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Routes.STOCK) {
+            val viewModel: StockViewModel = viewModel(factory = vmFactory { StockViewModel(container.stockRepository) })
+            StockScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Routes.NEWS) {
+            val viewModel: NewsViewModel = viewModel(factory = vmFactory { NewsViewModel(container.postsRepository) })
+            NewsScreen(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
             )

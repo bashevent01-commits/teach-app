@@ -1,5 +1,7 @@
 package com.knowapp.android.data.network
 
+import com.knowapp.android.data.model.PostOut
+import com.knowapp.android.data.model.StockItemOut
 import com.knowapp.android.data.model.TokenResponse
 import com.knowapp.android.data.model.TransactionOut
 import retrofit2.Response
@@ -24,4 +26,11 @@ interface ApiService {
         @Query("institution_id") institutionId: Int? = null,
         @Query("category_type") categoryType: String? = null,
     ): Response<List<TransactionOut>>
+
+    // Scoped server-side to the caller's institution automatically.
+    @GET("/api/stock")
+    suspend fun listStockItems(@Query("institution_id") institutionId: Int? = null): Response<List<StockItemOut>>
+
+    @GET("/api/posts")
+    suspend fun listPosts(@Query("institution_id") institutionId: Int? = null): Response<List<PostOut>>
 }
