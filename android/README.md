@@ -34,21 +34,37 @@ app/src/main/java/com/knowapp/android/
     login/, home/, transactions/  — one screen + ViewModel per feature
 ```
 
+## Visual fidelity to the web app
+
+`ui/theme/` (Color.kt, Shape.kt, Type.kt, Theme.kt) is a direct port of
+`frontend/css/styles.css`'s `:root` design tokens — brand teal, card radius
+(18dp), small radius (12dp), pill shape (999px), the income/expense green
+`--in`/orange `--out` colors, and light/dark surface tokens. `ui/components/`
+(AppCard, Badge, KpiRow, AmountText) mirror the web app's `.card`, `.badge`,
+`.kpi-row`, and `.txn-amount` styling so screens use the same visual
+language instead of generic Material defaults. Fonts (Plus Jakarta Sans /
+Space Grotesk) default to the system font for now — see the TODO block at
+the top of `ui/theme/Type.kt` for the one-minute Android Studio step to add
+the real ones via the Resource Manager font picker.
+
 ## What's built so far
 
 - **Login** — `POST /api/auth/login` (form-encoded, matches the backend's
   `OAuth2PasswordRequestForm`), session persisted locally, auto-navigates to
   Home if already signed in.
-- **Home** — shows the signed-in user's name/role, links to Transactions,
-  sign out (calls `POST /api/auth/logout` then clears local session).
+- **Home** — shows the signed-in user's name/role as a pill badge, links to
+  Transactions, sign out (calls `POST /api/auth/logout` then clears local
+  session).
 - **Transactions** — `GET /api/transactions`, scoped server-side to the
-  user's institution automatically (same as the web app).
+  user's institution automatically (same as the web app), rendered as
+  category-badged cards with green/orange amounts.
 
 ## Deliberately not yet built
 
 Stock, Audits, Posts/News, Market Analysis (super admin), Institutions/
 Accounts management (super admin) — same shape as the above (repository +
-ViewModel + screen), not yet wired up. Add them the same way as
+ViewModel + screen, styled with the same `ui/theme`/`ui/components` tokens),
+not yet wired up. Add them the same way as
 Transactions: a model in `data/model`, an endpoint in `ApiService`, a
 repository, a ViewModel, a screen, a route in `KnowNavGraph.kt`.
 

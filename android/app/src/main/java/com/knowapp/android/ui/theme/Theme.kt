@@ -1,50 +1,55 @@
 package com.knowapp.android.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+// Maps 1:1 onto frontend/css/styles.css's :root / [data-mode="dark"] tokens:
+// surface -> surface, surface-2 -> surfaceVariant, ink -> onSurface,
+// ink-soft -> onSurfaceVariant, line -> outline, bg -> background.
 private val LightColors = lightColorScheme(
-    primary = BrandTeal,
-    onPrimary = Color.White,
-    secondary = BrandTealDark,
-    background = SurfaceLight,
-    error = ErrorRed,
+    primary = Brand,
+    onPrimary = BrandInk,
+    primaryContainer = BrandSoft,
+    onPrimaryContainer = Brand,
+    background = BgLight,
+    surface = SurfaceLight,
+    onSurface = InkLight,
+    surfaceVariant = Surface2Light,
+    onSurfaceVariant = InkSoftLight,
+    outline = LineLight,
+    error = DangerRed,
 )
 
 private val DarkColors = darkColorScheme(
-    primary = BrandTealLight,
-    onPrimary = Color.Black,
-    secondary = BrandTeal,
-    background = SurfaceDark,
-    error = ErrorRed,
+    primary = Brand,
+    onPrimary = BrandInk,
+    primaryContainer = BrandSoft,
+    onPrimaryContainer = Brand,
+    background = BgDark,
+    surface = SurfaceDark,
+    onSurface = InkDark,
+    surfaceVariant = Surface2Dark,
+    onSurfaceVariant = InkSoftDark,
+    outline = LineDark,
+    error = DangerRed,
 )
 
 @Composable
 fun KnowTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // off by default to keep the brand teal consistent
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColors
-        else -> LightColors
-    }
+    // Dynamic (wallpaper-derived) color is deliberately not offered here —
+    // the whole point of this pass is to keep the app's teal brand
+    // consistent with the web app rather than per-device.
+    val colorScheme = if (darkTheme) DarkColors else LightColors
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -57,7 +62,8 @@ fun KnowTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = MaterialTheme.typography,
+        typography = KnowTypography,
+        shapes = KnowShapes,
         content = content,
     )
 }
