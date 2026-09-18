@@ -5,7 +5,9 @@ from app.core.activity_log import log_activity
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_stock_access
 from app.core.limiter import limiter
+from app.models.product_category import ProductCategory
 from app.models.stock_item import StockItem
+from app.models.stock_price_history import StockPriceHistory
 from app.models.transaction import Transaction
 from app.models.user import User, UserRole, StaffType
 from app.schemas.stock import StockItemCreate, StockItemUpdate, StockItemOut
@@ -26,9 +28,12 @@ def _scoped_institution_id(current_user: User, requested_institution_id: int | N
 def create_stock_item(payload: StockItemCreate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_stock_access)):
     if db.query(StockItem).filter(StockItem.institution_id == current_user.institution_id, StockItem.name == payload.name).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A stock item with this name already exists")
+    if not db.query(ProductCategory).filter(ProductCategory.id == payload.category_id).first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown product category")
 
     item = StockItem(
         institution_id=current_user.institution_id,
+        category_id=payload.category_id,
         name=payload.name,
         description=payload.description,
         unit_price=payload.unit_price,
@@ -37,6 +42,9 @@ def create_stock_item(payload: StockItemCreate, request: Request, db: Session = 
     db.add(item)
     db.commit()
     db.refresh(item)
+    if item.unit_price is not None:
+        db.add(StockPriceHistory(stock_item_id=item.id, price=item.unit_price))
+        db.commit()
     log_activity(db, action="stock_item_created", actor=current_user, target_type="stock_item", target_id=item.id,
                  detail=f"Added stock item '{item.name}' (qty {item.quantity})", request=request)
     return item
@@ -88,13 +96,21 @@ def update_stock_item(item_id: int, payload: StockItemUpdate, request: Request, 
         if db.query(StockItem).filter(StockItem.institution_id == item.institution_id, StockItem.name == payload.name, StockItem.id != item_id).first():
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A stock item with this name already exists")
         item.name = payload.name
+    if payload.category_id is not None and payload.category_id != item.category_id:
+        if not db.query(ProductCategory).filter(ProductCategory.id == payload.category_id).first():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown product category")
+        item.category_id = payload.category_id
     if payload.description is not None:
         item.description = payload.description
+    price_changed = payload.unit_price is not None and payload.unit_price != item.unit_price
     if payload.unit_price is not None:
         item.unit_price = payload.unit_price
 
     db.commit()
     db.refresh(item)
+    if price_changed:
+        db.add(StockPriceHistory(stock_item_id=item.id, price=item.unit_price))
+        db.commit()
     log_activity(db, action="stock_item_updated", actor=current_user, target_type="stock_item", target_id=item.id,
                  detail=f"Edited stock item '{item.name}'", request=request)
     return item

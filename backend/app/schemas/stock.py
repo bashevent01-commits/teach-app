@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 class StockItemCreate(BaseModel):
     name: str
+    category_id: int
     description: str | None = None
     unit_price: Decimal | None = None
     quantity: Decimal = Decimal("0")
@@ -31,6 +32,7 @@ class StockItemUpdate(BaseModel):
     transactions (a restock or a sale), not a direct edit here, so the
     stock count always has a transaction trail behind it."""
     name: str | None = None
+    category_id: int | None = None
     description: str | None = None
     unit_price: Decimal | None = None
 
@@ -47,6 +49,8 @@ class StockItemOut(BaseModel):
 
     id: int
     institution_id: int
+    category_id: int | None
+    category_name: str | None = None
     name: str
     description: str | None
     unit_price: Decimal | None

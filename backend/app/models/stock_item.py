@@ -15,6 +15,9 @@ class StockItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     institution_id = Column(Integer, ForeignKey("institutions.id", ondelete="CASCADE"), nullable=False, index=True)
+    # Nullable at first for existing rows created before the market-analysis
+    # taxonomy existed; required going forward at the schema/router level.
+    category_id = Column(Integer, ForeignKey("product_categories.id"), nullable=True, index=True)
     name = Column(String(150), nullable=False)
     description = Column(Text, nullable=True)
     unit_price = Column(Numeric(12, 2), nullable=True)
@@ -23,3 +26,9 @@ class StockItem(Base):
 
     institution = relationship("Institution", back_populates="stock_items")
     transactions = relationship("Transaction", back_populates="stock_item")
+    category = relationship("ProductCategory", back_populates="stock_items")
+    price_history = relationship("StockPriceHistory", back_populates="stock_item", cascade="all, delete-orphan", order_by="StockPriceHistory.recorded_at")
+
+    @property
+    def category_name(self) -> str | None:
+        return self.category.name if self.category else None

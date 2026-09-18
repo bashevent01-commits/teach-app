@@ -1,7 +1,9 @@
 from app.models.institution import Institution
 from app.models.user import User, UserRole, StaffType
 from app.models.transaction import Transaction, TransactionType, TransactionMethod, TransactionCategoryType
+from app.models.product_category import ProductCategory
 from app.models.stock_item import StockItem
+from app.models.stock_price_history import StockPriceHistory
 from app.models.audit import Audit, AuditStatus
 from app.models.post import Post
 from app.models.post_report import PostReport, ReportStatus
@@ -16,7 +18,9 @@ __all__ = [
     "TransactionType",
     "TransactionMethod",
     "TransactionCategoryType",
+    "ProductCategory",
     "StockItem",
+    "StockPriceHistory",
     "Audit",
     "AuditStatus",
     "Post",

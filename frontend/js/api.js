@@ -217,6 +217,18 @@ const Api = {
     remove: (id) => apiFetch(`/api/stock/${id}`, { method: "DELETE" }),
   },
 
+  productCategories: {
+    list: () => apiFetch("/api/product-categories"),
+    create: (name) => apiFetch("/api/product-categories", { method: "POST", body: { name } }),
+    update: (id, name) => apiFetch(`/api/product-categories/${id}`, { method: "PATCH", body: { name } }),
+    remove: (id) => apiFetch(`/api/product-categories/${id}`, { method: "DELETE" }),
+  },
+
+  marketAnalysis: {
+    categories: () => apiFetch("/api/market-analysis/categories"),
+    categoryDetail: (id) => apiFetch(`/api/market-analysis/categories/${id}`),
+  },
+
   mpesa: {
     /** Best-effort: amount/code/payer_name only — M-Pesa messages never
      * carry item or quantity info. matched=false is a normal "not an

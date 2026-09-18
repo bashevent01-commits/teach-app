@@ -9,7 +9,7 @@ from app.core.bootstrap import ensure_super_admin
 from app.core.config import settings
 from app.core.database import Base, engine, SessionLocal
 from app.core.limiter import limiter
-from app.routers import auth, institutions, users, transactions, audits, posts, reports, moderation, activity_log, stock, mpesa
+from app.routers import auth, institutions, users, transactions, audits, posts, reports, moderation, activity_log, stock, mpesa, product_categories, market_analysis
 
 app = FastAPI(title="K.N.O.W.", description="Institution financial audit, inventory & communication portal")
 
@@ -80,6 +80,8 @@ app.include_router(moderation.router)
 app.include_router(activity_log.router)
 app.include_router(stock.router)
 app.include_router(mpesa.router)
+app.include_router(product_categories.router)
+app.include_router(market_analysis.router)
 
 # Institution logos are not sensitive, so they're served as plain static
 # files — this lets the frontend use them directly in <img src> without

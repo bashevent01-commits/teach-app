@@ -6,8 +6,23 @@
   }
 
   let items = [];
+  let categories = [];
 
+  await loadCategories();
   await loadItems();
+
+  async function loadCategories() {
+    try {
+      categories = await Api.productCategories.list();
+    } catch {
+      categories = [];
+    }
+  }
+
+  function categoryOptions(selectedId) {
+    if (!categories.length) return `<option value="">No categories yet — ask a super admin to add one</option>`;
+    return categories.map((c) => `<option value="${c.id}" ${String(c.id) === String(selectedId) ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("");
+  }
 
   async function loadItems() {
     const body = $("#stockBody");
@@ -16,6 +31,7 @@
       body.innerHTML = items.length ? items.map((s) => `
         <tr>
           <td><strong>${escapeHtml(s.name)}</strong></td>
+          <td>${s.category_name ? `<span class="badge">${escapeHtml(s.category_name)}</span>` : "—"}</td>
           <td>${escapeHtml(s.description || "—")}</td>
           <td>${s.unit_price != null ? money(s.unit_price) : "—"}</td>
           <td>${s.quantity}</td>
@@ -26,12 +42,12 @@
             </div>
           </td>
         </tr>
-      `).join("") : `<tr class="empty-row"><td colspan="5">No stock items yet. Add one to start recording sales and restocks against it.</td></tr>`;
+      `).join("") : `<tr class="empty-row"><td colspan="6">No stock items yet. Add one to start recording sales and restocks against it.</td></tr>`;
 
       $$("[data-edit]", body).forEach((btn) => btn.addEventListener("click", () => openEditSheet(btn.dataset.edit)));
       $$("[data-delete]", body).forEach((btn) => btn.addEventListener("click", () => deleteItem(btn.dataset.delete)));
     } catch (err) {
-      body.innerHTML = `<tr class="empty-row"><td colspan="5">${escapeHtml(err.message)}</td></tr>`;
+      body.innerHTML = `<tr class="empty-row"><td colspan="6">${escapeHtml(err.message)}</td></tr>`;
     }
   }
 
@@ -50,11 +66,16 @@
 
   /* ---------------- Add item sheet ---------------- */
 
-  $("#newStockBtn").addEventListener("click", () => {
+  $("#newStockBtn").addEventListener("click", async () => {
+    await loadCategories();
     Sheet.open("Add item", `
       <p class="form-error" id="stockMsg"></p>
       <form id="stockForm">
         <label class="field"><span>Name</span><input type="text" id="stockName" required /></label>
+        <label class="field"><span>Product category</span>
+          <select id="stockCategory" required>${categoryOptions()}</select>
+        </label>
+        <p class="file-hint">Categorizes this item for cross-institution market insights. Pick the closest match, or ask a super admin to add a new category.</p>
         <label class="field"><span>Description (optional)</span><input type="text" id="stockDescription" /></label>
         <label class="field"><span>Unit price (optional, KES)</span><input type="number" id="stockPrice" min="0" step="0.01" /></label>
         <label class="field"><span>Starting quantity</span><input type="number" id="stockQuantity" min="0" step="0.01" value="0" /></label>
@@ -73,8 +94,11 @@
       submitBtn.disabled = true;
       submitBtn.textContent = "Adding…";
       try {
+        const categoryId = $("#stockCategory").value;
+        if (!categoryId) throw new Error("Please pick a product category.");
         await Api.stock.create({
           name: $("#stockName").value.trim(),
+          category_id: parseInt(categoryId, 10),
           description: $("#stockDescription").value.trim() || null,
           unit_price: $("#stockPrice").value ? parseFloat($("#stockPrice").value) : null,
           quantity: parseFloat($("#stockQuantity").value || 0),
@@ -92,14 +116,18 @@
 
   /* ---------------- Edit item sheet ---------------- */
 
-  function openEditSheet(id) {
+  async function openEditSheet(id) {
     const item = items.find((s) => String(s.id) === String(id));
     if (!item) return;
+    await loadCategories();
 
     Sheet.open("Edit item", `
       <p class="form-error" id="editStockMsg"></p>
       <form id="editStockForm">
         <label class="field"><span>Name</span><input type="text" id="editStockName" value="${escapeHtml(item.name)}" required /></label>
+        <label class="field"><span>Product category</span>
+          <select id="editStockCategory" required>${categoryOptions(item.category_id)}</select>
+        </label>
         <label class="field"><span>Description (optional)</span><input type="text" id="editStockDescription" value="${escapeHtml(item.description || "")}" /></label>
         <label class="field"><span>Unit price (optional, KES)</span><input type="number" id="editStockPrice" min="0" step="0.01" value="${item.unit_price ?? ""}" /></label>
         <p class="file-hint">Current quantity: ${item.quantity} — edit this via a Receiving/Paying entry on Home, not here.</p>
@@ -117,8 +145,10 @@
       submitBtn.disabled = true;
       submitBtn.textContent = "Saving…";
       try {
+        const categoryId = $("#editStockCategory").value;
         await Api.stock.update(id, {
           name: $("#editStockName").value.trim(),
+          category_id: categoryId ? parseInt(categoryId, 10) : undefined,
           description: $("#editStockDescription").value.trim() || null,
           unit_price: $("#editStockPrice").value ? parseFloat($("#editStockPrice").value) : null,
         });

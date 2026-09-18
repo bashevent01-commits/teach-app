@@ -13,6 +13,9 @@ class Institution(Base):
     # fixed enum, so new institution types don't need a migration to add.
     type = Column(String(50), nullable=False)
     address = Column(String(300), nullable=True)
+    # One of app.core.constants.KENYA_COUNTIES — nullable for existing rows
+    # created before regional market-analysis breakdowns existed.
+    region = Column(String(50), nullable=True)
 
     # Path (relative to UPLOAD_DIR's parent) to the institution's icon/logo.
     logo_path = Column(String(300), nullable=True)

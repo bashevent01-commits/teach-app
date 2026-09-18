@@ -22,17 +22,18 @@
           </td>
           <td>${escapeHtml(s.name)}</td>
           <td><span class="badge">${escapeHtml(s.type)}</span></td>
+          <td>${escapeHtml(s.region || "—")}</td>
           <td>${escapeHtml(s.address || "—")}</td>
           <td>${formatDate(s.created_at)}</td>
           <td><button class="ghost-btn" data-logo-for="${s.id}">Change icon</button></td>
         </tr>
-      `).join("") : `<tr class="empty-row"><td colspan="6">No institutions yet.</td></tr>`;
+      `).join("") : `<tr class="empty-row"><td colspan="7">No institutions yet.</td></tr>`;
 
       $$("[data-logo-for]", body).forEach((btn) => {
         btn.addEventListener("click", () => openLogoSheet(parseInt(btn.dataset.logoFor, 10)));
       });
     } catch (err) {
-      body.innerHTML = `<tr class="empty-row"><td colspan="6">${escapeHtml(err.message)}</td></tr>`;
+      body.innerHTML = `<tr class="empty-row"><td colspan="7">${escapeHtml(err.message)}</td></tr>`;
     }
   }
 
@@ -40,6 +41,7 @@
 
   $("#newSchoolBtn").addEventListener("click", () => {
     const typeOptions = COMMON_TYPES.map((t) => `<option value="${t}">${t[0].toUpperCase() + t.slice(1)}</option>`).join("");
+    const regionOptions = `<option value="">Not set</option>` + KENYA_COUNTIES.map((c) => `<option value="${c}">${c}</option>`).join("");
 
     Sheet.open("Add institution", `
       <p class="form-error" id="schoolMsg"></p>
@@ -49,6 +51,10 @@
           <select id="schoolType">${typeOptions}</select>
         </label>
         <label class="field" id="schoolTypeOtherField" hidden><span>Type (custom)</span><input type="text" id="schoolTypeOther" placeholder="e.g. clinic, warehouse" /></label>
+        <label class="field"><span>Region (county)</span>
+          <select id="schoolRegion">${regionOptions}</select>
+        </label>
+        <p class="file-hint">Used for regional breakdowns in Market insights. You can add it later too.</p>
         <label class="field"><span>Address (optional)</span><input type="text" id="schoolAddress" /></label>
         <label class="chip-input wide">
           <span class="ico" data-ico="image"></span> Upload portal icon (PNG, JPG, WebP)
@@ -83,6 +89,7 @@
           name: $("#schoolName").value.trim(),
           type: typeValue,
           address: $("#schoolAddress").value.trim() || null,
+          region: $("#schoolRegion").value || null,
         });
         const file = $("#schoolLogo").files[0];
         if (file) await Api.institutions.uploadLogo(created.id, file);

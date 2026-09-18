@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/institutions", tags=["institutions"])
 def create_institution(payload: InstitutionCreate, request: Request, db: Session = Depends(get_db), admin: User = Depends(require_super_admin)):
     if db.query(Institution).filter(Institution.name == payload.name).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An institution with this name already exists")
-    institution = Institution(name=payload.name, type=payload.type, address=payload.address)
+    institution = Institution(name=payload.name, type=payload.type, address=payload.address, region=payload.region)
     db.add(institution)
     db.commit()
     db.refresh(institution)

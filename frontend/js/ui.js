@@ -114,7 +114,22 @@ const ICONS = {
   in: '<path d="M12 5v14M6 13l6 6 6-6"/>',
   out: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m4 17 5-4.5 4 3.5 3-2.5 4 3.5"/>',
+  market: '<path d="M4 4h16l-1.5 9h-13L4 4z"/><path d="M4 4 3 2H1"/><circle cx="9.5" cy="19" r="1.5"/><circle cx="16.5" cy="19" r="1.5"/><path d="M8 17h9"/>',
 };
+
+// Fixed list so institution region stays a controlled value (needed for
+// regional market-analysis breakdowns) rather than free text, same
+// reasoning as the product-category taxonomy in js/stock.js.
+const KENYA_COUNTIES = [
+  "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita-Taveta",
+  "Garissa", "Wajir", "Mandera", "Marsabit", "Isiolo", "Meru",
+  "Tharaka-Nithi", "Embu", "Kitui", "Machakos", "Makueni", "Nyandarua",
+  "Nyeri", "Kirinyaga", "Murang'a", "Kiambu", "Turkana", "West Pokot",
+  "Samburu", "Trans Nzoia", "Uasin Gishu", "Elgeyo-Marakwet", "Nandi",
+  "Baringo", "Laikipia", "Nakuru", "Narok", "Kajiado", "Kericho",
+  "Bomet", "Kakamega", "Vihiga", "Bungoma", "Busia", "Siaya",
+  "Kisumu", "Homa Bay", "Migori", "Kisii", "Nyamira", "Nairobi",
+];
 
 function paintIcons(root = document) {
   $$(".ico[data-ico]", root).forEach((el) => {
@@ -173,6 +188,7 @@ const NAV_ITEMS = {
     { href: "dashboard.html", nav: "dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "institutions.html", nav: "institutions", label: "Institutions", icon: "institution" },
     { href: "accounts.html", nav: "accounts", label: "Accounts", icon: "accounts" },
+    { href: "market.html", nav: "market", label: "Market", icon: "market" },
     { href: "review.html", nav: "review", label: "Review", icon: "flag" },
     { href: "activity.html", nav: "activity", label: "Activity", icon: "activity" },
     { href: "privacy.html", nav: "privacy", label: "Data & Privacy", icon: "privacy" },
