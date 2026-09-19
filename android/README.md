@@ -1,9 +1,35 @@
-# K.N.O.W. — Android app (Kotlin, Jetpack Compose)
+# K.N.O.W. — Android app
 
-Native Android client for the same backend the web app (`../frontend`) talks
-to: `https://teach-backend-roza.onrender.com`. Unlike the web app, this uses
-the backend's Bearer-token auth path rather than cookies, so there's no CSRF
-handling needed here.
+A single-Activity WebView shell around the real web app
+(`https://teach.bash-ke.workers.dev`, the same Cloudflare Worker `../frontend`
+deploys to). This makes the app visually identical to the website by
+construction — it *is* the website, running inside an Android app frame —
+rather than a hand-recreated native UI that can drift from the site's actual
+CSS.
+
+(An earlier version of this app was a native Jetpack Compose recreation of
+each page. It's been replaced with this WebView approach for exact visual
+parity; see git history if the native version is ever wanted back as a
+starting point.)
+
+## How it works
+
+`MainActivity.kt` is the entire app:
+- Loads `https://teach.bash-ke.workers.dev/` in a `WebView` with JS and DOM
+  storage enabled (the web app's `Session` handling in `js/api.js` uses
+  `localStorage`).
+- `shouldOverrideUrlLoading` keeps navigation to the app's own hosts (the
+  Cloudflare Worker frontend and the Render backend) inside the WebView;
+  anything else — like the GitHub APK download link on the login/settings
+  pages — opens in the system browser instead.
+- `onShowFileChooser` backs `<input type="file">` (stock item photos, post
+  photos, institution/portal icon uploads) via the system file picker.
+- `setDownloadListener` sends binary downloads (e.g. tapping "Download
+  Android app preview" from inside the app) to the system browser/Download
+  Manager rather than trying to render them.
+- The Android back button navigates WebView history before exiting the app.
+- Third-party cookies are explicitly allowed (`CookieManager.setAcceptThirdPartyCookies`),
+  matching the frontend's cross-origin (Worker → Render) fetches.
 
 ## First-time setup
 
@@ -12,97 +38,21 @@ handling needed here.
    wrapper jar and offer to regenerate it automatically; accept that.
    (It wasn't committed because generating it requires downloading Gradle,
    which this environment's network doesn't have access to.)
-2. Let Gradle sync — it'll pull the AGP/Kotlin/Compose versions pinned in
-   `build.gradle.kts` / `app/build.gradle.kts`.
+2. Let Gradle sync — this module is intentionally light on dependencies
+   (`androidx.core`, `androidx.activity` only) since there's no UI framework
+   or networking layer to configure — sync should be quick.
 3. Run on an emulator (API 26+) or a physical device with internet access.
 
-## Structure
+## CI
 
-```
-app/src/main/java/com/knowapp/android/
-  KnowApplication.kt        — builds the one AppContainer on startup
-  AppContainer.kt           — manual DI: session store, API service, repositories
-  MainActivity.kt           — single Activity, hosts Compose navigation
-  data/
-    SessionStore.kt         — EncryptedSharedPreferences-backed session (token + role/institution)
-    model/Models.kt         — API response models (kotlinx.serialization)
-    network/                — Retrofit ApiService + OkHttp/auth-header setup
-    repository/             — AuthRepository, TransactionRepository
-  ui/
-    theme/                  — Compose MaterialTheme, matches the web app's teal brand
-    navigation/              — NavHost + routes
-    login/, home/, transactions/  — one screen + ViewModel per feature
-```
+`.github/workflows/android-apk.yml` builds the debug APK on every push to
+`android/**` and republishes it to the `android-latest` GitHub release —
+the stable link the website's download buttons point to.
 
-## Visual fidelity to the web app
+## Changing the app
 
-`ui/theme/` (Color.kt, Shape.kt, Type.kt, Theme.kt) is a direct port of
-`frontend/css/styles.css`'s `:root` design tokens — brand teal, card radius
-(18dp), small radius (12dp), pill shape (999px), the income/expense green
-`--in`/orange `--out` colors, and light/dark surface tokens. `ui/components/`
-(AppCard, Badge, KpiRow, AmountText) mirror the web app's `.card`, `.badge`,
-`.kpi-row`, and `.txn-amount` styling so screens use the same visual
-language instead of generic Material defaults. Fonts (Plus Jakarta Sans /
-Space Grotesk) default to the system font for now — see the TODO block at
-the top of `ui/theme/Type.kt` for the one-minute Android Studio step to add
-the real ones via the Resource Manager font picker.
-
-## What's built so far
-
-- **Login** — `POST /api/auth/login` (form-encoded, matches the backend's
-  `OAuth2PasswordRequestForm`), session persisted locally, auto-navigates to
-  Home if already signed in.
-- **Home** — shows the signed-in user's name/role as a pill badge, links to
-  Transactions, sign out (calls `POST /api/auth/logout` then clears local
-  session).
-- **Transactions** — `GET /api/transactions`, scoped server-side to the
-  user's institution automatically (same as the web app), rendered as
-  category-badged cards with green/orange amounts.
-- **Stock** — `GET /api/stock`, category badge + unit price/quantity as a
-  KPI row per item. Hidden from teacher-type staff on Home (server still
-  enforces this — see `require_stock_access` — this is just matching UX).
-- **News** — `GET /api/posts`, post cards with title/body and an optional
-  photo (Coil `AsyncImage`, same `image_path`-resolves-to-full-URL logic as
-  `Api.posts.imageUrl` in `frontend/js/api.js`).
-- **Audits** — `GET/POST /api/audits`, `POST /api/audits/{id}/finalize`,
-  `GET /api/audits/{id}/transactions`. Only staff can submit (server-enforced
-  in `create_audit`) — the "+" FAB is hidden otherwise. institution_admin/
-  super_admin must pass `institution_id` (server 400s without it); Finalize
-  is only shown when the viewer is the original submitter, matching the
-  server's actual permission check rather than just hiding on status.
-- **Institutions** (super admin) — `GET/POST /api/institutions`, region
-  picker uses the same 47-county list as `frontend/js/ui.js`'s
-  `KENYA_COUNTIES` (ported to `data/KenyaCounties.kt`).
-- **Accounts** (institution_admin + super admin) — `GET/POST /api/users`,
-  deactivate/reactivate. Institution picker in the create form only shows
-  for super_admin — an institution_admin's new accounts are silently pinned
-  to their own institution server-side, so the field would be misleading.
-- **Market** (super admin) — `GET /api/market-analysis/categories` +
-  `/{id}` detail with a hand-rolled Canvas trend chart (no external charting
-  library — one line didn't justify the dependency/version risk) and the
-  regional breakdown table. Category management (add/delete) via
-  `/api/product-categories` in a settings-icon dialog on the list screen.
-
-## Deliberately not yet built
-
-Nothing — every screen in the web app (`frontend/*.html`) now has an Android
-equivalent. Two knowingly-simplified spots, if you want to close the gap
-further:
-- Real fonts aren't wired in yet (see `ui/theme/Type.kt`'s TODO).
-- The Market trend chart is a basic filled-line Canvas draw, not a full
-  interactive chart (tooltips, zoom) — fine for at-a-glance trend reading,
-  less capable than Chart.js on the web page.
-
-To add a new screen beyond what the web app has: a model in `data/model`, an
-endpoint in `ApiService`, a
-repository, a ViewModel, a screen, a route in `KnowNavGraph.kt`.
-
-## Notes
-
-- Render's free tier cold-starts after inactivity — OkHttp timeouts are set
-  to 45s to accommodate a first request waking the backend up.
-- No Hilt/kapt — dependencies are wired manually via `AppContainer` for a
-  simpler first build. Worth revisiting if the screen count grows a lot.
-- `applicationId` is `com.knowapp.android` — a placeholder; rename it
-  (in `app/build.gradle.kts` and the `java/com/knowapp/android` package
-  path) before a real Play Store listing.
+Since the app just points at a URL, most changes belong in `../frontend`
+(HTML/CSS/JS), not here — edit the web app and it shows up in the Android
+app automatically on next load, no rebuild needed. Reasons to touch this
+module specifically: changing the loaded URL, the app icon/name, permissions,
+or the file-picker/download/cookie handling in `MainActivity.kt`.
