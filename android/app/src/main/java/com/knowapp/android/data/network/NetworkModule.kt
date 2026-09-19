@@ -2,14 +2,12 @@ package com.knowapp.android.data.network
 
 import com.knowapp.android.BuildConfig
 import com.knowapp.android.data.SessionStore
-import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 /** Attaches the stored bearer token to every outgoing request, if present. */
@@ -28,8 +26,6 @@ private class AuthInterceptor(private val sessionStore: SessionStore) : Intercep
 }
 
 object NetworkModule {
-    private val json = Json { ignoreUnknownKeys = true }
-
     fun buildApiService(sessionStore: SessionStore): ApiService {
         val logging = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
@@ -49,7 +45,7 @@ object NetworkModule {
         val retrofit = Retrofit.Builder()
             .baseUrl(BuildConfig.API_BASE_URL)
             .client(client)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(GsonConverterFactory.create())
             .build()
 
         return retrofit.create(ApiService::class.java)
