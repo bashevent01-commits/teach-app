@@ -33,12 +33,18 @@
         </form>
 
         <p class="hint">Not a super admin? <a href="login.html">Staff sign-in</a>.</p>
+
+        <a class="ghost-btn" href="https://github.com/bashevent01-commits/teach-app/releases/download/android-latest/app-debug.apk" download style="margin-top: 14px; text-decoration: none;">
+          <span class="ico" data-ico="download"></span> Download Android app (preview build)
+        </a>
       </div>
     </div>
 
     <script src="config.js"></script>
     <script src="./js/api.js"></script>
+    <script src="./js/ui.js"></script>
     <script>
+      paintIcons();
       if (Session.isAuthenticated()) {
         location.href = Session.get().role === "super_admin" ? "dashboard.html" : "home.html";
       }

@@ -115,6 +115,7 @@ const ICONS = {
   out: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m4 17 5-4.5 4 3.5 3-2.5 4 3.5"/>',
   market: '<path d="M4 4h16l-1.5 9h-13L4 4z"/><path d="M4 4 3 2H1"/><circle cx="9.5" cy="19" r="1.5"/><circle cx="16.5" cy="19" r="1.5"/><path d="M8 17h9"/>',
+  download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/>',
 };
 
 // Fixed list so institution region stays a controlled value (needed for
