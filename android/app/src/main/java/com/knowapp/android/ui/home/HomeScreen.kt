@@ -1,10 +1,12 @@
 package com.knowapp.android.ui.home
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +29,8 @@ import com.knowapp.android.ui.theme.DisplayFontFamily
 import com.knowapp.android.ui.theme.PillShape
 import kotlinx.coroutines.launch
 
+private data class MenuItem(val title: String, val description: String, val buttonLabel: String, val onClick: () -> Unit)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -34,10 +38,36 @@ fun HomeScreen(
     onViewTransactions: () -> Unit,
     onViewStock: () -> Unit,
     onViewNews: () -> Unit,
+    onViewAudits: () -> Unit,
+    onViewInstitutions: () -> Unit,
+    onViewAccounts: () -> Unit,
+    onViewMarket: () -> Unit,
     onLoggedOut: () -> Unit,
 ) {
     val session by viewModel.session.collectAsState()
     val scope = rememberCoroutineScope()
+
+    val role = session?.role
+    val isTeacher = role == "staff" && session?.staffType == "teacher"
+    val isSuperAdmin = role == "super_admin"
+    val isInstitutionAdmin = role == "institution_admin"
+
+    // Institution-scoped features (super_admin has no institution_id).
+    val menuItems = buildList {
+        if (!isSuperAdmin) {
+            add(MenuItem("Transactions", "View the income and expense ledger for your institution.", "View transactions", onViewTransactions))
+            if (!isTeacher) add(MenuItem("Stock", "Browse items, unit prices, and current quantities.", "View stock", onViewStock))
+            add(MenuItem("News", "Institution announcements and updates.", "View news", onViewNews))
+            add(MenuItem("Audits", "Submit and review financial audits.", "View audits", onViewAudits))
+        }
+        if (isInstitutionAdmin || isSuperAdmin) {
+            add(MenuItem("Accounts", "Manage staff and admin accounts.", "View accounts", onViewAccounts))
+        }
+        if (isSuperAdmin) {
+            add(MenuItem("Institutions", "Onboard and browse institutions on the platform.", "View institutions", onViewInstitutions))
+            add(MenuItem("Market", "Cross-institution pricing insights (5-institution minimum).", "View market insights", onViewMarket))
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -48,53 +78,35 @@ fun HomeScreen(
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(20.dp),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
         ) {
-            // Matches .greeting: display font, bold.
-            Text(
-                text = "Welcome, ${session?.fullName ?: ""}",
-                fontFamily = DisplayFontFamily,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            Badge(text = roleLabel(session?.role, session?.staffType))
-
-            HomeMenuCard(
-                title = "Transactions",
-                description = "View the income and expense ledger for your institution.",
-                buttonLabel = "View transactions",
-                onClick = onViewTransactions,
-            )
-
-            val isTeacher = session?.role == "staff" && session?.staffType == "teacher"
-            if (!isTeacher) {
-                HomeMenuCard(
-                    title = "Stock",
-                    description = "Browse items, unit prices, and current quantities.",
-                    buttonLabel = "View stock",
-                    onClick = onViewStock,
-                )
+            item {
+                Column {
+                    // Matches .greeting: display font, bold.
+                    Text(
+                        text = "Welcome, ${session?.fullName ?: ""}",
+                        fontFamily = DisplayFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                    Badge(text = roleLabel(role, session?.staffType), modifier = Modifier.padding(top = 8.dp))
+                }
             }
-
-            HomeMenuCard(
-                title = "News",
-                description = "Institution announcements and updates.",
-                buttonLabel = "View news",
-                onClick = onViewNews,
-            )
-
-            // Matches .ghost-btn: outlined pill, no fill.
-            OutlinedButton(
-                onClick = { scope.launch { viewModel.logout(); onLoggedOut() } },
-                shape = PillShape,
-                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-            ) {
-                Text("Sign out", fontWeight = FontWeight.SemiBold)
+            items(menuItems) { menuItem ->
+                HomeMenuCard(menuItem.title, menuItem.description, menuItem.buttonLabel, menuItem.onClick)
+            }
+            item {
+                // Matches .ghost-btn: outlined pill, no fill.
+                OutlinedButton(
+                    onClick = { scope.launch { viewModel.logout(); onLoggedOut() } },
+                    shape = PillShape,
+                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                ) {
+                    Text("Sign out", fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }

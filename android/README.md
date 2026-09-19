@@ -64,14 +64,37 @@ the real ones via the Resource Manager font picker.
 - **News** — `GET /api/posts`, post cards with title/body and an optional
   photo (Coil `AsyncImage`, same `image_path`-resolves-to-full-URL logic as
   `Api.posts.imageUrl` in `frontend/js/api.js`).
+- **Audits** — `GET/POST /api/audits`, `POST /api/audits/{id}/finalize`,
+  `GET /api/audits/{id}/transactions`. Only staff can submit (server-enforced
+  in `create_audit`) — the "+" FAB is hidden otherwise. institution_admin/
+  super_admin must pass `institution_id` (server 400s without it); Finalize
+  is only shown when the viewer is the original submitter, matching the
+  server's actual permission check rather than just hiding on status.
+- **Institutions** (super admin) — `GET/POST /api/institutions`, region
+  picker uses the same 47-county list as `frontend/js/ui.js`'s
+  `KENYA_COUNTIES` (ported to `data/KenyaCounties.kt`).
+- **Accounts** (institution_admin + super admin) — `GET/POST /api/users`,
+  deactivate/reactivate. Institution picker in the create form only shows
+  for super_admin — an institution_admin's new accounts are silently pinned
+  to their own institution server-side, so the field would be misleading.
+- **Market** (super admin) — `GET /api/market-analysis/categories` +
+  `/{id}` detail with a hand-rolled Canvas trend chart (no external charting
+  library — one line didn't justify the dependency/version risk) and the
+  regional breakdown table. Category management (add/delete) via
+  `/api/product-categories` in a settings-icon dialog on the list screen.
 
 ## Deliberately not yet built
 
-Audits, Market Analysis (super admin), Institutions/Accounts management
-(super admin) — same shape as the above (repository +
-ViewModel + screen, styled with the same `ui/theme`/`ui/components` tokens),
-not yet wired up. Add them the same way as
-Transactions: a model in `data/model`, an endpoint in `ApiService`, a
+Nothing — every screen in the web app (`frontend/*.html`) now has an Android
+equivalent. Two knowingly-simplified spots, if you want to close the gap
+further:
+- Real fonts aren't wired in yet (see `ui/theme/Type.kt`'s TODO).
+- The Market trend chart is a basic filled-line Canvas draw, not a full
+  interactive chart (tooltips, zoom) — fine for at-a-glance trend reading,
+  less capable than Chart.js on the web page.
+
+To add a new screen beyond what the web app has: a model in `data/model`, an
+endpoint in `ApiService`, a
 repository, a ViewModel, a screen, a route in `KnowNavGraph.kt`.
 
 ## Notes

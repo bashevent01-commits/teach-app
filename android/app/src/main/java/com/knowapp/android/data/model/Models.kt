@@ -69,3 +69,92 @@ fun resolveMediaUrl(path: String?): String? {
     return if (path.startsWith("http://") || path.startsWith("https://")) path else "${com.knowapp.android.BuildConfig.API_BASE_URL}/$path"
 }
 
+@Serializable
+data class AuditOut(
+    val id: Int,
+    @SerialName("institution_id") val institutionId: Int,
+    val title: String,
+    @SerialName("period_start") val periodStart: String,
+    @SerialName("period_end") val periodEnd: String,
+    val summary: String? = null,
+    val status: String, // "draft" | "finalized"
+    @SerialName("submitted_by_id") val submittedById: Int,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("finalized_at") val finalizedAt: String? = null,
+)
+
+@Serializable
+data class InstitutionOut(
+    val id: Int,
+    val name: String,
+    val type: String,
+    val address: String? = null,
+    val region: String? = null,
+    @SerialName("logo_path") val logoPath: String? = null,
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class UserOut(
+    val id: Int,
+    val username: String,
+    @SerialName("full_name") val fullName: String,
+    val role: String, // "super_admin" | "institution_admin" | "staff"
+    @SerialName("staff_type") val staffType: String? = null,
+    @SerialName("is_active") val isActive: Boolean,
+    @SerialName("institution_id") val institutionId: Int? = null,
+    @SerialName("share_audits") val shareAudits: Boolean,
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class CategoryInsightOut(
+    @SerialName("category_id") val categoryId: Int,
+    @SerialName("category_name") val categoryName: String,
+    @SerialName("institution_count") val institutionCount: Int,
+    @SerialName("average_price") val averagePrice: Double,
+    @SerialName("median_price") val medianPrice: Double,
+    @SerialName("min_price") val minPrice: Double,
+    @SerialName("max_price") val maxPrice: Double,
+    @SerialName("total_quantity_sold") val totalQuantitySold: String,
+)
+
+@Serializable
+data class RegionBreakdownEntry(
+    val region: String,
+    @SerialName("institution_count") val institutionCount: Int,
+    @SerialName("average_price") val averagePrice: Double,
+    @SerialName("median_price") val medianPrice: Double,
+    @SerialName("min_price") val minPrice: Double,
+    @SerialName("max_price") val maxPrice: Double,
+)
+
+@Serializable
+data class TrendPointOut(
+    val month: String,
+    @SerialName("average_price") val averagePrice: Double,
+    @SerialName("institution_count") val institutionCount: Int,
+)
+
+@Serializable
+data class CategoryDetailOut(
+    @SerialName("category_id") val categoryId: Int,
+    @SerialName("category_name") val categoryName: String,
+    @SerialName("institution_count") val institutionCount: Int,
+    @SerialName("average_price") val averagePrice: Double,
+    @SerialName("median_price") val medianPrice: Double,
+    @SerialName("min_price") val minPrice: Double,
+    @SerialName("max_price") val maxPrice: Double,
+    @SerialName("total_quantity_sold") val totalQuantitySold: String,
+    @SerialName("regional_breakdown") val regionalBreakdown: List<RegionBreakdownEntry>,
+    val trend: List<TrendPointOut>,
+)
+
+@Serializable
+data class ProductCategoryOut(
+    val id: Int,
+    val name: String,
+    @SerialName("created_at") val createdAt: String,
+)
+
+
