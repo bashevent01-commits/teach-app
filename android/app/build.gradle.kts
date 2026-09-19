@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -33,9 +34,9 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
+    // Compose compiler version is managed automatically by the
+    // org.jetbrains.kotlin.plugin.compose plugin (Kotlin 2.0+), matched to
+    // the Kotlin version — no composeOptions block needed anymore.
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
