@@ -1,0 +1,53 @@
+name: Build Android APK
+
+# Builds the debug APK (signed automatically with AGP's built-in debug
+# keystore, so it installs directly — no manual signing needed for this
+# preview build) and republishes it under the same release tag each time,
+# giving the website a stable download link that always points at the
+# latest build from main.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # No gradle-wrapper.jar is committed (this repo's dev environment has
+      # no network access to generate it) — setup-gradle installs a real
+      # Gradle and we invoke it directly instead of ./gradlew.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Build debug APK
+        working-directory: android
+        run: gradle assembleDebug --no-daemon
+
+      - name: Publish as a rolling release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: android-latest
+          name: "K.N.O.W. Android — latest build"
+          body: |
+            Auto-built debug APK from the latest push to `main` (commit ${{ github.sha }}).
+            Debug build for preview/testing — not signed for production distribution.
+            Android 8.0 (API 26) or newer. You may need to allow "install from unknown sources".
+          artifacts: android/app/build/outputs/apk/debug/app-debug.apk
+          allowUpdates: true
+          replacesArtifacts: true
+          prerelease: true
