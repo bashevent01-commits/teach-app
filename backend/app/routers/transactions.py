@@ -20,11 +20,12 @@ router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 
 def _scoped_institution_id(current_user: User, requested_institution_id: int | None) -> int:
     """
-    Staff are locked to their own institution. Super admins may specify
-    institution_id explicitly (e.g. via ?institution_id=) since they
-    aren't tied to one institution.
+    Staff and institution_admin are locked to their own institution —
+    an institution_admin passing a different institution_id must NOT see
+    another institution's transactions. Only a super admin may specify
+    institution_id explicitly, since they aren't tied to one institution.
     """
-    if current_user.role == UserRole.STAFF:
+    if current_user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN):
         return current_user.institution_id
     if requested_institution_id is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="institution_id is required")
@@ -164,7 +165,7 @@ def get_transaction(transaction_id: int, db: Session = Depends(get_db), current_
     txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
     if not txn:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
-    if current_user.role == UserRole.STAFF and txn.institution_id != current_user.institution_id:
+    if current_user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN) and txn.institution_id != current_user.institution_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to view this transaction")
     return txn
 

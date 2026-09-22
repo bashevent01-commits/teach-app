@@ -65,6 +65,9 @@ def list_posts(
     """
     if current_user.role == UserRole.STAFF:
         scoped_institution_id = current_user.institution_id
+    elif current_user.role == UserRole.INSTITUTION_ADMIN:
+        # Own institution only — never trust a client-supplied institution_id here.
+        scoped_institution_id = current_user.institution_id
     else:
         if institution_id is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="institution_id is required")

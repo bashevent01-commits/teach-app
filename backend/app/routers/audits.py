@@ -56,14 +56,19 @@ def list_audits(
             .order_by(Audit.created_at.desc())
             .all()
         )
+    if current_user.role == UserRole.INSTITUTION_ADMIN:
+        # Full oversight of their own institution's audits — never another
+        # institution's, regardless of what institution_id the client sends.
+        return db.query(Audit).filter(Audit.institution_id == current_user.institution_id).order_by(Audit.created_at.desc()).all()
     if institution_id is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="institution_id is required")
     return db.query(Audit).filter(Audit.institution_id == institution_id).order_by(Audit.created_at.desc()).all()
 
 
 def _get_audit_visible(audit_id: int, current_user: User, db: Session) -> Audit:
-    """Read access: owner, a super_admin, or (for staff) anyone at the
-    same institution if the submitter has opted into sharing."""
+    """Read access: owner, a super_admin, an institution_admin (own
+    institution only), or (for staff) anyone at the same institution if
+    the submitter has opted into sharing."""
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit not found")
@@ -74,17 +79,24 @@ def _get_audit_visible(audit_id: int, current_user: User, db: Session) -> Audit:
             submitter = db.query(User).filter(User.id == audit.submitted_by_id).first()
             if not submitter or not submitter.share_audits:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to access this audit")
+    elif current_user.role == UserRole.INSTITUTION_ADMIN and audit.institution_id != current_user.institution_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to access this audit")
     return audit
 
 
 def _get_audit_owned(audit_id: int, current_user: User, db: Session) -> Audit:
-    """Write access (edit/delete/finalize): only the submitter or a
-    super_admin — sharing only ever affects visibility, never edit rights."""
+    """Write access (edit/delete/finalize): only the submitter (and only
+    while still at the same institution — covers the edge case of someone
+    being reassigned to a different institution later) or a super_admin.
+    Sharing only ever affects visibility, never edit rights, and
+    institution_admin gets no edit access at all, matching this
+    docstring's stated intent exactly."""
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit not found")
-    if current_user.role == UserRole.STAFF and audit.submitted_by_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the staff member who submitted this audit can modify it")
+    is_owning_submitter = audit.submitted_by_id == current_user.id and audit.institution_id == current_user.institution_id
+    if current_user.role != UserRole.SUPER_ADMIN and not is_owning_submitter:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the staff member who submitted this audit (or a super admin) can modify it")
     return audit
 
 

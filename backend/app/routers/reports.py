@@ -20,7 +20,7 @@ def generate_audit_report(audit_id: int, db: Session = Depends(get_db), current_
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit not found")
-    if current_user.role == UserRole.STAFF and audit.institution_id != current_user.institution_id:
+    if current_user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN) and audit.institution_id != current_user.institution_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to access this audit")
 
     institution = db.query(Institution).filter(Institution.id == audit.institution_id).first()
@@ -66,7 +66,7 @@ def generate_statement_report(
     A printable movement statement for one method (or every method
     combined) over a date range — the Audit page's "Statements" feature.
     """
-    if current_user.role == UserRole.STAFF:
+    if current_user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN):
         scoped_institution_id = current_user.institution_id
     else:
         if institution_id is None:
