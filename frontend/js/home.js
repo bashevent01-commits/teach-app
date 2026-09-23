@@ -5,15 +5,56 @@
   let stockItems = [];
 
   await loadData();
+  window.addEventListener("online", handleBackOnline);
+  window.addEventListener("offline", refreshOfflineBanner);
 
   async function loadData() {
     try {
       transactions = await Api.transactions.list();
+      await Offline.cacheSet("transactions", transactions);
+      await mergeInPending();
       renderOverview();
       renderRecent();
     } catch (err) {
-      $("#recentList").innerHTML = `<li class="empty-state">${escapeHtml(err.message)}</li>`;
+      if (err.status === 0) {
+        // Offline — fall back to the last data cached on this device.
+        transactions = (await Offline.cacheGet("transactions")) || [];
+        await mergeInPending();
+        renderOverview();
+        renderRecent();
+      } else {
+        $("#recentList").innerHTML = `<li class="empty-state">${escapeHtml(err.message)}</li>`;
+      }
     }
+    await refreshOfflineBanner();
+  }
+
+  // Folds queued-but-not-yet-synced entries into the same list real
+  // transactions render from, so they show up (marked "Pending sync")
+  // immediately rather than only appearing after the next server round trip.
+  async function mergeInPending() {
+    const pending = await Offline.listPending();
+    transactions = [...transactions, ...pending.map(Offline.pendingAsTransaction)];
+  }
+
+  async function refreshOfflineBanner() {
+    const pending = await Offline.listPending();
+    if (!Offline.isOnline()) {
+      setOfflineBanner(pending.length
+        ? `Offline — ${pending.length} ${pending.length === 1 ? "entry" : "entries"} will sync automatically once you're back online.`
+        : "Offline — showing the last data saved to this device.");
+    } else if (pending.length) {
+      setOfflineBanner(`${pending.length} offline ${pending.length === 1 ? "entry" : "entries"} waiting to sync…`);
+    } else {
+      setOfflineBanner(null);
+    }
+  }
+
+  async function handleBackOnline() {
+    const result = await Offline.syncPendingTransactions();
+    if (result.synced) toast(`${result.synced} offline ${result.synced === 1 ? "entry" : "entries"} synced.`);
+    if (result.failed) toast(`${result.failed} offline ${result.failed === 1 ? "entry" : "entries"} couldn't be saved — check Home for details.`);
+    await loadData();
   }
 
   function renderOverview() {
@@ -40,9 +81,12 @@
         </span>
         <span class="txn-info">
           <strong>${escapeHtml(t.category)}${t.category_type === "STOCK" && t.quantity ? ` &times; ${t.quantity}` : ""}</strong>
-          <span class="subtle">${escapeHtml(t.description || formatDate(t.transaction_date, true))} &middot; ${t.method.toUpperCase()}${t.mpesa_code ? ` &middot; ${escapeHtml(t.mpesa_code)}` : ""}</span>
+          <span class="subtle">
+            ${t._pending ? `<span class="badge-pending">${t._pendingFailed ? "Sync failed" : "Pending sync"}</span> &middot; ` : ""}
+            ${escapeHtml(t.description || formatDate(t.transaction_date, true))} &middot; ${t.method.toUpperCase()}${t.mpesa_code ? ` &middot; ${escapeHtml(t.mpesa_code)}` : ""}
+          </span>
         </span>
-        ${t.image_path ? `<a class="ghost-btn" href="${Api.transactions.imageUrl(t)}" target="_blank" rel="noopener">Photo</a>` : ""}
+        ${!t._pending && t.image_path ? `<a class="ghost-btn" href="${Api.transactions.imageUrl(t)}" target="_blank" rel="noopener">Photo</a>` : ""}
         <span class="txn-amount ${t.type === "income" ? "in" : "out"}">${t.type === "income" ? "+" : "−"}${money(t.amount)}</span>
       </li>
     `).join("") : `<li class="empty-state">No transactions recorded yet.</li>`;
@@ -62,7 +106,12 @@
     const isTeacher = session.staff_type === "teacher";
 
     if (!isTeacher) {
-      try { stockItems = await Api.stock.list(); } catch { stockItems = []; }
+      try {
+        stockItems = await Api.stock.list();
+        await Offline.cacheSet("stock_items", stockItems);
+      } catch (err) {
+        stockItems = (err.status === 0 ? await Offline.cacheGet("stock_items") : null) || [];
+      }
     }
 
     const stockOptions = stockItems.map((s) =>
@@ -176,7 +225,9 @@
           ? `Filled in: ${parts.join(" · ")}. Item and quantity still need picking manually — M-Pesa doesn't carry that.`
           : "Recognized as M-Pesa, but couldn't read the details clearly.";
       } catch (err) {
-        resultEl.textContent = err.message || "Could not read that message.";
+        resultEl.textContent = err.status === 0
+          ? "Can't read M-Pesa messages while offline — fields left as-is, fill them in manually."
+          : (err.message || "Could not read that message.");
       }
     });
 
@@ -203,27 +254,39 @@
       submitBtn.disabled = true;
       submitBtn.textContent = "Saving…";
 
+      const fields = {
+        type: flow,
+        method: $("#txnMethod").value,
+        category_type: categoryType,
+        category: categoryType === "OTHER" ? $("#txnCategory").value.trim() : undefined,
+        stock_item_id: categoryType === "STOCK" ? parseInt($("#txnStockItem").value, 10) : undefined,
+        quantity: categoryType === "STOCK" ? parseFloat($("#txnQuantity").value) : undefined,
+        amount: parseFloat($("#txnAmount").value),
+        description: $("#txnDescription").value.trim() || null,
+        mpesa_code: mpesaCode,
+        mpesa_payer_name: mpesaPayerName,
+        image: $("#txnImage").files[0] || null,
+      };
+
       try {
-        await Api.transactions.create({
-          type: flow,
-          method: $("#txnMethod").value,
-          category_type: categoryType,
-          category: categoryType === "OTHER" ? $("#txnCategory").value.trim() : undefined,
-          stock_item_id: categoryType === "STOCK" ? parseInt($("#txnStockItem").value, 10) : undefined,
-          quantity: categoryType === "STOCK" ? parseFloat($("#txnQuantity").value) : undefined,
-          amount: parseFloat($("#txnAmount").value),
-          description: $("#txnDescription").value.trim() || null,
-          mpesa_code: mpesaCode,
-          mpesa_payer_name: mpesaPayerName,
-          image: $("#txnImage").files[0] || null,
-        });
+        await Api.transactions.create(fields);
         Sheet.close();
         toast(`${title} recorded.`);
         await loadData();
       } catch (err) {
-        showFormMessage(msg, err.message || "Could not save the transaction.");
-        submitBtn.disabled = false;
-        submitBtn.textContent = `Save ${title.toLowerCase()}`;
+        if (err.status === 0) {
+          // No connection — queue it locally instead of losing the entry;
+          // it'll sync automatically on the next "online" event.
+          const { image, ...rest } = fields;
+          await Offline.queueTransaction({ ...rest, imageBlob: image, imageName: image?.name });
+          Sheet.close();
+          toast(`${title} saved offline — will sync automatically once you're back online.`);
+          await loadData();
+        } else {
+          showFormMessage(msg, err.message || "Could not save the transaction.");
+          submitBtn.disabled = false;
+          submitBtn.textContent = `Save ${title.toLowerCase()}`;
+        }
       }
     });
   }

@@ -8,6 +8,30 @@
 
   await loadRecords();
   await loadAuditGrid();
+  window.addEventListener("online", handleBackOnline);
+  window.addEventListener("offline", refreshOfflineBanner);
+  await refreshOfflineBanner();
+
+  async function refreshOfflineBanner() {
+    const pending = await Offline.listPending();
+    if (!Offline.isOnline()) {
+      setOfflineBanner(pending.length
+        ? `Offline — ${pending.length} ${pending.length === 1 ? "entry" : "entries"} recorded on Home will sync automatically once you're back online.`
+        : "Offline — showing the last data saved to this device.");
+    } else if (pending.length) {
+      setOfflineBanner(`${pending.length} offline ${pending.length === 1 ? "entry" : "entries"} waiting to sync…`);
+    } else {
+      setOfflineBanner(null);
+    }
+  }
+
+  async function handleBackOnline() {
+    const result = await Offline.syncPendingTransactions();
+    if (result.synced) toast(`${result.synced} offline ${result.synced === 1 ? "entry" : "entries"} synced.`);
+    await loadRecords();
+    await loadAuditGrid();
+    await refreshOfflineBanner();
+  }
 
   /* ---------------- Records panel (filterable by method) ---------------- */
 
@@ -17,10 +41,19 @@
         Api.transactions.list(),
         Api.audits.list(),
       ]);
+      await Offline.cacheSet("transactions", allTransactions);
+      await Offline.cacheSet("audits", allAuditsForLocking);
       renderKpis();
       renderPanel();
     } catch (err) {
-      $("#auditPanelBody").innerHTML = `<tr class="empty-row"><td colspan="8">${escapeHtml(err.message)}</td></tr>`;
+      if (err.status === 0) {
+        allTransactions = (await Offline.cacheGet("transactions")) || [];
+        allAuditsForLocking = (await Offline.cacheGet("audits")) || [];
+        renderKpis();
+        renderPanel();
+      } else {
+        $("#auditPanelBody").innerHTML = `<tr class="empty-row"><td colspan="8">${escapeHtml(err.message)}</td></tr>`;
+      }
     }
   }
 
@@ -364,7 +397,7 @@
         link.remove();
         URL.revokeObjectURL(url);
       } catch (err) {
-        toast(err.message || "Could not generate the statement.");
+        toast(err.status === 0 ? "PDF export needs a connection — use the print icon instead to view/print this statement offline." : (err.message || "Could not generate the statement."));
       } finally {
         btn.disabled = false;
       }
@@ -393,31 +426,49 @@
 
   async function loadAuditGrid() {
     const grid = $("#auditGrid");
+    let audits;
     try {
-      const audits = await Api.audits.list();
-      grid.innerHTML = audits.length ? audits.map((a) => `
-        <button class="audit-card" data-open="${a.id}">
-          <h3>${escapeHtml(a.title)}</h3>
-          <span class="subtle">${formatDate(a.period_start)} – ${formatDate(a.period_end)}</span>
-          <span class="badge badge-${a.status}">${a.status}</span>
-          <span class="metric">${a.finalized_at ? "Finalized" : "In progress"}</span>
-        </button>
-      `).join("") : `<div class="empty-state"><div class="display">No audit reports yet</div><p>Create one to generate a signed-off PDF for a period.</p></div>`;
-
-      $$("[data-open]", grid).forEach((btn) => btn.addEventListener("click", () => showDetail(parseInt(btn.dataset.open, 10))));
+      audits = await Api.audits.list();
+      await Offline.cacheSet("audits", audits);
     } catch (err) {
-      grid.innerHTML = `<div class="empty-state">${escapeHtml(err.message)}</div>`;
+      if (err.status !== 0) {
+        grid.innerHTML = `<div class="empty-state">${escapeHtml(err.message)}</div>`;
+        return;
+      }
+      audits = (await Offline.cacheGet("audits")) || [];
     }
+    grid.innerHTML = audits.length ? audits.map((a) => `
+      <button class="audit-card" data-open="${a.id}">
+        <h3>${escapeHtml(a.title)}</h3>
+        <span class="subtle">${formatDate(a.period_start)} – ${formatDate(a.period_end)}</span>
+        <span class="badge badge-${a.status}">${a.status}</span>
+        <span class="metric">${a.finalized_at ? "Finalized" : "In progress"}</span>
+      </button>
+    `).join("") : `<div class="empty-state"><div class="display">No audit reports yet</div><p>Create one to generate a signed-off PDF for a period.</p></div>`;
+
+    $$("[data-open]", grid).forEach((btn) => btn.addEventListener("click", () => showDetail(parseInt(btn.dataset.open, 10))));
   }
 
   async function loadDetail(id) {
     let audit, transactions;
     try {
       [audit, transactions] = await Promise.all([Api.audits.get(id), Api.audits.transactions(id)]);
+      await Offline.cacheSet(`audit_${id}`, audit);
+      await Offline.cacheSet(`audit_txns_${id}`, transactions);
     } catch (err) {
-      $("#detailTitle").textContent = "Not found";
-      $("#detailPeriod").textContent = err.message;
-      return;
+      if (err.status === 0) {
+        audit = await Offline.cacheGet(`audit_${id}`);
+        transactions = await Offline.cacheGet(`audit_txns_${id}`);
+        if (!audit) {
+          $("#detailTitle").textContent = "Not available offline";
+          $("#detailPeriod").textContent = "This audit hasn't been viewed on this device yet, so there's nothing cached to show offline.";
+          return;
+        }
+      } else {
+        $("#detailTitle").textContent = "Not found";
+        $("#detailPeriod").textContent = err.message;
+        return;
+      }
     }
 
     $("#detailTitle").textContent = audit.title;
@@ -510,11 +561,20 @@
         link.remove();
         URL.revokeObjectURL(url);
       } catch (err) {
-        toast(err.message || "Could not generate the report.");
+        toast(err.status === 0 ? "The formatted PDF needs a connection — try \"Download CSV\" instead while offline." : (err.message || "Could not generate the report."));
       } finally {
         btn.disabled = false;
         btn.textContent = "Download report (PDF)";
       }
+    };
+
+    $("#downloadCsvBtn").onclick = () => {
+      // Built entirely from data already on this device — works offline.
+      const blob = Offline.csvFromTransactions(transactions, {
+        title: audit.title,
+        period: `${formatDate(audit.period_start)} – ${formatDate(audit.period_end)}`,
+      });
+      Offline.downloadBlob(blob, `audit-${id}-transactions.csv`);
     };
   }
 

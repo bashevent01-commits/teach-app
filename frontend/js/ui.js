@@ -93,6 +93,30 @@ function toast(msg) {
   toast._t = setTimeout(() => (el.hidden = true), 2600);
 }
 
+/* ---------------- offline status banner (persistent, not auto-hiding) ---------------- */
+
+function ensureOfflineBanner() {
+  let el = document.getElementById("offlineBanner");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "offlineBanner";
+    el.className = "offline-banner";
+    el.hidden = true;
+    document.body.prepend(el);
+  }
+  return el;
+}
+
+function setOfflineBanner(message) {
+  const el = ensureOfflineBanner();
+  if (!message) {
+    el.hidden = true;
+    return;
+  }
+  el.textContent = message;
+  el.hidden = false;
+}
+
 /* ---------------- icons ---------------- */
 
 const ICONS = {

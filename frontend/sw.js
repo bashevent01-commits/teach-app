@@ -1,4 +1,4 @@
-const CACHE = "know-v4";
+const CACHE = "know-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -20,6 +20,7 @@ const ASSETS = [
   "./config.js",
   "./css/styles.css",
   "./js/api.js",
+  "./js/offline.js",
   "./js/ui.js",
   "./js/home.js",
   "./js/audit.js",
