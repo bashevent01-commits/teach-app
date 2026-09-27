@@ -20,8 +20,40 @@
   }
 
   function categoryOptions(selectedId) {
-    if (!categories.length) return `<option value="">No categories yet — ask a super admin to add one</option>`;
-    return categories.map((c) => `<option value="${c.id}" ${String(c.id) === String(selectedId) ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("");
+    const existing = categories.map((c) => `<option value="${c.id}" ${String(c.id) === String(selectedId) ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("");
+    return existing + `<option value="__new__">+ Add new category…</option>`;
+  }
+
+  // Shared by both the Add and Edit sheets: shows an inline name field when
+  // "+ Add new category…" is picked, creates it, then re-selects it.
+  function wireCategoryPicker(selectId, blockId, inputId, addBtnId) {
+    const select = $(`#${selectId}`);
+    select.addEventListener("change", () => {
+      const isNew = select.value === "__new__";
+      $(`#${blockId}`).hidden = !isNew;
+      if (isNew) $(`#${inputId}`).focus();
+    });
+    $(`#${addBtnId}`).addEventListener("click", async () => {
+      const input = $(`#${inputId}`);
+      const name = input.value.trim();
+      if (!name) return;
+      const btn = $(`#${addBtnId}`);
+      btn.disabled = true;
+      btn.textContent = "Adding…";
+      try {
+        const created = await Api.productCategories.create(name);
+        await loadCategories();
+        select.innerHTML = categoryOptions(created.id);
+        $(`#${blockId}`).hidden = true;
+        input.value = "";
+        toast(`Category "${created.name}" added.`);
+      } catch (err) {
+        toast(err.message || "Could not add category.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Add";
+      }
+    });
   }
 
   async function loadItems() {
@@ -75,7 +107,11 @@
         <label class="field"><span>Product category</span>
           <select id="stockCategory" required>${categoryOptions()}</select>
         </label>
-        <p class="file-hint">Categorizes this item for cross-institution market insights. Pick the closest match, or ask a super admin to add a new category.</p>
+        <div class="inline-form" id="stockCategoryNew" hidden>
+          <label class="field wide"><span>New category name</span><input type="text" id="stockCategoryNewName" placeholder="e.g. Pencils" /></label>
+          <button type="button" class="ghost-btn" id="stockCategoryNewAdd">Add</button>
+        </div>
+        <p class="file-hint">Categorizes this item for cross-institution market insights. Pick the closest match, or add a new one if nothing fits.</p>
         <label class="field"><span>Description (optional)</span><input type="text" id="stockDescription" /></label>
         <label class="field"><span>Unit price (optional, KES)</span><input type="number" id="stockPrice" min="0" step="0.01" /></label>
         <label class="field"><span>Starting quantity</span><input type="number" id="stockQuantity" min="0" step="0.01" value="0" /></label>
@@ -86,6 +122,8 @@
       </form>
     `);
 
+    wireCategoryPicker("stockCategory", "stockCategoryNew", "stockCategoryNewName", "stockCategoryNewAdd");
+
     $("#stockForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const msg = $("#stockMsg");
@@ -95,7 +133,7 @@
       submitBtn.textContent = "Adding…";
       try {
         const categoryId = $("#stockCategory").value;
-        if (!categoryId) throw new Error("Please pick a product category.");
+        if (!categoryId || categoryId === "__new__") throw new Error("Please pick a product category, or click \"Add\" to save the new one first.");
         await Api.stock.create({
           name: $("#stockName").value.trim(),
           category_id: parseInt(categoryId, 10),
@@ -128,6 +166,10 @@
         <label class="field"><span>Product category</span>
           <select id="editStockCategory" required>${categoryOptions(item.category_id)}</select>
         </label>
+        <div class="inline-form" id="editStockCategoryNew" hidden>
+          <label class="field wide"><span>New category name</span><input type="text" id="editStockCategoryNewName" placeholder="e.g. Pencils" /></label>
+          <button type="button" class="ghost-btn" id="editStockCategoryNewAdd">Add</button>
+        </div>
         <label class="field"><span>Description (optional)</span><input type="text" id="editStockDescription" value="${escapeHtml(item.description || "")}" /></label>
         <label class="field"><span>Unit price (optional, KES)</span><input type="number" id="editStockPrice" min="0" step="0.01" value="${item.unit_price ?? ""}" /></label>
         <p class="file-hint">Current quantity: ${item.quantity} — edit this via a Receiving/Paying entry on Home, not here.</p>
@@ -136,6 +178,8 @@
         </div>
       </form>
     `);
+
+    wireCategoryPicker("editStockCategory", "editStockCategoryNew", "editStockCategoryNewName", "editStockCategoryNewAdd");
 
     $("#editStockForm").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -146,6 +190,7 @@
       submitBtn.textContent = "Saving…";
       try {
         const categoryId = $("#editStockCategory").value;
+        if (categoryId === "__new__") throw new Error("Please click \"Add\" to save the new category first.");
         await Api.stock.update(id, {
           name: $("#editStockName").value.trim(),
           category_id: categoryId ? parseInt(categoryId, 10) : undefined,
