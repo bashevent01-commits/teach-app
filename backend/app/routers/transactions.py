@@ -152,6 +152,9 @@ def list_transactions(
 ):
     scoped_institution_id = _scoped_institution_id(current_user, institution_id)
     query = db.query(Transaction).filter(Transaction.institution_id == scoped_institution_id)
+    if current_user.role == UserRole.STAFF:
+        # Staff only ever see what they recorded themselves; the institution's full books are for its admin
+        query = query.filter(Transaction.recorded_by_id == current_user.id)
     if method is not None:
         query = query.filter(Transaction.method == method)
     if category_type is not None:
@@ -170,6 +173,8 @@ def get_transaction(transaction_id: int, db: Session = Depends(get_db), current_
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
     if current_user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN) and txn.institution_id != current_user.institution_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to view this transaction")
+    if current_user.role == UserRole.STAFF and txn.recorded_by_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to view this transaction")
     return txn
 
 
@@ -178,6 +183,8 @@ def _get_transaction_scoped(transaction_id: int, current_user: User, db: Session
     if not txn:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
     if txn.institution_id != current_user.institution_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to modify this transaction")
+    if current_user.role == UserRole.STAFF and txn.recorded_by_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to modify this transaction")
     return txn
 

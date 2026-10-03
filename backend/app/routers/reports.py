@@ -26,15 +26,14 @@ def generate_audit_report(audit_id: int, db: Session = Depends(get_db), current_
     institution = db.query(Institution).filter(Institution.id == audit.institution_id).first()
     # Computed from the audit's period rather than a stored link — see
     # routers/audits.py's /transactions endpoint for the same query.
-    transactions = (
-        db.query(Transaction)
-        .filter(
-            Transaction.institution_id == audit.institution_id,
-            Transaction.transaction_date >= audit.period_start,
-            Transaction.transaction_date <= audit.period_end,
-        )
-        .all()
+    audit_query = db.query(Transaction).filter(
+        Transaction.institution_id == audit.institution_id,
+        Transaction.transaction_date >= audit.period_start,
+        Transaction.transaction_date <= audit.period_end,
     )
+    if current_user.role == UserRole.STAFF:
+        audit_query = audit_query.filter(Transaction.recorded_by_id == current_user.id)
+    transactions = audit_query.all()
 
     pdf_bytes = build_audit_report_pdf(institution, audit, transactions)
 
@@ -82,6 +81,8 @@ def generate_statement_report(
         Transaction.transaction_date >= start,
         Transaction.transaction_date <= end,
     )
+    if current_user.role == UserRole.STAFF:
+        query = query.filter(Transaction.recorded_by_id == current_user.id)
     if method is not None:
         query = query.filter(Transaction.method == method)
     transactions = query.all()

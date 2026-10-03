@@ -38,13 +38,18 @@ def _require_books_access(current_user: User) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to view the books")
 
 
-def _balances(db: Session, institution_id: int, start: datetime | None, end: datetime | None) -> list[AccountBalance]:
+def _balances(db: Session, institution_id: int, start: datetime | None, end: datetime | None, only_user_id: int | None = None) -> list[AccountBalance]:
     query = (
         db.query(Account, func.coalesce(func.sum(JournalLine.debit), 0), func.coalesce(func.sum(JournalLine.credit), 0))
         .outerjoin(JournalLine, JournalLine.account_id == Account.id)
         .outerjoin(JournalEntry, JournalEntry.id == JournalLine.entry_id)
         .filter(Account.institution_id == institution_id)
     )
+    if only_user_id is not None:
+        # Own transactions plus entries with no transaction behind them (starting balances)
+        query = query.outerjoin(Transaction, Transaction.id == JournalEntry.transaction_id).filter(
+            (JournalEntry.id.is_(None)) | (JournalEntry.transaction_id.is_(None)) | (Transaction.recorded_by_id == only_user_id)
+        )
     if start is not None:
         query = query.filter((JournalEntry.id.is_(None)) | (JournalEntry.entry_date >= start))
     if end is not None:
@@ -69,8 +74,9 @@ def summary(
     scoped = _scoped_institution_id(current_user, institution_id)
     backfill_institution(db, scoped)
     # Money-account balances are all-time; income/expense honour the date filter
-    all_time = {b.key: b for b in _balances(db, scoped, None, None)}
-    period = _balances(db, scoped, start_date, end_date)
+    only_user = current_user.id if current_user.role == UserRole.STAFF else None
+    all_time = {b.key: b for b in _balances(db, scoped, None, None, only_user)}
+    period = _balances(db, scoped, start_date, end_date, only_user)
     money = [MoneyPosition(key=k, name=all_time[k].name, balance=all_time[k].balance) for k in ("cash", "mpesa", "bank") if k in all_time]
     income = sum((b.balance for b in period if b.type == AccountType.INCOME), Decimal("0"))
     expenses = sum((b.balance for b in period if b.type == AccountType.EXPENSE), Decimal("0"))

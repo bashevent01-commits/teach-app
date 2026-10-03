@@ -114,16 +114,14 @@ def get_audit_transactions(audit_id: int, db: Session = Depends(get_db), current
     from that date range, not stored via a foreign key.
     """
     audit = _get_audit_visible(audit_id, current_user, db)
-    return (
-        db.query(Transaction)
-        .filter(
-            Transaction.institution_id == audit.institution_id,
-            Transaction.transaction_date >= audit.period_start,
-            Transaction.transaction_date <= audit.period_end,
-        )
-        .order_by(Transaction.transaction_date.desc())
-        .all()
+    query = db.query(Transaction).filter(
+        Transaction.institution_id == audit.institution_id,
+        Transaction.transaction_date >= audit.period_start,
+        Transaction.transaction_date <= audit.period_end,
     )
+    if current_user.role == UserRole.STAFF:
+        query = query.filter(Transaction.recorded_by_id == current_user.id)
+    return query.order_by(Transaction.transaction_date.desc()).all()
 
 
 @router.patch("/{audit_id}", response_model=AuditOut)
