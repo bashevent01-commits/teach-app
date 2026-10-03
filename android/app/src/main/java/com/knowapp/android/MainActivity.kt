@@ -67,6 +67,10 @@ class MainActivity : ComponentActivity() {
             isIndeterminate = true
             layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, android.view.Gravity.CENTER)
         }
+        // Exposes the in-app updater to the Settings page as window.KnowApp
+        webView.addJavascriptInterface(UpdateBridge(this, webView), "KnowApp")
+        // Drop any APK left over from a previous update
+        java.io.File(cacheDir, "updates").deleteRecursively()
         root.addView(webView)
         root.addView(progressBar)
         setContentView(root)

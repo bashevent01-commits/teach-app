@@ -92,6 +92,38 @@
     });
   }
 
+  // In-app updater — only present inside the Android shell (window.KnowApp)
+  if (window.KnowApp) {
+    $("#appUpdateCard").hidden = false;
+    $("#androidDownloadCard").hidden = true;
+    const btn = $("#appUpdateBtn");
+    const infoEl = $("#appUpdateInfo");
+    let v = {};
+    try { v = JSON.parse(window.KnowApp.info()); } catch { /* non-fatal */ }
+    const installed = `Installed: v${v.versionName || "?"} (build ${v.versionCode || "?"})`;
+    let mode = "check";
+    const show = (text, label, disabled, nextMode) => {
+      infoEl.textContent = text;
+      btn.textContent = label;
+      btn.disabled = disabled;
+      mode = nextMode;
+    };
+    show(installed, "Check for updates", false, "check");
+    window.onKnowUpdate = (s) => {
+      if (s.state === "checking") show("Checking for updates…", "Checking…", true, "check");
+      else if (s.state === "uptodate") show(`${installed}. You are on the latest version.`, "Check again", false, "check");
+      else if (s.state === "available") show(`${installed}. A newer version is available.`, "Download and install", false, "install");
+      else if (s.state === "downloading") show(`Downloading update… ${s.detail}%`, "Downloading…", true, "install");
+      else if (s.state === "installing") show("Download complete. Confirm the install on the next screen.", "Install update", false, "install");
+      else if (s.state === "need_permission") show("Allow K.N.O.W. to install apps in the settings screen that just opened, come back, then tap again.", "Download and install", false, "install");
+      else if (s.state === "error") show(`${installed}. ${s.detail}`, "Try again", false, mode);
+    };
+    btn.addEventListener("click", () => {
+      if (mode === "install") window.KnowApp.installUpdate();
+      else window.KnowApp.checkForUpdate();
+    });
+  }
+
   $("#logoutBtn").addEventListener("click", logout);
 
   $("#pwForm").addEventListener("submit", async (e) => {

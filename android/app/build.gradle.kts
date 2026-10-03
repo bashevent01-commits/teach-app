@@ -11,11 +11,31 @@ android {
         applicationId = "com.knowapp.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI run number keeps versionCode rising so Android accepts in-place updates
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionName = "0.2.0"
+        // Build commit, compared against the latest release to detect updates
+        buildConfigField("String", "GIT_SHA", "\"${System.getenv("GITHUB_SHA") ?: "dev"}\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    // Fixed key so every CI build is signed identically and installs over the previous one
+    signingConfigs {
+        create("shared") {
+            storeFile = file("know-debug.keystore")
+            storePassword = "knowdebug"
+            keyAlias = "know"
+            keyPassword = "knowdebug"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("shared")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
