@@ -3,6 +3,7 @@
 
   let transactions = [];
   let stockItems = [];
+  let opening = { cash: 0, mpesa: 0, bank: 0, is_set: false };
 
   await loadData();
   window.addEventListener("online", handleBackOnline);
@@ -13,6 +14,7 @@
       transactions = await Api.transactions.list();
       await Offline.cacheSet("transactions", transactions);
       await mergeInPending();
+      await loadOpening();
       renderOverview();
       renderRecent();
     } catch (err) {
@@ -20,6 +22,7 @@
         // Offline — fall back to the last data cached on this device.
         transactions = (await Offline.cacheGet("transactions")) || [];
         await mergeInPending();
+        opening = (await Offline.cacheGet("opening")) || opening;
         renderOverview();
         renderRecent();
       } else {
@@ -27,6 +30,15 @@
       }
     }
     await refreshOfflineBanner();
+  }
+
+  async function loadOpening() {
+    try {
+      opening = await Api.accounting.openingGet();
+      await Offline.cacheSet("opening", opening);
+    } catch {
+      opening = (await Offline.cacheGet("opening")) || opening;
+    }
   }
 
   // Folds queued-but-not-yet-synced entries into the same list real
@@ -65,7 +77,53 @@
     $("#kpiExpense").textContent = money(expense);
     $("#kpiNet").textContent = money(net);
     $("#totalPill").textContent = `Net · ${money(net)}`;
+
+    // Money held = starting balance + everything received − everything paid, per method (pending entries included)
+    const held = (method) => {
+      const rows = transactions.filter((t) => t.method === method);
+      const inn = rows.filter((t) => t.type === "income").reduce((s, t) => s + parseFloat(t.amount), 0);
+      const out = rows.filter((t) => t.type === "expense").reduce((s, t) => s + parseFloat(t.amount), 0);
+      return parseFloat(opening[method] || 0) + inn - out;
+    };
+    $("#moneyCash").textContent = money(held("cash"));
+    $("#moneyMpesa").textContent = money(held("mpesa"));
+    $("#moneyBank").textContent = money(held("bank"));
+    $("#moneyNote").textContent = opening.is_set ? "What you hold right now" : "Add what you already hold to see accurate balances";
+    $("#openingBtn").textContent = opening.is_set ? "Edit starting balances" : "Set starting balances";
   }
+
+  $("#openingBtn").addEventListener("click", () => {
+    Sheet.open("Starting balances", `
+      <p class="form-error" id="openMsg"></p>
+      <form id="openForm">
+        <p class="file-hint">Enter what the business already holds today, before your first entry here.</p>
+        <label class="field"><span>Cash (KES)</span><input type="number" id="openCash" min="0" step="0.01" value="${opening.cash || 0}" /></label>
+        <label class="field"><span>M-Pesa (KES)</span><input type="number" id="openMpesa" min="0" step="0.01" value="${opening.mpesa || 0}" /></label>
+        <label class="field"><span>Bank (KES)</span><input type="number" id="openBank" min="0" step="0.01" value="${opening.bank || 0}" /></label>
+        <div class="form-actions"><button type="submit" class="primary-btn" id="openSubmit">Save starting balances</button></div>
+      </form>`);
+    $("#openForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = $("#openMsg");
+      hideFormMessage(msg);
+      const btn = $("#openSubmit");
+      btn.disabled = true;
+      try {
+        opening = await Api.accounting.openingSet({
+          cash: parseFloat($("#openCash").value || 0),
+          mpesa: parseFloat($("#openMpesa").value || 0),
+          bank: parseFloat($("#openBank").value || 0),
+        });
+        await Offline.cacheSet("opening", opening);
+        Sheet.close();
+        toast("Starting balances saved.");
+        renderOverview();
+      } catch (err) {
+        showFormMessage(msg, err.status === 0 ? "You need a connection to save starting balances." : (err.message || "Could not save."));
+        btn.disabled = false;
+      }
+    });
+  });
 
   function renderRecent() {
     const list = $("#recentList");

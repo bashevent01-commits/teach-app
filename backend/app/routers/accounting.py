@@ -8,11 +8,15 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.accounting import Account, AccountType, JournalEntry, JournalLine
+from app.models.audit import Audit, AuditStatus
+from app.models.transaction import Transaction
 from app.models.user import User, UserRole
 from app.schemas.accounting import (
-    AccountBalance, JournalEntryOut, JournalLineOut, Ledger, LedgerLine, MoneyPosition, Summary, TrialBalance,
+    AccountBalance, JournalEntryOut, OpeningBalances, OpeningBalancesOut, JournalLineOut, Ledger, LedgerLine, MoneyPosition, Summary, TrialBalance,
 )
-from app.utils.ledger import backfill_institution
+from datetime import timedelta, timezone
+
+from app.utils.ledger import backfill_institution, system_account
 
 router = APIRouter(prefix="/api/accounting", tags=["accounting"])
 
@@ -153,3 +157,76 @@ def journal(
         )
         for e in entries
     ]
+
+
+OPENING_MEMO = "Opening balances"
+_OPENING_KEYS = ("cash", "mpesa", "bank")
+
+
+def _opening_entry(db: Session, institution_id: int) -> JournalEntry | None:
+    return db.query(JournalEntry).filter(
+        JournalEntry.institution_id == institution_id, JournalEntry.transaction_id.is_(None), JournalEntry.memo == OPENING_MEMO
+    ).first()
+
+
+def _opening_amounts(db: Session, institution_id: int) -> OpeningBalancesOut:
+    entry = _opening_entry(db, institution_id)
+    amounts = {k: Decimal("0") for k in _OPENING_KEYS}
+    if entry:
+        for line in entry.lines:
+            if line.account.key in amounts:
+                amounts[line.account.key] = line.debit
+    return OpeningBalancesOut(is_set=entry is not None, **amounts)
+
+
+@router.get("/opening-balances", response_model=OpeningBalancesOut)
+def get_opening_balances(
+    institution_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    scoped = _scoped_institution_id(current_user, institution_id)
+    backfill_institution(db, scoped)
+    return _opening_amounts(db, scoped)
+
+
+@router.put("/opening-balances", response_model=OpeningBalancesOut)
+def set_opening_balances(
+    payload: OpeningBalances,
+    institution_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # What the institution already holds on the day it starts using K.N.O.W.; replaces any earlier figures
+    scoped = _scoped_institution_id(current_user, institution_id)
+    amounts = {"cash": payload.cash, "mpesa": payload.mpesa, "bank": payload.bank}
+    if any(v < 0 for v in amounts.values()):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Starting balances cannot be negative")
+    if any(v >= Decimal("1000000000") for v in amounts.values()):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Starting balance is too large")
+
+    finalized = db.query(Audit).filter(Audit.institution_id == scoped, Audit.status == AuditStatus.FINALIZED).first()
+    if finalized:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Starting balances can't be changed once an audit has been finalized")
+
+    backfill_institution(db, scoped)
+    existing = _opening_entry(db, scoped)
+    if existing:
+        db.delete(existing)
+        db.flush()
+
+    total = sum(amounts.values(), Decimal("0"))
+    if total > 0:
+        # Dated just before the first transaction so it always counts as the starting position
+        first = db.query(func.min(Transaction.transaction_date)).filter(Transaction.institution_id == scoped).scalar()
+        if first is not None and first.tzinfo is None:
+            first = first.replace(tzinfo=timezone.utc)
+        when = (first - timedelta(seconds=1)) if first is not None else datetime.now(timezone.utc)
+        entry = JournalEntry(institution_id=scoped, transaction_id=None, entry_date=when, memo=OPENING_MEMO)
+        for key, value in amounts.items():
+            if value > 0:
+                entry.lines.append(JournalLine(account_id=system_account(db, scoped, key).id, debit=value, credit=Decimal("0")))
+        entry.lines.append(JournalLine(account_id=system_account(db, scoped, "equity").id, debit=Decimal("0"), credit=total))
+        db.add(entry)
+    db.commit()
+    return _opening_amounts(db, scoped)

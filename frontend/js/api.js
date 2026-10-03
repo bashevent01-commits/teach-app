@@ -217,6 +217,11 @@ const Api = {
     remove: (id) => apiFetch(`/api/stock/${id}`, { method: "DELETE" }),
   },
 
+  accounting: {
+    openingGet: () => apiFetch("/api/accounting/opening-balances"),
+    openingSet: (payload) => apiFetch("/api/accounting/opening-balances", { method: "PUT", body: payload }),
+  },
+
   productCategories: {
     list: () => apiFetch("/api/product-categories"),
     create: (name) => apiFetch("/api/product-categories", { method: "POST", body: { name } }),

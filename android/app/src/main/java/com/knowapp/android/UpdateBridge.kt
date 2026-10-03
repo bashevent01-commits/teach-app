@@ -1,10 +1,14 @@
 package com.knowapp.android
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.print.PrintAttributes
+import android.print.PrintManager
 import android.provider.Settings
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.core.content.FileProvider
 import org.json.JSONObject
@@ -18,6 +22,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 class UpdateBridge(private val activity: ComponentActivity, private val webView: WebView) {
     private val executor = Executors.newSingleThreadExecutor()
     private val busy = AtomicBoolean(false)
+    // Held so the print WebView is not garbage collected before the dialog finishes
+    private var pendingPrintView: WebView? = null
 
     @JavascriptInterface
     fun info(): String = JSONObject()
@@ -25,6 +31,27 @@ class UpdateBridge(private val activity: ComponentActivity, private val webView:
         .put("versionCode", BuildConfig.VERSION_CODE)
         .put("sha", BuildConfig.GIT_SHA)
         .toString()
+
+    // Statements print (or save as PDF) through Android's own print dialog, since WebView cannot save blob downloads
+    @JavascriptInterface
+    fun printHtml(html: String, title: String) {
+        activity.runOnUiThread {
+            val printView = WebView(activity)
+            printView.webViewClient = object : WebViewClient() {
+                private var started = false
+
+                override fun onPageFinished(view: WebView, url: String?) {
+                    if (started) return
+                    started = true
+                    val name = title.ifBlank { "Statement" }
+                    val manager = activity.getSystemService(Context.PRINT_SERVICE) as PrintManager
+                    manager.print(name, view.createPrintDocumentAdapter(name), PrintAttributes.Builder().build())
+                }
+            }
+            printView.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
+            pendingPrintView = printView
+        }
+    }
 
     @JavascriptInterface
     fun checkForUpdate() {

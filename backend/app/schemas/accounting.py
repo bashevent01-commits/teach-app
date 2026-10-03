@@ -67,3 +67,13 @@ class JournalEntryOut(BaseModel):
     memo: str | None
     transaction_id: int | None
     lines: list[JournalLineOut]
+
+
+class OpeningBalances(BaseModel):
+    cash: Decimal
+    mpesa: Decimal
+    bank: Decimal
+
+
+class OpeningBalancesOut(OpeningBalances):
+    is_set: bool

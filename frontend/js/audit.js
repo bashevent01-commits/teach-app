@@ -4,33 +4,15 @@
 
   let allTransactions = [];
   let allAuditsForLocking = [];
-  let currentFilter = "all";
 
   await loadRecords();
   await loadAuditGrid();
   window.addEventListener("online", handleBackOnline);
-  window.addEventListener("offline", refreshOfflineBanner);
-  await refreshOfflineBanner();
-
-  async function refreshOfflineBanner() {
-    const pending = await Offline.listPending();
-    if (!Offline.isOnline()) {
-      setOfflineBanner(pending.length
-        ? `Offline — ${pending.length} ${pending.length === 1 ? "entry" : "entries"} recorded on Home will sync automatically once you're back online.`
-        : "Offline — showing the last data saved to this device.");
-    } else if (pending.length) {
-      setOfflineBanner(`${pending.length} offline ${pending.length === 1 ? "entry" : "entries"} waiting to sync…`);
-    } else {
-      setOfflineBanner(null);
-    }
-  }
 
   async function handleBackOnline() {
-    const result = await Offline.syncPendingTransactions();
-    if (result.synced) toast(`${result.synced} offline ${result.synced === 1 ? "entry" : "entries"} synced.`);
+    await Offline.syncPendingTransactions();
     await loadRecords();
     await loadAuditGrid();
-    await refreshOfflineBanner();
   }
 
   /* ---------------- Records panel (filterable by method) ---------------- */
@@ -44,31 +26,15 @@
       await Offline.cacheSet("transactions", allTransactions);
       await Offline.cacheSet("audits", allAuditsForLocking);
       renderKpis();
-      renderPanel();
     } catch (err) {
       if (err.status === 0) {
         allTransactions = (await Offline.cacheGet("transactions")) || [];
         allAuditsForLocking = (await Offline.cacheGet("audits")) || [];
         renderKpis();
-        renderPanel();
       } else {
-        $("#auditPanelBody").innerHTML = `<tr class="empty-row"><td colspan="8">${escapeHtml(err.message)}</td></tr>`;
+        toast(err.message || "Could not load your records.");
       }
     }
-  }
-
-  /**
-   * A transaction isn't linked to an audit by id — a finalized audit's
-   * statements are whatever fell inside its period_start/period_end (see
-   * the backend). So a transaction counts as locked once ANY finalized
-   * audit for this institution covers its date; editing it afterward would
-   * silently change a report that's already been signed off.
-   */
-  function txnIsLocked(t) {
-    const d = new Date(t.transaction_date);
-    return allAuditsForLocking.some(
-      (a) => a.status === "finalized" && d >= new Date(a.period_start) && d <= new Date(a.period_end)
-    );
   }
 
   function netFor(method) {
@@ -84,130 +50,6 @@
     $("#kpiBank").textContent = money(netFor("bank"));
     $("#auditTotalsPill").textContent = `Net · ${money(netFor(null))}`;
   }
-
-  function renderPanel() {
-    const rows = currentFilter === "all" ? allTransactions : allTransactions.filter((t) => t.method === currentFilter);
-    $("#auditPanelTitle").textContent = currentFilter === "all" ? "My records" : `My records — ${methodLabel(currentFilter)}`;
-
-    const body = $("#auditPanelBody");
-    body.innerHTML = rows.length ? rows.map((t) => {
-      const locked = txnIsLocked(t);
-      return `
-      <tr>
-        <td>${formatDate(t.transaction_date, true)}</td>
-        <td><span class="badge badge-${t.type}">${t.type}</span></td>
-        <td>${methodLabel(t.method)}</td>
-        <td>${escapeHtml(t.category)}</td>
-        <td>${escapeHtml(t.description || "—")}</td>
-        <td>${money(t.amount)}</td>
-        <td>${t.image_path ? `<a class="ghost-btn" href="${Api.transactions.imageUrl(t)}" target="_blank" rel="noopener">Photo</a>` : ""}</td>
-        <td class="row-actions">${locked
-          ? `<span class="subtle" title="Locked: falls inside a finalized audit">Locked</span>`
-          : `<button class="ghost-btn" data-edit-txn="${t.id}">Edit</button><button class="danger-btn" data-delete-txn="${t.id}">Delete</button>`}</td>
-      </tr>
-    `;
-    }).join("") : `<tr class="empty-row"><td colspan="8">No records for this filter yet.</td></tr>`;
-
-    $$("[data-edit-txn]", body).forEach((btn) => {
-      btn.addEventListener("click", () => openEditTxnSheet(parseInt(btn.dataset.editTxn, 10)));
-    });
-    $$("[data-delete-txn]", body).forEach((btn) => {
-      btn.addEventListener("click", () => handleDeleteTxn(parseInt(btn.dataset.deleteTxn, 10)));
-    });
-  }
-
-  function openEditTxnSheet(id) {
-    const txn = allTransactions.find((t) => t.id === id);
-    if (!txn) return;
-
-    Sheet.open("Edit record", `
-      <p class="form-error" id="txnEditMsg"></p>
-      <form id="txnEditForm">
-        <label class="field"><span>Type</span>
-          <select id="txnEditType">
-            <option value="income">Receiving (income)</option>
-            <option value="expense">Paying (expense)</option>
-          </select>
-        </label>
-        <label class="field"><span>Method</span>
-          <select id="txnEditMethod">
-            <option value="cash">Cash</option>
-            <option value="mpesa">M-Pesa</option>
-            <option value="bank">Bank</option>
-          </select>
-        </label>
-        <label class="field"><span>Category</span><input type="text" id="txnEditCategory" required /></label>
-        <label class="field"><span>Amount (KES)</span><input type="number" id="txnEditAmount" min="0.01" step="0.01" required /></label>
-        <label class="field"><span>Description (optional)</span><input type="text" id="txnEditDescription" /></label>
-        <label class="chip-input wide">
-          <span class="ico" data-ico="image"></span> Replace photo (optional)
-          <input type="file" id="txnEditImage" accept="image/png,image/jpeg,image/webp" hidden />
-        </label>
-        <p class="file-hint" id="txnEditImageName">${txn.image_path ? "A photo is already attached — choose a file to replace it." : "No photo attached yet."}</p>
-        <p class="file-hint">Date and time can't be changed — they're set when the record was created.</p>
-        <div class="form-actions">
-          <button type="submit" class="primary-btn" id="txnEditSubmit">Save changes</button>
-        </div>
-      </form>
-    `);
-
-    $("#txnEditType").value = txn.type;
-    $("#txnEditMethod").value = txn.method;
-    $("#txnEditCategory").value = txn.category;
-    $("#txnEditAmount").value = txn.amount;
-    $("#txnEditDescription").value = txn.description || "";
-
-    $("#txnEditImage").addEventListener("change", () => {
-      const file = $("#txnEditImage").files[0];
-      if (file) $("#txnEditImageName").textContent = `Selected: ${file.name}`;
-    });
-
-    $("#txnEditForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const msg = $("#txnEditMsg");
-      hideFormMessage(msg);
-      const submitBtn = $("#txnEditSubmit");
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Saving…";
-
-      try {
-        await Api.transactions.update(id, {
-          type: $("#txnEditType").value,
-          method: $("#txnEditMethod").value,
-          category: $("#txnEditCategory").value.trim(),
-          amount: parseFloat($("#txnEditAmount").value),
-          description: $("#txnEditDescription").value.trim() || "",
-          image: $("#txnEditImage").files[0] || null,
-        });
-        Sheet.close();
-        toast("Record updated.");
-        await loadRecords();
-      } catch (err) {
-        showFormMessage(msg, err.message || "Could not save the changes.");
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Save changes";
-      }
-    });
-  }
-
-  async function handleDeleteTxn(id) {
-    if (!confirm("Delete this record? This cannot be undone.")) return;
-    try {
-      await Api.transactions.remove(id);
-      toast("Record deleted.");
-      await loadRecords();
-    } catch (err) {
-      toast(err.message || "Could not delete the record.");
-    }
-  }
-
-  $$(".filter[data-filter]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      currentFilter = btn.dataset.filter;
-      $$(".filter[data-filter]").forEach((b) => b.classList.toggle("is-active", b === btn));
-      renderPanel();
-    });
-  });
 
   function methodLabel(method) {
     return method === "mpesa" ? "M-Pesa" : method[0].toUpperCase() + method.slice(1);
@@ -350,20 +192,46 @@
     `;
   }
 
+  // Statements open in an in-app full-screen viewer, never in an external browser
+  let viewerEl = null;
+  let viewerHtml = "";
+  let viewerTitle = "";
+
+  function printStatement() {
+    if (window.KnowApp && window.KnowApp.printHtml) {
+      window.KnowApp.printHtml(viewerHtml, viewerTitle);
+      return;
+    }
+    const frame = viewerEl && viewerEl.querySelector("iframe");
+    if (frame && frame.contentWindow) frame.contentWindow.print();
+  }
+
+  function closeStatementViewer() {
+    if (viewerEl) viewerEl.remove();
+    viewerEl = null;
+  }
+
   function openStatementWindow(kind, autoPrint) {
     const range = statementRange();
     if (!range) return;
     const rows = transactionsForStatement(kind, range.start, range.end);
-    const win = window.open("", "_blank");
-    if (!win) { toast("Allow pop-ups to view this statement."); return; }
-    win.document.write(statementDocument(kind, rows, range.start, range.end));
-    win.document.close();
-    win.focus();
-    if (autoPrint) {
-      win.onload = () => win.print();
-      // Some browsers fire onload before images finish — nudge it again shortly after.
-      setTimeout(() => win.print(), 400);
-    }
+    viewerTitle = kind === "all" ? "Combined Statement" : `${METHOD_LABEL[kind]} Movement Statement`;
+    viewerHtml = statementDocument(kind, rows, range.start, range.end);
+    closeStatementViewer();
+    viewerEl = document.createElement("div");
+    viewerEl.className = "stmt-viewer";
+    viewerEl.innerHTML = `
+      <div class="stmt-viewer-bar">
+        <button type="button" class="ghost-btn" data-stmt-close>&larr; Back</button>
+        <strong>${escapeHtml(viewerTitle)}</strong>
+        <button type="button" class="primary-btn" data-stmt-print>Print / Save PDF</button>
+      </div>
+      <iframe class="stmt-viewer-frame" title="${escapeHtml(viewerTitle)}"></iframe>`;
+    document.body.appendChild(viewerEl);
+    viewerEl.querySelector("iframe").srcdoc = viewerHtml;
+    viewerEl.querySelector("[data-stmt-close]").addEventListener("click", closeStatementViewer);
+    viewerEl.querySelector("[data-stmt-print]").addEventListener("click", printStatement);
+    if (autoPrint) setTimeout(printStatement, 400);
   }
 
   // Clicking the row itself opens a preview of the well-organised table.
@@ -381,6 +249,11 @@
       const range = statementRange();
       if (!range) return;
       const method = btn.dataset.download;
+      if (window.KnowApp && window.KnowApp.printHtml) {
+        openStatementWindow(method, true);
+        toast("Choose Save as PDF in the print dialog.");
+        return;
+      }
       btn.disabled = true;
       try {
         const blob = await Api.reports.downloadStatementPdf({
