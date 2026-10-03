@@ -36,8 +36,8 @@
     try {
       opening = await Api.accounting.openingGet();
       await Offline.cacheSet("opening", opening);
-    } catch {
-      opening = (await Offline.cacheGet("opening")) || opening;
+    } catch (err) {
+      if (err.status === 0) opening = (await Offline.cacheGet("opening")) || opening;
     }
   }
 

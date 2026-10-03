@@ -51,14 +51,23 @@ const Offline = (() => {
 
   /* ---------------- generic cache (last-known server data) ---------------- */
 
+  // Cache and queue rows belong to the logged-in user, so a shared device never shows or syncs another person's data
+  function currentUserId() {
+    return Session.get()?.user_id ?? null;
+  }
+
+  function scopedKey(key) {
+    return `u${currentUserId()}:${key}`;
+  }
+
   async function cacheSet(key, value) {
-    await tx("cache", "readwrite", (store) => store.put({ key, value, updatedAt: new Date().toISOString() }));
+    await tx("cache", "readwrite", (store) => store.put({ key: scopedKey(key), value, updatedAt: new Date().toISOString() }));
   }
 
   async function cacheGet(key) {
     const db = await openDb();
     const store = db.transaction("cache", "readonly").objectStore("cache");
-    const row = await requestToPromise(store.get(key));
+    const row = await requestToPromise(store.get(scopedKey(key)));
     return row ? row.value : null;
   }
 
@@ -68,7 +77,7 @@ const Offline = (() => {
   // present, is stored as the actual File/Blob — IndexedDB handles that
   // natively, no base64 encoding needed.
   async function queueTransaction(fields) {
-    const record = { ...fields, createdAt: new Date().toISOString(), status: "pending", errorMessage: null };
+    const record = { ...fields, userId: currentUserId(), createdAt: new Date().toISOString(), status: "pending", errorMessage: null };
     const db = await openDb();
     return new Promise((resolve, reject) => {
       const t = db.transaction("pending_transactions", "readwrite");
@@ -82,7 +91,9 @@ const Offline = (() => {
   async function listPending() {
     const db = await openDb();
     const store = db.transaction("pending_transactions", "readonly").objectStore("pending_transactions");
-    const rows = await requestToPromise(store.getAll());
+    const all = await requestToPromise(store.getAll());
+    // Rows queued before user tagging existed have no userId and stay visible to whoever is logged in
+    const rows = all.filter((r) => r.userId === undefined || r.userId === null || r.userId === currentUserId());
     return rows.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   }
 
