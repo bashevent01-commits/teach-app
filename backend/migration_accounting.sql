@@ -43,3 +43,7 @@ CREATE INDEX IF NOT EXISTS ix_journal_lines_account_id ON journal_lines (account
 ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE journal_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE journal_lines ENABLE ROW LEVEL SECURITY;
+
+-- Starting balances belong to the staff member who entered them
+ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS ix_journal_entries_owner_id ON journal_entries (owner_id);

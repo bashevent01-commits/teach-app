@@ -46,9 +46,9 @@ def _balances(db: Session, institution_id: int, start: datetime | None, end: dat
         .filter(Account.institution_id == institution_id)
     )
     if only_user_id is not None:
-        # Own transactions plus entries with no transaction behind them (starting balances)
+        # Own transactions plus this person's own starting balances
         query = query.outerjoin(Transaction, Transaction.id == JournalEntry.transaction_id).filter(
-            (JournalEntry.id.is_(None)) | (JournalEntry.transaction_id.is_(None)) | (Transaction.recorded_by_id == only_user_id)
+            (JournalEntry.id.is_(None)) | (Transaction.recorded_by_id == only_user_id) | (JournalEntry.owner_id == only_user_id)
         )
     if start is not None:
         query = query.filter((JournalEntry.id.is_(None)) | (JournalEntry.entry_date >= start))
@@ -169,14 +169,21 @@ OPENING_MEMO = "Opening balances"
 _OPENING_KEYS = ("cash", "mpesa", "bank")
 
 
-def _opening_entry(db: Session, institution_id: int) -> JournalEntry | None:
-    return db.query(JournalEntry).filter(
+def _opening_owner(current_user: User) -> int | None:
+    # Each staff member keeps their own starting balances; admins' are institution-level
+    return current_user.id if current_user.role == UserRole.STAFF else None
+
+
+def _opening_entry(db: Session, institution_id: int, owner_id: int | None) -> JournalEntry | None:
+    query = db.query(JournalEntry).filter(
         JournalEntry.institution_id == institution_id, JournalEntry.transaction_id.is_(None), JournalEntry.memo == OPENING_MEMO
-    ).first()
+    )
+    query = query.filter(JournalEntry.owner_id == owner_id) if owner_id is not None else query.filter(JournalEntry.owner_id.is_(None))
+    return query.first()
 
 
-def _opening_amounts(db: Session, institution_id: int) -> OpeningBalancesOut:
-    entry = _opening_entry(db, institution_id)
+def _opening_amounts(db: Session, institution_id: int, owner_id: int | None) -> OpeningBalancesOut:
+    entry = _opening_entry(db, institution_id, owner_id)
     amounts = {k: Decimal("0") for k in _OPENING_KEYS}
     if entry:
         for line in entry.lines:
@@ -193,7 +200,7 @@ def get_opening_balances(
 ):
     scoped = _scoped_institution_id(current_user, institution_id)
     backfill_institution(db, scoped)
-    return _opening_amounts(db, scoped)
+    return _opening_amounts(db, scoped, _opening_owner(current_user))
 
 
 @router.put("/opening-balances", response_model=OpeningBalancesOut)
@@ -216,7 +223,8 @@ def set_opening_balances(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Starting balances can't be changed once an audit has been finalized")
 
     backfill_institution(db, scoped)
-    existing = _opening_entry(db, scoped)
+    owner_id = _opening_owner(current_user)
+    existing = _opening_entry(db, scoped, owner_id)
     if existing:
         db.delete(existing)
         db.flush()
@@ -224,15 +232,18 @@ def set_opening_balances(
     total = sum(amounts.values(), Decimal("0"))
     if total > 0:
         # Dated just before the first transaction so it always counts as the starting position
-        first = db.query(func.min(Transaction.transaction_date)).filter(Transaction.institution_id == scoped).scalar()
+        first_query = db.query(func.min(Transaction.transaction_date)).filter(Transaction.institution_id == scoped)
+        if owner_id is not None:
+            first_query = first_query.filter(Transaction.recorded_by_id == owner_id)
+        first = first_query.scalar()
         if first is not None and first.tzinfo is None:
             first = first.replace(tzinfo=timezone.utc)
         when = (first - timedelta(seconds=1)) if first is not None else datetime.now(timezone.utc)
-        entry = JournalEntry(institution_id=scoped, transaction_id=None, entry_date=when, memo=OPENING_MEMO)
+        entry = JournalEntry(institution_id=scoped, transaction_id=None, entry_date=when, memo=OPENING_MEMO, owner_id=owner_id)
         for key, value in amounts.items():
             if value > 0:
                 entry.lines.append(JournalLine(account_id=system_account(db, scoped, key).id, debit=value, credit=Decimal("0")))
         entry.lines.append(JournalLine(account_id=system_account(db, scoped, "equity").id, debit=Decimal("0"), credit=total))
         db.add(entry)
     db.commit()
-    return _opening_amounts(db, scoped)
+    return _opening_amounts(db, scoped, owner_id)

@@ -42,6 +42,8 @@ class JournalEntry(Base):
     transaction_id = Column(Integer, ForeignKey("transactions.id", ondelete="CASCADE"), nullable=True, unique=True)
     entry_date = Column(DateTime(timezone=True), nullable=False, index=True)
     memo = Column(Text, nullable=True)
+    # Set on a staff member's own starting balances; null for institution-level entries
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     transaction = relationship("Transaction", back_populates="journal_entry")
