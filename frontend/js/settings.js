@@ -115,7 +115,7 @@
       else if (s.state === "available") show(`${installed}. A newer version is available.`, "Download and install", false, "install");
       else if (s.state === "downloading") show(`Downloading update… ${s.detail}%`, "Downloading…", true, "install");
       else if (s.state === "installing") show("Download complete. Confirm the install on the next screen.", "Install update", false, "install");
-      else if (s.state === "need_permission") show("Allow K.N.O.W. to install apps in the settings screen that just opened, come back, then tap again.", "Download and install", false, "install");
+      else if (s.state === "need_permission") show("Allow KNOW to install apps in the settings screen that just opened, come back, then tap again.", "Download and install", false, "install");
       else if (s.state === "error") show(`${installed}. ${s.detail}`, "Try again", false, mode);
     };
     btn.addEventListener("click", () => {

@@ -1,5 +1,5 @@
 /* ============================================================
-   K.N.O.W. — API client
+   KNOW — API client
    Auth is an httpOnly session cookie (set by the backend on login) plus a
    readable CSRF cookie that gets echoed back as a header on state-changing
    requests. The frontend never persists the raw access token — only
@@ -344,3 +344,10 @@ const Api = {
     },
   },
 };
+
+// Inside the Android app there is nothing to download, so hide every APK link
+if (window.KnowApp) {
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll('a[href$="app-debug.apk"]').forEach((a) => { a.style.display = "none"; });
+  });
+}

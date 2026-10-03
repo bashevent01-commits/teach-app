@@ -1,4 +1,4 @@
-# K.N.O.W. — Android app
+# KNOW — Android app
 
 A single-Activity WebView shell around the real web app
 (`https://teach.bash-ke.workers.dev`, the same Cloudflare Worker `../frontend`

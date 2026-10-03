@@ -1,6 +1,6 @@
 {
-  "name": "K.N.O.W. \u2014 Financial, Inventory & Accountability",
-  "short_name": "K.N.O.W.",
+  "name": "KNOW \u2014 Financial, Inventory & Accountability",
+  "short_name": "KNOW",
   "description": "Financial audit, inventory and communication portal: staff record transactions, manage stock, submit audits, and post news; super admins onboard institutions and issue credentials.",
   "start_url": "./login.html",
   "scope": "./",

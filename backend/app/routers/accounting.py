@@ -197,7 +197,7 @@ def set_opening_balances(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # What the institution already holds on the day it starts using K.N.O.W.; replaces any earlier figures
+    # What the institution already holds on the day it starts using KNOW; replaces any earlier figures
     scoped = _scoped_institution_id(current_user, institution_id)
     amounts = {"cash": payload.cash, "mpesa": payload.mpesa, "bank": payload.bank}
     if any(v < 0 for v in amounts.values()):

@@ -1,5 +1,5 @@
 /* ============================================================
-   K.N.O.W. — shared page chrome
+   KNOW — shared page chrome
    Auth guarding, role-based nav (sidebar + tabbar), theme,
    toasts and small formatting helpers. Loaded after api.js on
    every app page (not on login.html / admin-login.html).
@@ -269,7 +269,7 @@ async function renderIdentity(session) {
 
   if (session.role === "super_admin") {
     if (institutionLineEl) institutionLineEl.textContent = "Super admin console";
-    if (sidebarInstitution) sidebarInstitution.textContent = "K.N.O.W.";
+    if (sidebarInstitution) sidebarInstitution.textContent = "KNOW";
     return;
   }
 
@@ -278,8 +278,8 @@ async function renderIdentity(session) {
     try { institution = await Api.institutions.get(session.institution_id); } catch { /* non-fatal */ }
   }
 
-  if (institutionLineEl) institutionLineEl.textContent = institution?.name || "K.N.O.W.";
-  if (sidebarInstitution) sidebarInstitution.textContent = institution?.name || "K.N.O.W.";
+  if (institutionLineEl) institutionLineEl.textContent = institution?.name || "KNOW";
+  if (sidebarInstitution) sidebarInstitution.textContent = institution?.name || "KNOW";
 
   const logoUrl = institution ? Api.institutions.logoUrl(institution) : null;
   if (logoUrl) {

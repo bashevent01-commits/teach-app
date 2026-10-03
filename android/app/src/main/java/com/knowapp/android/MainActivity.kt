@@ -20,7 +20,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.WindowCompat
 
 /**
- * Shows the real K.N.O.W. web app in a WebView, so the Android app is
+ * Shows the real KNOW web app in a WebView, so the Android app is
  * visually identical to the site by construction rather than a hand-matched
  * native recreation. External links (e.g. the APK download button) and
  * anything off this app's own domains open in the system browser instead of

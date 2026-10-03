@@ -1,5 +1,5 @@
 /* ============================================================
-   K.N.O.W. — Offline support
+   KNOW — Offline support
    IndexedDB-backed: (1) a "pending_transactions" queue for transactions
    recorded while offline, synced automatically once back online, and
    (2) a generic "cache" store holding the last-known server data (a

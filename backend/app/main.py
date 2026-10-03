@@ -11,7 +11,7 @@ from app.core.database import Base, engine, SessionLocal
 from app.core.limiter import limiter
 from app.routers import auth, institutions, users, transactions, audits, posts, reports, moderation, activity_log, stock, mpesa, product_categories, market_analysis, accounting
 
-app = FastAPI(title="K.N.O.W.", description="Institution financial audit, inventory & communication portal")
+app = FastAPI(title="KNOW", description="Institution financial audit, inventory & communication portal")
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
