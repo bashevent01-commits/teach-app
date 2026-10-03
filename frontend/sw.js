@@ -1,10 +1,11 @@
-const CACHE = "know-v11";
+const CACHE = "know-v12";
 const ASSETS = [
   "./",
   "./index.html",
   "./login.html",
   "./admin-login.html",
   "./home.html",
+  "./books.html",
   "./news.html",
   "./audit.html",
   "./dashboard.html",
@@ -23,6 +24,7 @@ const ASSETS = [
   "./js/offline.js",
   "./js/ui.js",
   "./js/home.js",
+  "./js/books.js",
   "./js/audit.js",
   "./js/news.js",
   "./js/dashboard.js",

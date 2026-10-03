@@ -8,6 +8,7 @@ from app.core.activity_log import log_activity
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_institution_scope
 from app.core.limiter import limiter
+from app.core.staff_scope import resolve_staff_filter
 from app.models.audit import Audit, AuditStatus
 from app.models.stock_item import StockItem
 from app.models.transaction import Transaction, TransactionType, TransactionMethod, TransactionCategoryType
@@ -147,14 +148,16 @@ def list_transactions(
     category_type: TransactionCategoryType | None = None,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
+    staff_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     scoped_institution_id = _scoped_institution_id(current_user, institution_id)
     query = db.query(Transaction).filter(Transaction.institution_id == scoped_institution_id)
-    if current_user.role == UserRole.STAFF:
-        # Staff only ever see what they recorded themselves; the institution's full books are for its admin
-        query = query.filter(Transaction.recorded_by_id == current_user.id)
+    # Staff only ever see what they recorded themselves; admins see everyone's, or one person's via staff_id
+    only_user = resolve_staff_filter(db, current_user, scoped_institution_id, staff_id)
+    if only_user is not None:
+        query = query.filter(Transaction.recorded_by_id == only_user)
     if method is not None:
         query = query.filter(Transaction.method == method)
     if category_type is not None:

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.audit import Audit
+from app.core.staff_scope import resolve_staff_filter
 from app.models.institution import Institution
 from app.models.transaction import Transaction, TransactionMethod
 from app.models.user import User, UserRole
@@ -58,6 +59,7 @@ def generate_statement_report(
     end: datetime,
     method: TransactionMethod | None = None,
     institution_id: int | None = None,
+    staff_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -81,8 +83,9 @@ def generate_statement_report(
         Transaction.transaction_date >= start,
         Transaction.transaction_date <= end,
     )
-    if current_user.role == UserRole.STAFF:
-        query = query.filter(Transaction.recorded_by_id == current_user.id)
+    only_user = resolve_staff_filter(db, current_user, scoped_institution_id, staff_id)
+    if only_user is not None:
+        query = query.filter(Transaction.recorded_by_id == only_user)
     if method is not None:
         query = query.filter(Transaction.method == method)
     transactions = query.all()

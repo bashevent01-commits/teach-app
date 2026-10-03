@@ -218,6 +218,8 @@ const Api = {
   },
 
   accounting: {
+    summary: (params = {}) => apiFetch(`/api/accounting/summary?${new URLSearchParams(params)}`),
+    trialBalance: (params = {}) => apiFetch(`/api/accounting/trial-balance?${new URLSearchParams(params)}`),
     openingGet: () => apiFetch("/api/accounting/opening-balances"),
     openingSet: (payload) => apiFetch("/api/accounting/opening-balances", { method: "PUT", body: payload }),
   },

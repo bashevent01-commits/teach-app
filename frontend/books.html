@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>KNOW — Books</title>
+    <meta name="description" content="Institution books for the sub-admin." />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body data-page="books">
+    <div class="app-shell" id="appShell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-logo" id="sidebarLogo" src="./assets/logo.svg" alt="KNOW logo" />
+          <div class="brand-text">
+            <strong id="sidebarSchool">KNOW</strong>
+            <span>Sub-admin</span>
+          </div>
+        </div>
+        <nav class="side-nav" aria-label="Main"></nav>
+        <div class="side-foot">
+          <p class="principle">&ldquo;Your institution, your accounts, your call.&rdquo;</p>
+        </div>
+      </aside>
+
+      <main class="main" id="main">
+        <header class="topbar">
+          <div class="topbar-id">
+            <img class="topbar-logo" id="topLogo" src="./assets/logo.svg" alt="KNOW logo" />
+            <div class="topbar-copy">
+              <p class="greeting" id="greeting">Good morning</p>
+              <p class="subtle" id="schoolLine">Institution</p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn" id="modeToggle" aria-label="Toggle light or dark mode" title="Light / dark mode">
+              <span class="ico" data-ico="mode"></span>
+            </button>
+          </div>
+        </header>
+
+        <section class="page is-active" data-page="books">
+          <div class="card">
+            <div class="card-head">
+              <h2>Books</h2>
+              <span class="subtle">Everyone together, or one staff member at a time</span>
+            </div>
+            <label class="field"><span>Show</span>
+              <select id="staffFilter"><option value="">All staff (collective)</option></select>
+            </label>
+            <div class="statements-range">
+              <label>From <input type="date" id="booksFrom" /></label>
+              <label>To <input type="date" id="booksTo" /></label>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="kpi-row">
+              <div class="kpi"><strong id="bkIncome">—</strong><span>Income</span></div>
+              <div class="kpi"><strong id="bkExpense">—</strong><span>Expense</span></div>
+              <div class="kpi"><strong id="bkNet">—</strong><span>Net</span></div>
+            </div>
+            <div class="money-row">
+              <div class="kpi"><strong id="bkCash">—</strong><span>Cash</span></div>
+              <div class="kpi"><strong id="bkMpesa">—</strong><span>M-Pesa</span></div>
+              <div class="kpi"><strong id="bkBank">—</strong><span>Bank</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Trial balance</h2><span class="pill" id="tbStatus">—</span></div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead><tr><th>Code</th><th>Account</th><th>Debit</th><th>Credit</th></tr></thead>
+                <tbody id="tbBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Records</h2></div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead><tr><th>Date</th><th>By</th><th>Type</th><th>Method</th><th>Category</th><th>Amount</th></tr></thead>
+                <tbody id="recBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="config.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/books.js"></script>
+  </body>
+</html>

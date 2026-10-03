@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.staff_scope import resolve_staff_filter
 from app.models.accounting import Account, AccountType, JournalEntry, JournalLine
 from app.models.audit import Audit, AuditStatus
 from app.models.transaction import Transaction
@@ -68,13 +69,14 @@ def summary(
     institution_id: int | None = None,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
+    staff_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     scoped = _scoped_institution_id(current_user, institution_id)
     backfill_institution(db, scoped)
     # Money-account balances are all-time; income/expense honour the date filter
-    only_user = current_user.id if current_user.role == UserRole.STAFF else None
+    only_user = resolve_staff_filter(db, current_user, scoped, staff_id)
     all_time = {b.key: b for b in _balances(db, scoped, None, None, only_user)}
     period = _balances(db, scoped, start_date, end_date, only_user)
     money = [MoneyPosition(key=k, name=all_time[k].name, balance=all_time[k].balance) for k in ("cash", "mpesa", "bank") if k in all_time]
@@ -88,13 +90,15 @@ def trial_balance(
     institution_id: int | None = None,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
+    staff_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     _require_books_access(current_user)
     scoped = _scoped_institution_id(current_user, institution_id)
     backfill_institution(db, scoped)
-    accounts = [a for a in _balances(db, scoped, start_date, end_date) if a.debit or a.credit]
+    only_user = resolve_staff_filter(db, current_user, scoped, staff_id)
+    accounts = [a for a in _balances(db, scoped, start_date, end_date, only_user) if a.debit or a.credit]
     total_debit = sum((a.debit for a in accounts), Decimal("0"))
     total_credit = sum((a.credit for a in accounts), Decimal("0"))
     return TrialBalance(accounts=accounts, total_debit=total_debit, total_credit=total_credit, balanced=total_debit == total_credit)
@@ -144,13 +148,19 @@ def journal(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     limit: int = 200,
+    staff_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     _require_books_access(current_user)
     scoped = _scoped_institution_id(current_user, institution_id)
     backfill_institution(db, scoped)
+    only_user = resolve_staff_filter(db, current_user, scoped, staff_id)
     query = db.query(JournalEntry).filter(JournalEntry.institution_id == scoped)
+    if only_user is not None:
+        query = query.outerjoin(Transaction, Transaction.id == JournalEntry.transaction_id).filter(
+            (Transaction.recorded_by_id == only_user) | (JournalEntry.owner_id == only_user)
+        )
     if start_date is not None:
         query = query.filter(JournalEntry.entry_date >= start_date)
     if end_date is not None:
