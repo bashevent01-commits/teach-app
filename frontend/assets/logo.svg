@@ -1,5 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Teach logo">
-  <rect width="96" height="96" rx="24" fill="#0f766e"/>
-  <path d="M26 34h44M48 34v36" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
-  <circle cx="70" cy="64" r="9" fill="#eab308"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">know app icon</title>
+  <desc id="desc">The word know on teal, with ledger lines and a gold posting dot forming the o.</desc>
+  <rect x="112" y="112" width="800" height="800" rx="208" fill="#00695F"/>
+  <path d="M190 360h54v148l74-101h66l-87 112 94 137h-65l-64-98-18 21v77h-54V360Z" fill="#F8FAF7"/>
+  <path d="M399 419h52v30c17-24 41-36 70-36 51 0 80 34 80 93v150h-55V516c0-36-14-54-42-54-31 0-50 22-50 61v133h-55V419Z" fill="#F8FAF7"/>
+  <circle cx="668" cy="537" r="92" fill="none" stroke="#F8FAF7" stroke-width="48"/>
+  <rect x="625" y="493" width="86" height="13" rx="6.5" fill="#00695F"/>
+  <rect x="625" y="526" width="86" height="13" rx="6.5" fill="#00695F"/>
+  <rect x="625" y="559" width="86" height="13" rx="6.5" fill="#00695F"/>
+  <circle cx="737" cy="468" r="23" fill="#F5B82E"/>
+  <path d="M758 419h54l29 151 30-151h55l-56 237h-54l-31-144-30 144h-54l-18-76 44-2 18 2 13-161Z" fill="#F8FAF7"/>
 </svg>

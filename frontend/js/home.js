@@ -52,7 +52,6 @@
 
   async function handleBackOnline() {
     const result = await Offline.syncPendingTransactions();
-    if (result.synced) toast(`${result.synced} offline ${result.synced === 1 ? "entry" : "entries"} synced.`);
     if (result.failed) toast(`${result.failed} offline ${result.failed === 1 ? "entry" : "entries"} couldn't be saved — check Home for details.`);
     await loadData();
   }
@@ -75,14 +74,14 @@
       .slice(0, 6);
 
     list.innerHTML = recent.length ? recent.map((t) => `
-      <li class="txn">
+      <li class="txn${t._pending ? (t._pendingFailed ? ' is-failed' : ' is-pending') : ''}">
         <span class="txn-badge ${t.type === "income" ? "in" : "out"}">
           <span class="ico" data-ico="${t.type === "income" ? "in" : "out"}"></span>
         </span>
         <span class="txn-info">
           <strong>${escapeHtml(t.category)}${t.category_type === "STOCK" && t.quantity ? ` &times; ${t.quantity}` : ""}</strong>
           <span class="subtle">
-            ${t._pending ? `<span class="badge-pending">${t._pendingFailed ? "Sync failed" : "Pending sync"}</span> &middot; ` : ""}
+            ${t._pendingFailed ? `<span class="badge-pending">Sync failed</span> &middot; ` : ""}
             ${escapeHtml(t.description || formatDate(t.transaction_date, true))} &middot; ${t.method.toUpperCase()}${t.mpesa_code ? ` &middot; ${escapeHtml(t.mpesa_code)}` : ""}
           </span>
         </span>
@@ -280,7 +279,7 @@
           const { image, ...rest } = fields;
           await Offline.queueTransaction({ ...rest, imageBlob: image, imageName: image?.name });
           Sheet.close();
-          toast(`${title} saved offline — will sync automatically once you're back online.`);
+          toast(`${title} saved.`);
           await loadData();
         } else {
           showFormMessage(msg, err.message || "Could not save the transaction.");

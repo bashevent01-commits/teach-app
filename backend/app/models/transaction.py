@@ -73,3 +73,4 @@ class Transaction(Base):
     institution = relationship("Institution", back_populates="transactions")
     recorded_by = relationship("User", back_populates="transactions_recorded", foreign_keys=[recorded_by_id])
     stock_item = relationship("StockItem", back_populates="transactions")
+    journal_entry = relationship("JournalEntry", back_populates="transaction", uselist=False, cascade="all, delete-orphan")

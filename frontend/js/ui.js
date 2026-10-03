@@ -107,14 +107,10 @@ function ensureOfflineBanner() {
   return el;
 }
 
-function setOfflineBanner(message) {
-  const el = ensureOfflineBanner();
-  if (!message) {
-    el.hidden = true;
-    return;
-  }
-  el.textContent = message;
-  el.hidden = false;
+function setOfflineBanner() {
+  // The top banner was too distracting; pending rows are tinted in the list instead
+  const el = document.getElementById("offlineBanner");
+  if (el) el.hidden = true;
 }
 
 /* ---------------- icons ---------------- */
@@ -298,7 +294,35 @@ async function renderIdentity(session) {
  * logout + theme-toggle buttons. Returns the session for the page's
  * own script to use.
  */
+const Splash = (() => {
+  const SEEN = "know_splash_seen";
+  let el = null;
+  let shownAt = 0;
+  function show() {
+    try { if (sessionStorage.getItem(SEEN)) return; } catch { /* storage blocked */ }
+    el = document.createElement("div");
+    el.className = "ks-splash";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-label", "A pen writing lines into a ledger");
+    el.innerHTML = '<div class="ks-wrap"><div class="ks-book"><i class="ks-rule r1"></i><i class="ks-rule r2"></i><i class="ks-rule r3"></i><i class="ks-rule r4"></i><i class="ks-rule r5"></i><i class="ks-entry e1"></i><i class="ks-entry e2"></i><i class="ks-pen"></i></div><h1>Preparing your accounts</h1><p>Bringing every entry into balance</p></div>';
+    document.body.appendChild(el);
+    shownAt = Date.now();
+  }
+  function hide() {
+    if (!el) return;
+    try { sessionStorage.setItem(SEEN, "1"); } catch { /* storage blocked */ }
+    const node = el;
+    el = null;
+    setTimeout(() => {
+      node.classList.add("is-done");
+      setTimeout(() => node.remove(), 300);
+    }, Math.max(0, 1200 - (Date.now() - shownAt)));
+  }
+  return { show, hide };
+})();
+
 async function initShell(page, allowedRoles) {
+  Splash.show();
   const session = requireRole(...allowedRoles);
   applyTheme();
   renderNav(session, page);
@@ -309,6 +333,7 @@ async function initShell(page, allowedRoles) {
   const logoutBtn = $("#logoutBtn");
   if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
+  Splash.hide();
   return session;
 }
 

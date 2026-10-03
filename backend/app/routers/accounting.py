@@ -1,0 +1,155 @@
+from datetime import datetime
+from decimal import Decimal
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.deps import get_current_user
+from app.models.accounting import Account, AccountType, JournalEntry, JournalLine
+from app.models.user import User, UserRole
+from app.schemas.accounting import (
+    AccountBalance, JournalEntryOut, JournalLineOut, Ledger, LedgerLine, MoneyPosition, Summary, TrialBalance,
+)
+from app.utils.ledger import backfill_institution
+
+router = APIRouter(prefix="/api/accounting", tags=["accounting"])
+
+_DEBIT_NORMAL = (AccountType.ASSET, AccountType.EXPENSE)
+
+
+def _scoped_institution_id(current_user: User, requested_institution_id: int | None) -> int:
+    # Staff and institution_admin are locked to their own institution; only a super admin names one
+    if current_user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN):
+        return current_user.institution_id
+    if requested_institution_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="institution_id is required")
+    return requested_institution_id
+
+
+def _require_books_access(current_user: User) -> None:
+    # Debit/credit views are for the institution's admins and the super admin, never plain staff
+    if current_user.role == UserRole.STAFF:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to view the books")
+
+
+def _balances(db: Session, institution_id: int, start: datetime | None, end: datetime | None) -> list[AccountBalance]:
+    query = (
+        db.query(Account, func.coalesce(func.sum(JournalLine.debit), 0), func.coalesce(func.sum(JournalLine.credit), 0))
+        .outerjoin(JournalLine, JournalLine.account_id == Account.id)
+        .outerjoin(JournalEntry, JournalEntry.id == JournalLine.entry_id)
+        .filter(Account.institution_id == institution_id)
+    )
+    if start is not None:
+        query = query.filter((JournalEntry.id.is_(None)) | (JournalEntry.entry_date >= start))
+    if end is not None:
+        query = query.filter((JournalEntry.id.is_(None)) | (JournalEntry.entry_date <= end))
+    rows = query.group_by(Account.id).order_by(Account.code).all()
+    result = []
+    for account, debit, credit in rows:
+        debit, credit = Decimal(debit), Decimal(credit)
+        balance = debit - credit if account.type in _DEBIT_NORMAL else credit - debit
+        result.append(AccountBalance(id=account.id, code=account.code, key=account.key, name=account.name, type=account.type, debit=debit, credit=credit, balance=balance))
+    return result
+
+
+@router.get("/summary", response_model=Summary)
+def summary(
+    institution_id: int | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    scoped = _scoped_institution_id(current_user, institution_id)
+    backfill_institution(db, scoped)
+    # Money-account balances are all-time; income/expense honour the date filter
+    all_time = {b.key: b for b in _balances(db, scoped, None, None)}
+    period = _balances(db, scoped, start_date, end_date)
+    money = [MoneyPosition(key=k, name=all_time[k].name, balance=all_time[k].balance) for k in ("cash", "mpesa", "bank") if k in all_time]
+    income = sum((b.balance for b in period if b.type == AccountType.INCOME), Decimal("0"))
+    expenses = sum((b.balance for b in period if b.type == AccountType.EXPENSE), Decimal("0"))
+    return Summary(money=money, total_money=sum((m.balance for m in money), Decimal("0")), income=income, expenses=expenses, net=income - expenses)
+
+
+@router.get("/trial-balance", response_model=TrialBalance)
+def trial_balance(
+    institution_id: int | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_books_access(current_user)
+    scoped = _scoped_institution_id(current_user, institution_id)
+    backfill_institution(db, scoped)
+    accounts = [a for a in _balances(db, scoped, start_date, end_date) if a.debit or a.credit]
+    total_debit = sum((a.debit for a in accounts), Decimal("0"))
+    total_credit = sum((a.credit for a in accounts), Decimal("0"))
+    return TrialBalance(accounts=accounts, total_debit=total_debit, total_credit=total_credit, balanced=total_debit == total_credit)
+
+
+@router.get("/ledger/{account_id}", response_model=Ledger)
+def ledger(
+    account_id: int,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_books_access(current_user)
+    account = db.query(Account).filter(Account.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+    if current_user.role == UserRole.INSTITUTION_ADMIN and account.institution_id != current_user.institution_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to view this account")
+    backfill_institution(db, account.institution_id)
+
+    query = (
+        db.query(JournalEntry, JournalLine)
+        .join(JournalLine, JournalLine.entry_id == JournalEntry.id)
+        .filter(JournalLine.account_id == account.id)
+    )
+    if start_date is not None:
+        query = query.filter(JournalEntry.entry_date >= start_date)
+    if end_date is not None:
+        query = query.filter(JournalEntry.entry_date <= end_date)
+    rows = query.order_by(JournalEntry.entry_date, JournalEntry.id).all()
+
+    running = Decimal("0")
+    lines = []
+    for entry, line in rows:
+        running += (line.debit - line.credit) if account.type in _DEBIT_NORMAL else (line.credit - line.debit)
+        lines.append(LedgerLine(entry_id=entry.id, entry_date=entry.entry_date, memo=entry.memo, debit=line.debit, credit=line.credit, running_balance=running))
+    total_debit = sum((l.debit for l in lines), Decimal("0"))
+    total_credit = sum((l.credit for l in lines), Decimal("0"))
+    summary_row = AccountBalance(id=account.id, code=account.code, key=account.key, name=account.name, type=account.type, debit=total_debit, credit=total_credit, balance=running)
+    return Ledger(account=summary_row, lines=lines)
+
+
+@router.get("/journal", response_model=list[JournalEntryOut])
+def journal(
+    institution_id: int | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    limit: int = 200,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_books_access(current_user)
+    scoped = _scoped_institution_id(current_user, institution_id)
+    backfill_institution(db, scoped)
+    query = db.query(JournalEntry).filter(JournalEntry.institution_id == scoped)
+    if start_date is not None:
+        query = query.filter(JournalEntry.entry_date >= start_date)
+    if end_date is not None:
+        query = query.filter(JournalEntry.entry_date <= end_date)
+    entries = query.order_by(JournalEntry.entry_date.desc(), JournalEntry.id.desc()).limit(min(max(limit, 1), 500)).all()
+    return [
+        JournalEntryOut(
+            id=e.id, entry_date=e.entry_date, memo=e.memo, transaction_id=e.transaction_id,
+            lines=[JournalLineOut(account_id=l.account_id, account_name=l.account.name, debit=l.debit, credit=l.credit) for l in e.lines],
+        )
+        for e in entries
+    ]

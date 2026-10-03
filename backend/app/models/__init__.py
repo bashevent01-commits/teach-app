@@ -8,6 +8,7 @@ from app.models.audit import Audit, AuditStatus
 from app.models.post import Post
 from app.models.post_report import PostReport, ReportStatus
 from app.models.activity_log import ActivityLog
+from app.models.accounting import Account, AccountType, JournalEntry, JournalLine
 
 __all__ = [
     "Institution",
@@ -27,4 +28,8 @@ __all__ = [
     "PostReport",
     "ReportStatus",
     "ActivityLog",
+    "Account",
+    "AccountType",
+    "JournalEntry",
+    "JournalLine",
 ]

@@ -13,6 +13,7 @@ from app.models.stock_item import StockItem
 from app.models.transaction import Transaction, TransactionType, TransactionMethod, TransactionCategoryType
 from app.models.user import User, UserRole, StaffType
 from app.schemas.transaction import TransactionOut
+from app.utils.ledger import post_transaction
 from app.utils.uploads import save_transaction_image, delete_storage_object
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
@@ -132,6 +133,8 @@ def create_transaction(
         recorded_by_id=current_user.id,
     )
     db.add(txn)
+    db.flush()
+    post_transaction(db, txn)
     db.commit()
     db.refresh(txn)
     return txn
@@ -274,6 +277,8 @@ def update_transaction(
         contents = image.file.read()
         txn.image_path = save_transaction_image(image, contents)
 
+    db.flush()
+    post_transaction(db, txn)
     db.commit()
     db.refresh(txn)
     if image is not None and image.filename:
