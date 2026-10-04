@@ -107,14 +107,11 @@ dependencies {
 }
 
 // Surface Kotlin compile errors as CI annotations so a failed build explains itself
-tasks.configureEach {
-    val taskName = name
-    val report = StandardOutputListener { message ->
-        val text = message.toString().trim()
-        if (text.startsWith("e: ") || (text.contains(".kt:") && text.contains("error", ignoreCase = true))) {
-            println("::error title=$taskName::" + text.replace("\n", " ").take(450))
-        }
-    }
-    logging.addStandardErrorListener(report)
-    logging.addStandardOutputListener(report)
+tasks.matching { it.name == "compileDebugKotlin" }.configureEach {
+    logging.addStandardErrorListener(
+        StandardOutputListener { message ->
+            val text = message.toString().trim()
+            if (text.startsWith("e: ")) println("::error::" + text.replace("\n", " ").take(450))
+        },
+    )
 }

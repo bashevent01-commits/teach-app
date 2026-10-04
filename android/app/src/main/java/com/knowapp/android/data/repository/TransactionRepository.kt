@@ -100,9 +100,9 @@ class TransactionRepository(
 
     private fun userId(): Int? = sessionStore.session.value?.userId
 
-    suspend fun list(institutionId: Int? = null): TransactionsResult = withContext(Dispatchers.IO) {
+    suspend fun list(institutionId: Int? = null, staffId: Int? = null): TransactionsResult = withContext(Dispatchers.IO) {
         try {
-            val response = api.listTransactions(institutionId = institutionId)
+            val response = api.listTransactions(institutionId = institutionId, staffId = staffId)
             if (response.isSuccessful) {
                 TransactionsResult.Success(response.body() ?: emptyList())
             } else {
