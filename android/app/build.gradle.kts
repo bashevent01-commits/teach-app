@@ -97,6 +97,7 @@ dependencies {
 
     // Image loading for post/news photos (Supabase Storage URLs).
     implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("androidx.compose.material:material-icons-extended")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

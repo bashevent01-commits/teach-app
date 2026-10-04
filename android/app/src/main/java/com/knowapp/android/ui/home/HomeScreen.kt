@@ -190,7 +190,8 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(24.dp))
-                        .background(Brush.linearGradient(listOf(Color(0xFF00897B), HeroTeal, Color(0xFF004D45))))
+                        .background(Brush.linearGradient(if (dark) listOf(Color(0xFF16423D), Color(0xFF0F2F2B)) else listOf(Color(0xFF0F766E), Color(0xFF0B5F59))))
+                        .border(1.dp, if (dark) Color(0xFF24544E) else Color.Transparent, RoundedCornerShape(24.dp))
                         .padding(22.dp),
                 ) {
                     Text("TOTAL YOU HOLD", color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)

@@ -25,6 +25,13 @@ private val LightColors = lightColorScheme(
     onSurfaceVariant = InkSoftLight,
     outline = LineLight,
     error = DangerRed,
+    secondaryContainer = androidx.compose.ui.graphics.Color(0xFFD3ECE8),
+    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFF0B4D47),
+    surfaceContainerLowest = SurfaceLight,
+    surfaceContainerLow = SurfaceLight,
+    surfaceContainer = SurfaceLight,
+    surfaceContainerHigh = Surface2Light,
+    surfaceContainerHighest = Surface2Light,
 )
 
 private val DarkColors = darkColorScheme(
@@ -39,6 +46,13 @@ private val DarkColors = darkColorScheme(
     onSurfaceVariant = InkSoftDark,
     outline = LineDark,
     error = DangerRed,
+    secondaryContainer = androidx.compose.ui.graphics.Color(0xFF173B37),
+    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFF9FE6DC),
+    surfaceContainerLowest = BgDark,
+    surfaceContainerLow = SurfaceDark,
+    surfaceContainer = SurfaceDark,
+    surfaceContainerHigh = Surface2Dark,
+    surfaceContainerHighest = Surface2Dark,
 )
 
 @Composable

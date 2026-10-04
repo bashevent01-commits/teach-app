@@ -193,7 +193,7 @@ fun KnowNavGraph(container: AppContainer) {
             StockScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false)
         }
         composable(Routes.NEWS) {
-            val viewModel: NewsViewModel = viewModel(factory = vmFactory { NewsViewModel(container.postsRepository) })
+            val viewModel: NewsViewModel = viewModel(factory = vmFactory { NewsViewModel(container.postsRepository, container.photoStore, container.sessionStore) })
             NewsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false)
         }
         composable(Routes.AUDITS) {
