@@ -196,4 +196,5 @@ data class PendingTransaction(
     val createdAt: String,
     val failed: Boolean = false,
     val error: String? = null,
+    val imagePath: String? = null,
 )

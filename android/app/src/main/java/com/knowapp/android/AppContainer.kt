@@ -30,7 +30,7 @@ class AppContainer(context: Context) {
     val networkMonitor = NetworkMonitor(context)
     val updateManager = UpdateManager(context)
     val themeStore = ThemeStore(context)
-    val transactionRepository = TransactionRepository(apiService, offlineStore, sessionStore)
+    val transactionRepository = TransactionRepository(apiService, offlineStore, sessionStore, photoStore)
     val booksRepository = BooksRepository(apiService)
     val stockRepository = StockRepository(apiService)
     val postsRepository = PostsRepository(apiService, photoStore)

@@ -3,6 +3,7 @@ package com.knowapp.android.data.repository
 import com.google.gson.JsonParser
 import com.knowapp.android.data.SessionStore
 import com.knowapp.android.data.local.OfflineStore
+import com.knowapp.android.data.local.PhotoStore
 import com.knowapp.android.data.model.OpeningBalancesOut
 import com.knowapp.android.data.model.PendingTransaction
 import com.knowapp.android.data.model.TransactionOut
@@ -11,6 +12,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.Response
+import java.io.File
 import java.io.IOException
 import java.time.Instant
 import java.util.UUID
@@ -31,6 +38,7 @@ data class NewTransaction(
     val quantity: String?,
     val mpesaCode: String?,
     val mpesaPayerName: String?,
+    val imagePath: String? = null,
 )
 
 sealed class RecordResult {
@@ -78,8 +86,17 @@ class TransactionRepository(
     private val api: ApiService,
     private val store: OfflineStore,
     private val sessionStore: SessionStore,
+    private val photos: PhotoStore,
 ) {
     private val pendingLock = Mutex()
+
+    private suspend fun send(fields: Map<String, String>, imagePath: String?): Response<TransactionOut> {
+        val parts = fields.mapValues { it.value.toRequestBody("text/plain".toMediaType()) }
+        val image = imagePath?.let { File(it) }?.takeIf { it.exists() }?.let {
+            MultipartBody.Part.createFormData("image", it.name, it.asRequestBody("image/jpeg".toMediaType()))
+        }
+        return api.createTransactionWithPhoto(parts, image)
+    }
 
     private fun userId(): Int? = sessionStore.session.value?.userId
 
@@ -126,7 +143,8 @@ class TransactionRepository(
     suspend fun record(draft: NewTransaction): RecordResult = withContext(Dispatchers.IO) {
         val uid = userId() ?: return@withContext RecordResult.Rejected("You are signed out. Please sign in again.")
         try {
-            val response = api.createTransaction(draft.toFields())
+            val response = send(draft.toFields(), draft.imagePath)
+            photos.delete(draft.imagePath)
             if (response.isSuccessful) {
                 RecordResult.Saved
             } else {
@@ -147,6 +165,7 @@ class TransactionRepository(
                     mpesaCode = draft.mpesaCode,
                     mpesaPayerName = draft.mpesaPayerName,
                     createdAt = Instant.now().toString(),
+                    imagePath = draft.imagePath,
                 )
                 store.savePending(uid, store.pending(uid) + queued)
             }
@@ -169,8 +188,9 @@ class TransactionRepository(
                     continue
                 }
                 try {
-                    val response = api.createTransaction(item.toFields())
+                    val response = send(item.toFields(), item.imagePath)
                     if (response.isSuccessful) {
+                        photos.delete(item.imagePath)
                         synced++
                     } else {
                         remaining += item.copy(failed = true, error = errorDetail(response.errorBody()?.string(), response.code()))
@@ -187,7 +207,11 @@ class TransactionRepository(
 
     suspend fun discardPending(localId: String) = withContext(Dispatchers.IO) {
         val uid = userId() ?: return@withContext
-        pendingLock.withLock { store.savePending(uid, store.pending(uid).filter { it.localId != localId }) }
+        pendingLock.withLock {
+            val queue = store.pending(uid)
+            queue.firstOrNull { it.localId == localId }?.let { photos.delete(it.imagePath) }
+            store.savePending(uid, queue.filter { it.localId != localId })
+        }
     }
 
     suspend fun setOpening(cash: Double, mpesa: Double, bank: Double): Result<OpeningBalancesOut> = withContext(Dispatchers.IO) {

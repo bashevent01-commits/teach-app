@@ -1,6 +1,18 @@
 package com.knowapp.android.ui.home
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
+import coil.compose.AsyncImage
+import com.knowapp.android.data.model.resolveMediaUrl
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.Image as ImageIcon
+import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -130,6 +142,7 @@ fun HomeScreen(
 
     var recordKind by remember { mutableStateOf<String?>(null) }
     var showOpening by remember { mutableStateOf(false) }
+    var detail by remember { mutableStateOf<TransactionOut?>(null) }
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -259,7 +272,7 @@ fun HomeScreen(
                     state.pending.forEach { PendingRow(it, viewModel::discardPending) }
                     recent.forEachIndexed { index, t ->
                         if (index > 0 || state.pending.isNotEmpty()) HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
-                        TransactionRow(t)
+                        TransactionRow(t) { detail = t }
                     }
                 }
             }
@@ -274,9 +287,11 @@ fun HomeScreen(
             isTeacher = isTeacher,
             saving = state.saving,
             onDismiss = { recordKind = null },
-            onSubmit = { draft -> viewModel.record(draft) { ok -> if (ok) recordKind = null } },
+            onSubmit = { draft, photo -> viewModel.record(draft, photo) { ok -> if (ok) recordKind = null } },
         )
     }
+
+    detail?.let { t -> DetailSheet(t) { detail = null } }
 
     if (showOpening) {
         OpeningSheet(
@@ -382,15 +397,15 @@ private fun PendingRow(p: PendingTransaction, onDiscard: (String) -> Unit) {
 }
 
 @Composable
-private fun TransactionRow(t: TransactionOut) {
+private fun TransactionRow(t: TransactionOut, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RowIcon(t.type)
         Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(t.category, fontWeight = FontWeight.SemiBold)
-            Text("${methodLabel(t.method)} · ${dayLabel(t.transactionDate)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${methodLabel(t.method)} · ${dayLabel(t.transactionDate)}${if (t.imagePath != null) " · photo" else ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(
             "${if (t.type == "income") "+" else "-"}${kes(t.amount)}",
@@ -432,7 +447,7 @@ private fun RecordSheet(
     isTeacher: Boolean,
     saving: Boolean,
     onDismiss: () -> Unit,
-    onSubmit: (NewTransaction) -> Unit,
+    onSubmit: (NewTransaction, Uri?) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val isIncome = kind == "income"
@@ -447,6 +462,11 @@ private fun RecordSheet(
     var mpesaCode by remember { mutableStateOf("") }
     var payer by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var photo by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+    var cameraTarget by remember { mutableStateOf<Uri?>(null) }
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) photo = uri }
+    val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok -> if (ok) photo = cameraTarget }
 
     val item = stock.firstOrNull { it.name == itemName }
     val qty = quantity.toBigDecimalOrNull()
@@ -542,6 +562,34 @@ private fun RecordSheet(
 
             OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Note (optional)") }, minLines = 2, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
 
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionLabel("Receipt or proof (optional)")
+                if (photo != null) {
+                    Box {
+                        AsyncImage(
+                            model = photo,
+                            contentDescription = "Attached photo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(16.dp)),
+                        )
+                        TextButton(
+                            onClick = { photo = null },
+                            modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).background(Color.Black.copy(alpha = 0.55f), PillShape),
+                        ) { Text("Remove", color = Color.White) }
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ChoiceCard("Take photo", Icons.Outlined.PhotoCamera, false, accent, Modifier.weight(1f)) {
+                            val dir = File(context.cacheDir, "photos").apply { mkdirs() }
+                            val target = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(dir, "capture_${System.currentTimeMillis()}.jpg"))
+                            cameraTarget = target
+                            takePhoto.launch(target)
+                        }
+                        ChoiceCard("Choose photo", Icons.Outlined.ImageIcon, false, accent, Modifier.weight(1f)) { pickPhoto.launch("image/*") }
+                    }
+                }
+            }
+
             error?.let {
                 Text(it, color = DangerRed, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(DangerRed.copy(alpha = 0.12f), SmallRadius).padding(12.dp))
             }
@@ -570,6 +618,7 @@ private fun RecordSheet(
                                 mpesaCode = if (method == "mpesa") mpesaCode.trim().ifBlank { null } else null,
                                 mpesaPayerName = if (method == "mpesa") payer.trim().ifBlank { null } else null,
                             ),
+                            photo,
                         )
                     }
                 },
@@ -622,5 +671,45 @@ private fun OpeningSheet(cash: String, mpesa: String, bank: String, onDismiss: (
                 modifier = Modifier.fillMaxWidth().height(54.dp),
             ) { Text("Save starting balances", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
         }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DetailSheet(t: TransactionOut, onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val color = if (t.type == "income") IncomeGreen else ExpenseOrange
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
+        Column(
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RowIcon(t.type)
+                Column(modifier = Modifier.padding(start = 12.dp)) {
+                    Text(t.category, fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text(if (t.type == "income") "Received" else "Paid", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Text("${if (t.type == "income") "+" else "-"}${kes(t.amount)}", color = color, fontWeight = FontWeight.Bold, fontSize = 30.sp, fontFamily = DisplayFontFamily)
+            DetailLine("Method", methodLabel(t.method))
+            DetailLine("Date", dayLabel(t.transactionDate))
+            t.quantity?.let { DetailLine("Quantity", it.toBigDecimalOrNull()?.stripTrailingZeros()?.toPlainString() ?: it) }
+            t.mpesaCode?.takeIf { it.isNotBlank() }?.let { DetailLine("M-Pesa code", it) }
+            t.mpesaPayerName?.takeIf { it.isNotBlank() }?.let { DetailLine("Name on M-Pesa", it) }
+            t.description?.takeIf { it.isNotBlank() }?.let { DetailLine("Note", it) }
+            resolveMediaUrl(t.imagePath)?.let { url ->
+                AsyncImage(model = url, contentDescription = "Attached photo", contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailLine(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, fontWeight = FontWeight.SemiBold)
     }
 }

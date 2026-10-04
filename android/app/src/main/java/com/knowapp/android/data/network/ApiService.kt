@@ -51,6 +51,13 @@ interface ApiService {
     @POST("/api/transactions")
     suspend fun createTransaction(@FieldMap fields: Map<String, String>): Response<TransactionOut>
 
+    @Multipart
+    @POST("/api/transactions")
+    suspend fun createTransactionWithPhoto(
+        @PartMap fields: Map<String, @JvmSuppressWildcards RequestBody>,
+        @Part image: MultipartBody.Part?,
+    ): Response<TransactionOut>
+
     @POST("/api/stock")
     suspend fun createStockItem(@Body body: Map<String, @JvmSuppressWildcards Any?>): Response<StockItemOut>
 

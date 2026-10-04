@@ -2,7 +2,17 @@ package com.knowapp.android
 
 import android.os.Bundle
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.knowapp.android.ui.splash.SplashScreen
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import com.knowapp.android.data.ThemeMode
 import androidx.activity.ComponentActivity
@@ -29,8 +39,16 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
             }
             KnowTheme(darkTheme = dark) {
+                var showSplash by remember { mutableStateOf(true) }
+                LaunchedEffect(Unit) {
+                    delay(2000)
+                    showSplash = false
+                }
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    KnowNavGraph(container = container)
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        KnowNavGraph(container = container)
+                        AnimatedVisibility(visible = showSplash, exit = fadeOut(tween(400))) { SplashScreen() }
+                    }
                 }
             }
         }

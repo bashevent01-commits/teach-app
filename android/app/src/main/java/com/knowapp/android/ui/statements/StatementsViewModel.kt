@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.knowapp.android.data.model.PendingTransaction
 import com.knowapp.android.data.model.TransactionOut
+import com.knowapp.android.data.model.UserOut
+import com.knowapp.android.data.repository.BooksRepository
 import com.knowapp.android.data.repository.TransactionRepository
+import com.knowapp.android.data.repository.TransactionsResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -44,7 +47,12 @@ data class StatementsUiState(
     val customFrom: LocalDate = LocalDate.now().withDayOfMonth(1),
     val customTo: LocalDate = LocalDate.now(),
     val refreshing: Boolean = false,
+    val isAdmin: Boolean = false,
+    val staff: List<UserOut> = emptyList(),
+    val selectedStaffId: Int? = null,
 ) {
+    val staffLabel: String? get() = staff.firstOrNull { it.id == selectedStaffId }?.fullName
+
     private fun bounds(today: LocalDate): Pair<LocalDate?, LocalDate?> = when (range) {
         StatementRange.THIS_MONTH -> today.withDayOfMonth(1) to today
         StatementRange.LAST_MONTH -> {
@@ -92,15 +100,36 @@ private fun TransactionOut.toRow() = StatementRow(dateOf(transactionDate), categ
 // Entries still waiting to sync are dated by when they were recorded on the phone
 private fun PendingTransaction.toRow() = StatementRow(dateOf(createdAt), category ?: "Stock entry", method, type, amount.toBigDecimalOrNull() ?: BigDecimal.ZERO, true)
 
-class StatementsViewModel(private val transactions: TransactionRepository) : ViewModel() {
-    private val _state = MutableStateFlow(StatementsUiState())
+class StatementsViewModel(
+    private val transactions: TransactionRepository,
+    private val books: BooksRepository,
+    private val isAdmin: Boolean,
+) : ViewModel() {
+    private val _state = MutableStateFlow(StatementsUiState(isAdmin = isAdmin))
     val state: StateFlow<StatementsUiState> = _state
 
     private fun rowsOf(data: com.knowapp.android.data.repository.HomeData) =
         data.transactions.map { it.toRow() } + data.pending.filter { !it.failed }.map { it.toRow() }
 
+    private suspend fun loadFor(staffId: Int?) {
+        _state.value = _state.value.copy(refreshing = true, selectedStaffId = staffId)
+        when (val result = transactions.list(staffId = staffId)) {
+            is TransactionsResult.Success -> _state.value = _state.value.copy(refreshing = false, loading = false, rows = result.transactions.map { it.toRow() })
+            is TransactionsResult.Failure -> _state.value = _state.value.copy(refreshing = false, loading = false)
+        }
+    }
+
+    fun selectStaff(staffId: Int?) {
+        viewModelScope.launch { loadFor(staffId) }
+    }
+
     init {
-        viewModelScope.launch {
+        if (isAdmin) {
+            viewModelScope.launch {
+                books.staff().onSuccess { _state.value = _state.value.copy(staff = it) }
+                loadFor(null)
+            }
+        } else viewModelScope.launch {
             // Paint what is on the phone straight away, then update from the server
             val cached = transactions.cachedHome()
             _state.value = _state.value.copy(loading = false, refreshing = true, rows = rowsOf(cached))

@@ -39,7 +39,7 @@ private const val ALL_STAFF = "All staff (collective)"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BooksScreen(viewModel: BooksViewModel, onBack: () -> Unit, showBack: Boolean = true, onViewAudits: () -> Unit = {}) {
+fun BooksScreen(viewModel: BooksViewModel, onBack: () -> Unit, showBack: Boolean = true, onViewAudits: () -> Unit = {}, onViewStatements: () -> Unit = {}) {
     val state by viewModel.state.collectAsState()
     val names = state.staff.associate { it.id to it.fullName }
     val options = listOf(ALL_STAFF) + state.staff.map { "${it.fullName} (${it.username})" }
@@ -50,7 +50,10 @@ fun BooksScreen(viewModel: BooksViewModel, onBack: () -> Unit, showBack: Boolean
             TopAppBar(
                 title = { Text("Books", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
                 navigationIcon = { if (showBack) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
-                actions = { TextButton(onClick = onViewAudits) { Text("Audits") } },
+                actions = {
+                    TextButton(onClick = onViewStatements) { Text("Statements") }
+                    TextButton(onClick = onViewAudits) { Text("Audits") }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },

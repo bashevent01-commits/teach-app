@@ -4,7 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.knowapp.android.data.Session
 import com.knowapp.android.data.SessionStore
+import android.net.Uri
 import com.knowapp.android.data.local.OfflineStore
+import com.knowapp.android.data.local.PhotoStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.knowapp.android.data.model.OpeningBalancesOut
 import com.knowapp.android.data.model.PendingTransaction
 import com.knowapp.android.data.model.StockItemOut
@@ -42,6 +46,7 @@ class HomeViewModel(
     private val offlineStore: OfflineStore,
     private val sessionStore: SessionStore,
     private val institutions: InstitutionsRepository,
+    private val photos: PhotoStore,
     network: NetworkMonitor,
 ) : ViewModel() {
     val session: StateFlow<Session?> = authRepository.session
@@ -99,10 +104,11 @@ class HomeViewModel(
         loadStock()
     }
 
-    fun record(draft: NewTransaction, onFinished: (Boolean) -> Unit) {
+    fun record(draft: NewTransaction, photo: Uri?, onFinished: (Boolean) -> Unit) {
         viewModelScope.launch {
             _state.value = _state.value.copy(saving = true)
-            when (val result = transactions.record(draft)) {
+            val path = photo?.let { withContext(Dispatchers.IO) { photos.import(it) } }
+            when (val result = transactions.record(draft.copy(imagePath = path))) {
                 is RecordResult.Saved, is RecordResult.Queued -> {
                     _state.value = _state.value.copy(saving = false, message = "Saved.")
                     refresh()

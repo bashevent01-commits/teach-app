@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -109,7 +110,7 @@ fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBac
     fun printStatement() {
         val activity = context.findActivity() ?: return
         val file = File(context.cacheDir, "statement.pdf")
-        StatementPdf.build(file, state.title, "Period: ${state.periodText}", rows, state.income, state.expense)
+        StatementPdf.build(file, state.title, listOfNotNull(state.staffLabel?.let { "Staff: $it" }, "Period: ${state.periodText}").joinToString("  ·  "), rows, state.income, state.expense)
         val manager = activity.getSystemService(Context.PRINT_SERVICE) as PrintManager
         manager.print(state.title, FilePrintAdapter(file, state.title), PrintAttributes.Builder().build())
     }
@@ -118,6 +119,13 @@ fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBac
         topBar = {
             TopAppBar(
                 title = { Text("Statements", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    if (showBack) {
+                        androidx.compose.material3.IconButton(onClick = onBack) {
+                            Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                },
                 actions = { OutlinedButton(onClick = onViewAudits, shape = PillShape, modifier = Modifier.padding(end = 12.dp)) { Text("Audits") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
@@ -151,6 +159,15 @@ fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBac
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
+                    if (state.isAdmin) {
+                        val allLabel = "All staff (collective)"
+                        val options = listOf(allLabel) + state.staff.map { "${it.fullName} (${it.username})" }
+                        val current = state.staff.firstOrNull { it.id == state.selectedStaffId }?.let { "${it.fullName} (${it.username})" } ?: allLabel
+                        Text("STAFF MEMBER", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        com.knowapp.android.ui.components.SimpleDropdown("Show", options, current, { choice ->
+                            viewModel.selectStaff(state.staff.firstOrNull { "${it.fullName} (${it.username})" == choice }?.id)
+                        })
+                    }
                     Text("ACCOUNT", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                         STATEMENT_METHODS.forEachIndexed { index, (value, label) ->
