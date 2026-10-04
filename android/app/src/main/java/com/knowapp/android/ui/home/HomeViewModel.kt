@@ -50,7 +50,11 @@ class HomeViewModel(
     val state: StateFlow<HomeUiState> = _state
 
     init {
-        viewModelScope.launch { refresh() }
+        viewModelScope.launch {
+            val cached = transactions.cachedHome()
+            _state.value = _state.value.copy(loading = false, transactions = cached.transactions, pending = cached.pending, opening = cached.opening)
+            refresh()
+        }
         viewModelScope.launch {
             val id = sessionStore.session.value?.institutionId
             val result = institutions.list()

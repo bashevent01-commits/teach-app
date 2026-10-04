@@ -81,12 +81,7 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.height(56.dp))
-            Box(
-                modifier = Modifier.size(92.dp).clip(RoundedCornerShape(28.dp)).background(Color(0xFF00695F)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = "KNOW", modifier = Modifier.size(92.dp))
-            }
+            Image(painter = painterResource(R.drawable.know_logo), contentDescription = "KNOW", modifier = Modifier.size(96.dp))
             Text(
                 "Welcome back",
                 fontFamily = DisplayFontFamily,

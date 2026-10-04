@@ -31,6 +31,7 @@ enum class StatementRange(val label: String) {
     LAST_7("Last 7 days"),
     LAST_30("Last 30 days"),
     ALL("All time"),
+    CUSTOM("Custom"),
 }
 
 val STATEMENT_METHODS = listOf("all" to "All", "cash" to "Cash", "mpesa" to "M-Pesa", "bank" to "Bank")
@@ -40,6 +41,9 @@ data class StatementsUiState(
     val rows: List<StatementRow> = emptyList(),
     val method: String = "all",
     val range: StatementRange = StatementRange.THIS_MONTH,
+    val customFrom: LocalDate = LocalDate.now().withDayOfMonth(1),
+    val customTo: LocalDate = LocalDate.now(),
+    val refreshing: Boolean = false,
 ) {
     private fun bounds(today: LocalDate): Pair<LocalDate?, LocalDate?> = when (range) {
         StatementRange.THIS_MONTH -> today.withDayOfMonth(1) to today
@@ -50,6 +54,7 @@ data class StatementsUiState(
         StatementRange.LAST_7 -> today.minusDays(6) to today
         StatementRange.LAST_30 -> today.minusDays(29) to today
         StatementRange.ALL -> null to null
+        StatementRange.CUSTOM -> customFrom to customTo
     }
 
     val periodText: String
@@ -91,12 +96,25 @@ class StatementsViewModel(private val transactions: TransactionRepository) : Vie
     private val _state = MutableStateFlow(StatementsUiState())
     val state: StateFlow<StatementsUiState> = _state
 
+    private fun rowsOf(data: com.knowapp.android.data.repository.HomeData) =
+        data.transactions.map { it.toRow() } + data.pending.filter { !it.failed }.map { it.toRow() }
+
     init {
         viewModelScope.launch {
+            // Paint what is on the phone straight away, then update from the server
+            val cached = transactions.cachedHome()
+            _state.value = _state.value.copy(loading = false, refreshing = true, rows = rowsOf(cached))
             val data = transactions.loadHome()
-            val rows = data.transactions.map { it.toRow() } + data.pending.filter { !it.failed }.map { it.toRow() }
-            _state.value = _state.value.copy(loading = false, rows = rows)
+            _state.value = _state.value.copy(refreshing = false, rows = rowsOf(data))
         }
+    }
+
+    fun setCustomFrom(date: LocalDate) {
+        _state.value = _state.value.copy(customFrom = date, customTo = if (date.isAfter(_state.value.customTo)) date else _state.value.customTo)
+    }
+
+    fun setCustomTo(date: LocalDate) {
+        _state.value = _state.value.copy(customTo = date, customFrom = if (date.isBefore(_state.value.customFrom)) date else _state.value.customFrom)
     }
 
     fun selectMethod(method: String) {

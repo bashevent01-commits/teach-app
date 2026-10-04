@@ -96,6 +96,12 @@ class TransactionRepository(
         }
     }
 
+    // Whatever is on the phone right now, so screens can paint before the network answers
+    suspend fun cachedHome(): HomeData = withContext(Dispatchers.IO) {
+        val uid = userId() ?: return@withContext HomeData(emptyList(), emptyList(), OpeningBalancesOut("0", "0", "0", false))
+        HomeData(store.transactions(uid) ?: emptyList(), store.pending(uid), store.opening(uid) ?: OpeningBalancesOut("0", "0", "0", false))
+    }
+
     suspend fun loadHome(): HomeData = withContext(Dispatchers.IO) {
         val uid = userId() ?: return@withContext HomeData(emptyList(), emptyList(), OpeningBalancesOut("0", "0", "0", false))
         var transactions = store.transactions(uid) ?: emptyList()

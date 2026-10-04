@@ -19,12 +19,12 @@ val InkSoftLight = Color(0xFF5D6F6B)
 val LineLight = Color(0xFFE2E8E6)
 
 // Dark surfaces
-val BgDark = Color(0xFF080F0E)
-val SurfaceDark = Color(0xFF13231F)
-val Surface2Dark = Color(0xFF1C312C)
+val BgDark = Color(0xFF0C1110)
+val SurfaceDark = Color(0xFF151C1B)
+val Surface2Dark = Color(0xFF1E2827)
 val InkDark = Color(0xFFEAF3F1)
-val InkSoftDark = Color(0xFF94A9A5)
-val LineDark = Color(0xFF2B433D)
+val InkSoftDark = Color(0xFF9CADAA)
+val LineDark = Color(0xFF2C3938)
 
 // Semantic (transaction income/expense + status)
 val IncomeGreen = Color(0xFF16A34A)
