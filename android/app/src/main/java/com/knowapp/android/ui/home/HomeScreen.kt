@@ -34,6 +34,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -237,37 +238,39 @@ fun HomeScreen(
             }
 
             item {
-                Text("THIS MONTH", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {
-                    MonthTile("Income", income, IncomeGreen, Modifier.weight(1f))
-                    MonthTile("Expense", expense, ExpenseOrange, Modifier.weight(1f))
-                    MonthTile("Net", income - expense, if (income - expense < BigDecimal.ZERO) DangerRed else MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+                CardShell {
+                    Text("This month", style = MaterialTheme.typography.titleMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 12.dp)) {
+                        MonthTile("Income", income, IncomeGreen, Modifier.weight(1f))
+                        MonthTile("Expense", expense, ExpenseOrange, Modifier.weight(1f))
+                        MonthTile("Net", income - expense, if (income - expense < BigDecimal.ZERO) DangerRed else MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+                    }
+                    FlowBar(income, expense, modifier = Modifier.padding(top = 14.dp))
                 }
-                FlowBar(income, expense, modifier = Modifier.padding(top = 12.dp))
             }
 
             item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Recent activity", style = MaterialTheme.typography.titleMedium)
-                    TextButton(onClick = onSeeAll) { Text("See all") }
-                }
-            }
-            val recent = state.transactions.sortedByDescending { it.createdAt }.take(8)
-            if (state.pending.isEmpty() && recent.isEmpty()) {
-                item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), CardRadius).padding(28.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(34.dp))
-                        Text("Nothing recorded yet", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
-                        Text("Tap Receiving or Paying to add your first entry.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                val recent = state.transactions.sortedByDescending { it.createdAt }.take(8)
+                CardShell {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Recent activity", style = MaterialTheme.typography.titleMedium)
+                        TextButton(onClick = onSeeAll) { Text("See all") }
+                    }
+                    if (state.pending.isEmpty() && recent.isEmpty()) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(34.dp))
+                            Text("Nothing recorded yet", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+                            Text("Tap Receiving or Paying to add your first entry.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                        }
+                    }
+                    // Pending rows are tinted until the server has them, then they appear as normal rows
+                    state.pending.forEach { PendingRow(it, viewModel::discardPending) }
+                    recent.forEachIndexed { index, t ->
+                        if (index > 0 || state.pending.isNotEmpty()) HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+                        TransactionRow(t)
                     }
                 }
             }
-            // Pending rows are tinted until the server has them, then they appear as normal rows
-            items(state.pending.size) { index -> PendingRow(state.pending[index], viewModel::discardPending) }
-            items(recent.size) { index -> TransactionRow(recent[index]) }
             item { Spacer(Modifier.height(8.dp)) }
         }
     }
@@ -295,6 +298,18 @@ fun HomeScreen(
 }
 
 @Composable
+private fun CardShell(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(22.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f), RoundedCornerShape(22.dp))
+            .padding(18.dp),
+        content = content,
+    )
+}
+
+@Composable
 private fun HeroTile(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, value: BigDecimal, modifier: Modifier) {
     Column(modifier = modifier.background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(16.dp)).padding(horizontal = 10.dp, vertical = 12.dp)) {
         Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
@@ -307,8 +322,7 @@ private fun HeroTile(label: String, icon: androidx.compose.ui.graphics.vector.Im
 private fun MonthTile(label: String, value: BigDecimal, color: Color, modifier: Modifier) {
     Column(
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
         Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -355,7 +369,7 @@ private fun RowIcon(type: String) {
 @Composable
 private fun PendingRow(p: PendingTransaction, onDiscard: (String) -> Unit) {
     val tint = if (p.failed) DangerRed else WarnAmber
-    Column(modifier = Modifier.fillMaxWidth().background(tint.copy(alpha = 0.14f), SmallRadius).padding(12.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).background(tint.copy(alpha = 0.14f), SmallRadius).padding(12.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             RowIcon(p.type)
             Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -378,11 +392,7 @@ private fun PendingRow(p: PendingTransaction, onDiscard: (String) -> Unit) {
 @Composable
 private fun TransactionRow(t: TransactionOut) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-            .padding(14.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RowIcon(t.type)

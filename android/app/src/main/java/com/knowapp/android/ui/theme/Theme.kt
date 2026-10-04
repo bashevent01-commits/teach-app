@@ -35,10 +35,10 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Brand,
-    onPrimary = BrandInk,
-    primaryContainer = BrandSoft,
-    onPrimaryContainer = Brand,
+    primary = androidx.compose.ui.graphics.Color(0xFF3DB8A9),
+    onPrimary = androidx.compose.ui.graphics.Color(0xFF062B27),
+    primaryContainer = androidx.compose.ui.graphics.Color(0xFF16423D),
+    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFF9FE6DC),
     background = BgDark,
     surface = SurfaceDark,
     onSurface = InkDark,
