@@ -15,6 +15,8 @@ import com.knowapp.android.ui.accounts.AccountsViewModel
 import com.knowapp.android.ui.books.BooksScreen
 import com.knowapp.android.ui.books.BooksViewModel
 import com.knowapp.android.ui.settings.SettingsScreen
+import com.knowapp.android.ui.statements.StatementsScreen
+import com.knowapp.android.ui.statements.StatementsViewModel
 import com.knowapp.android.ui.audits.AuditDetailScreen
 import com.knowapp.android.ui.audits.AuditDetailViewModel
 import com.knowapp.android.ui.audits.AuditsScreen
@@ -79,6 +81,7 @@ fun KnowNavGraph(container: AppContainer) {
                 onViewNews = { navController.navigate(Routes.NEWS) },
                 onViewAudits = { navController.navigate(Routes.AUDITS) },
                 onViewBooks = { navController.navigate(Routes.BOOKS) },
+                onViewStatements = { navController.navigate(Routes.STATEMENTS) },
                 onViewInstitutions = { navController.navigate(Routes.INSTITUTIONS) },
                 onViewAccounts = { navController.navigate(Routes.ACCOUNTS) },
                 onViewMarket = { navController.navigate(Routes.MARKET) },
@@ -94,6 +97,10 @@ fun KnowNavGraph(container: AppContainer) {
                     navController.navigate(Routes.LOGIN) { popUpTo(0) { inclusive = true } }
                 },
             )
+        }
+        composable(Routes.STATEMENTS) {
+            val viewModel: StatementsViewModel = viewModel(factory = vmFactory { StatementsViewModel(container.transactionRepository) })
+            StatementsScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
         }
         composable(Routes.BOOKS) {
             val viewModel: BooksViewModel = viewModel(factory = vmFactory { BooksViewModel(container.booksRepository) })

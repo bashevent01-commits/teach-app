@@ -76,6 +76,7 @@ fun HomeScreen(
     onViewNews: () -> Unit,
     onViewAudits: () -> Unit,
     onViewBooks: () -> Unit,
+    onViewStatements: () -> Unit,
     onViewInstitutions: () -> Unit,
     onViewAccounts: () -> Unit,
     onViewMarket: () -> Unit,
@@ -105,7 +106,8 @@ fun HomeScreen(
         if (!isSuperAdmin) {
             if (!isTeacher) add(MenuItem("Stock", "Browse items, unit prices, and current quantities.", "View stock", onViewStock))
             add(MenuItem("News", "Institution announcements and updates.", "View news", onViewNews))
-            add(MenuItem(if (isStaff) "Statements" else "Audits", "Submit and review financial audits.", "Open", onViewAudits))
+            add(MenuItem("Statements", "View and print a statement for any period.", "Open statements", onViewStatements))
+            add(MenuItem("Audits", "Submit and review financial audits.", "View audits", onViewAudits))
         }
         if (isInstitutionAdmin) add(MenuItem("Books", "Everyone's records together, or one staff member at a time.", "Open books", onViewBooks))
         if (isInstitutionAdmin || isSuperAdmin) add(MenuItem("Accounts", "Manage staff and admin accounts.", "View accounts", onViewAccounts))

@@ -7,6 +7,7 @@ object Routes {
     const val STOCK = "stock"
     const val SETTINGS = "settings"
     const val BOOKS = "books"
+    const val STATEMENTS = "statements"
     const val NEWS = "news"
     const val AUDITS = "audits"
     const val AUDIT_DETAIL = "audit_detail/{auditId}"

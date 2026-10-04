@@ -1,0 +1,109 @@
+package com.knowapp.android.ui.statements
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.knowapp.android.data.model.PendingTransaction
+import com.knowapp.android.data.model.TransactionOut
+import com.knowapp.android.data.repository.TransactionRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import java.math.BigDecimal
+import java.time.Instant
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.ZoneId
+
+data class StatementRow(
+    val date: LocalDate,
+    val category: String,
+    val method: String,
+    val type: String,
+    val amount: BigDecimal,
+    val pending: Boolean,
+) {
+    val methodLabel: String get() = when (method) { "mpesa" -> "M-Pesa"; "cash" -> "Cash"; "bank" -> "Bank"; else -> method }
+}
+
+enum class StatementRange(val label: String) {
+    THIS_MONTH("This month"),
+    LAST_MONTH("Last month"),
+    LAST_7("Last 7 days"),
+    LAST_30("Last 30 days"),
+    ALL("All time"),
+}
+
+val STATEMENT_METHODS = listOf("all" to "All", "cash" to "Cash", "mpesa" to "M-Pesa", "bank" to "Bank")
+
+data class StatementsUiState(
+    val loading: Boolean = true,
+    val rows: List<StatementRow> = emptyList(),
+    val method: String = "all",
+    val range: StatementRange = StatementRange.THIS_MONTH,
+) {
+    private fun bounds(today: LocalDate): Pair<LocalDate?, LocalDate?> = when (range) {
+        StatementRange.THIS_MONTH -> today.withDayOfMonth(1) to today
+        StatementRange.LAST_MONTH -> {
+            val first = today.withDayOfMonth(1).minusMonths(1)
+            first to first.withDayOfMonth(first.lengthOfMonth())
+        }
+        StatementRange.LAST_7 -> today.minusDays(6) to today
+        StatementRange.LAST_30 -> today.minusDays(29) to today
+        StatementRange.ALL -> null to null
+    }
+
+    val periodText: String
+        get() {
+            val (from, to) = bounds(LocalDate.now())
+            return if (from == null || to == null) "All time" else "$from to $to"
+        }
+
+    val visible: List<StatementRow>
+        get() {
+            val (from, to) = bounds(LocalDate.now())
+            return rows
+                .filter { method == "all" || it.method == method }
+                .filter { (from == null || !it.date.isBefore(from)) && (to == null || !it.date.isAfter(to)) }
+                .sortedBy { it.date }
+        }
+
+    val income: BigDecimal get() = visible.filter { it.type == "income" }.fold(BigDecimal.ZERO) { a, r -> a + r.amount }
+    val expense: BigDecimal get() = visible.filter { it.type == "expense" }.fold(BigDecimal.ZERO) { a, r -> a + r.amount }
+    val title: String get() = if (method == "all") "Combined Statement" else "${STATEMENT_METHODS.first { it.first == method }.second} Movement Statement"
+}
+
+private fun dateOf(iso: String): LocalDate = try {
+    OffsetDateTime.parse(iso).atZoneSameInstant(ZoneId.systemDefault()).toLocalDate()
+} catch (e: Exception) {
+    try {
+        Instant.parse(iso).atZone(ZoneId.systemDefault()).toLocalDate()
+    } catch (e2: Exception) {
+        LocalDate.parse(iso.take(10))
+    }
+}
+
+private fun TransactionOut.toRow() = StatementRow(dateOf(transactionDate), category, method, type, amount.toBigDecimalOrNull() ?: BigDecimal.ZERO, false)
+
+// Entries still waiting to sync are dated by when they were recorded on the phone
+private fun PendingTransaction.toRow() = StatementRow(dateOf(createdAt), category ?: "Stock entry", method, type, amount.toBigDecimalOrNull() ?: BigDecimal.ZERO, true)
+
+class StatementsViewModel(private val transactions: TransactionRepository) : ViewModel() {
+    private val _state = MutableStateFlow(StatementsUiState())
+    val state: StateFlow<StatementsUiState> = _state
+
+    init {
+        viewModelScope.launch {
+            val data = transactions.loadHome()
+            val rows = data.transactions.map { it.toRow() } + data.pending.filter { !it.failed }.map { it.toRow() }
+            _state.value = _state.value.copy(loading = false, rows = rows)
+        }
+    }
+
+    fun selectMethod(method: String) {
+        _state.value = _state.value.copy(method = method)
+    }
+
+    fun selectRange(range: StatementRange) {
+        _state.value = _state.value.copy(range = range)
+    }
+}
