@@ -20,6 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.knowapp.android.data.ThemeMode
 import androidx.compose.runtime.Composable
@@ -125,7 +126,7 @@ fun KnowNavGraph(container: AppContainer) {
                             selected = currentRoute == tab.route,
                             onClick = { goTab(tab.route) },
                             icon = { Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label) },
+                            label = { Text(tab.label, fontSize = 11.sp, maxLines = 1, softWrap = false) },
                         )
                     }
                 }

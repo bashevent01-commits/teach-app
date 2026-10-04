@@ -2,6 +2,7 @@ package com.knowapp.android.ui.home
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,7 +23,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material3.Button
@@ -51,7 +56,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +71,7 @@ import com.knowapp.android.data.model.TransactionOut
 import com.knowapp.android.data.repository.NewTransaction
 import com.knowapp.android.ui.components.SimpleDropdown
 import com.knowapp.android.ui.components.kes
+import com.knowapp.android.ui.components.kesNumber
 import com.knowapp.android.ui.statements.dateOf
 import com.knowapp.android.ui.theme.CardRadius
 import com.knowapp.android.ui.theme.DangerRed
@@ -76,6 +84,7 @@ import com.knowapp.android.ui.theme.WarnAmber
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 private val METHOD_LABELS = listOf("Cash", "M-Pesa", "Bank")
 private val METHOD_VALUES = listOf("cash", "mpesa", "bank")
@@ -84,6 +93,17 @@ private val HeroTeal = Color(0xFF00695F)
 private fun methodLabel(value: String) = METHOD_LABELS.getOrElse(METHOD_VALUES.indexOf(value)) { value }
 
 private fun amountOf(raw: String): BigDecimal = raw.toBigDecimalOrNull() ?: BigDecimal.ZERO
+
+private fun dayLabel(iso: String): String {
+    val date = dateOf(iso)
+    val today = LocalDate.now()
+    return when {
+        date == today -> "Today"
+        date == today.minusDays(1) -> "Yesterday"
+        date.year == today.year -> date.format(DateTimeFormatter.ofPattern("d MMM"))
+        else -> date.format(DateTimeFormatter.ofPattern("d MMM yyyy"))
+    }
+}
 
 private fun greeting(): String {
     val hour = LocalTime.now().hour
@@ -157,9 +177,7 @@ fun HomeScreen(
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium,
                         )
-                        state.institutionName?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        Text(state.institutionName ?: "Welcome back", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = { onToggleTheme(!dark) }) {
                         Icon(if (dark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, contentDescription = "Switch theme")
@@ -168,29 +186,44 @@ fun HomeScreen(
             }
 
             item {
-                Column(modifier = Modifier.fillMaxWidth().background(HeroTeal, CardRadius).padding(20.dp)) {
-                    Text("You hold", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        kes(cash + mpesa + bank),
-                        color = Color.White,
-                        fontFamily = DisplayFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(top = 2.dp, bottom = 14.dp),
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        HeroTile("Cash", cash, Modifier.weight(1f))
-                        HeroTile("M-Pesa", mpesa, Modifier.weight(1f))
-                        HeroTile("Bank", bank, Modifier.weight(1f))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Brush.linearGradient(listOf(Color(0xFF00897B), HeroTeal, Color(0xFF004D45))))
+                        .padding(22.dp),
+                ) {
+                    Text("TOTAL YOU HOLD", color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                    Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 6.dp, bottom = 18.dp)) {
+                        Text("KES", color = Color.White.copy(alpha = 0.8f), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(end = 8.dp, bottom = 6.dp))
+                        Text(
+                            kesNumber(cash + mpesa + bank),
+                            color = Color.White,
+                            fontFamily = DisplayFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 38.sp,
+                            maxLines = 1,
+                        )
                     }
-                    if (!state.opening.isSet) {
-                        TextButton(onClick = { showOpening = true }, modifier = Modifier.padding(top = 4.dp)) {
-                            Text("Add what you already hold", color = Color.White, fontWeight = FontWeight.SemiBold)
-                        }
-                    } else {
-                        TextButton(onClick = { showOpening = true }, modifier = Modifier.padding(top = 4.dp)) {
-                            Text("Edit starting balances", color = Color.White.copy(alpha = 0.85f))
-                        }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HeroTile("Cash", Icons.Outlined.Payments, cash, Modifier.weight(1f))
+                        HeroTile("M-Pesa", Icons.Outlined.PhoneAndroid, mpesa, Modifier.weight(1f))
+                        HeroTile("Bank", Icons.Outlined.AccountBalance, bank, Modifier.weight(1f))
+                    }
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 16.dp)
+                            .clip(PillShape)
+                            .border(1.dp, Color.White.copy(alpha = 0.55f), PillShape)
+                            .clickable { showOpening = true }
+                            .padding(horizontal = 16.dp, vertical = 9.dp),
+                    ) {
+                        Text(
+                            if (state.opening.isSet) "Edit starting balances" else "Add what you already hold",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
                 }
             }
@@ -203,12 +236,13 @@ fun HomeScreen(
             }
 
             item {
-                Text("This month", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                Text("THIS MONTH", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {
                     MonthTile("Income", income, IncomeGreen, Modifier.weight(1f))
                     MonthTile("Expense", expense, ExpenseOrange, Modifier.weight(1f))
-                    MonthTile("Net", income - expense, MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+                    MonthTile("Net", income - expense, if (income - expense < BigDecimal.ZERO) DangerRed else MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
                 }
+                FlowBar(income, expense, modifier = Modifier.padding(top = 12.dp))
             }
 
             item {
@@ -219,7 +253,16 @@ fun HomeScreen(
             }
             val recent = state.transactions.sortedByDescending { it.createdAt }.take(8)
             if (state.pending.isEmpty() && recent.isEmpty()) {
-                item { Text("Nothing recorded yet. Tap Receiving or Paying to add your first entry.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), CardRadius).padding(28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(34.dp))
+                        Text("Nothing recorded yet", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+                        Text("Tap Receiving or Paying to add your first entry.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
             }
             // Pending rows are tinted until the server has them, then they appear as normal rows
             items(state.pending.size) { index -> PendingRow(state.pending[index], viewModel::discardPending) }
@@ -251,25 +294,43 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HeroTile(label: String, value: BigDecimal, modifier: Modifier) {
-    Column(modifier = modifier.background(Color.White.copy(alpha = 0.14f), SmallRadius).padding(10.dp)) {
-        Text(label, color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodySmall)
-        Text(kes(value), color = Color.White, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+private fun HeroTile(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, value: BigDecimal, modifier: Modifier) {
+    Column(modifier = modifier.background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(16.dp)).padding(horizontal = 10.dp, vertical = 12.dp)) {
+        Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
+        Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+        Text(kesNumber(value), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
     }
 }
 
 @Composable
 private fun MonthTile(label: String, value: BigDecimal, color: Color, modifier: Modifier) {
-    Column(modifier = modifier.background(MaterialTheme.colorScheme.surface, SmallRadius).padding(12.dp)) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(kes(value), color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+    Column(
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+    ) {
+        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(kesNumber(value), color = color, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+@Composable
+private fun FlowBar(income: BigDecimal, expense: BigDecimal, modifier: Modifier = Modifier) {
+    val total = income + expense
+    Row(modifier = modifier.fillMaxWidth().height(8.dp).clip(PillShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
+        if (total > BigDecimal.ZERO) {
+            val share = income.divide(total, 4, java.math.RoundingMode.HALF_UP).toFloat()
+            Box(modifier = Modifier.weight(share.coerceIn(0.001f, 0.999f)).fillMaxSize().background(IncomeGreen))
+            Box(modifier = Modifier.weight((1f - share).coerceIn(0.001f, 0.999f)).fillMaxSize().background(ExpenseOrange))
+        }
     }
 }
 
 @Composable
 private fun QuickAction(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier, onClick: () -> Unit) {
     Row(
-        modifier = modifier.clip(CardRadius).background(color).clickable(onClick = onClick).padding(16.dp),
+        modifier = modifier.clip(RoundedCornerShape(20.dp)).background(color).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = Modifier.size(38.dp).background(Color.White.copy(alpha = 0.22f), CircleShape), contentAlignment = Alignment.Center) {
@@ -316,13 +377,17 @@ private fun PendingRow(p: PendingTransaction, onDiscard: (String) -> Unit) {
 @Composable
 private fun TransactionRow(t: TransactionOut) {
     Row(
-        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, SmallRadius).padding(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RowIcon(t.type)
         Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(t.category, fontWeight = FontWeight.SemiBold)
-            Text("${methodLabel(t.method)} · ${t.transactionDate.take(10)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${methodLabel(t.method)} · ${dayLabel(t.transactionDate)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(
             "${if (t.type == "income") "+" else "-"}${kes(t.amount)}",

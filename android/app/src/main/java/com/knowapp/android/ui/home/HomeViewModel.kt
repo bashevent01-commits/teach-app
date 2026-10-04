@@ -82,6 +82,13 @@ class HomeViewModel(
             _state.value = _state.value.copy(loading = false)
             return
         }
+        if (_state.value.institutionName == null) {
+            val id = sessionStore.session.value?.institutionId
+            val result = institutions.list()
+            if (result is InstitutionsResult.Success) {
+                _state.value = _state.value.copy(institutionName = result.institutions.firstOrNull { it.id == id }?.name)
+            }
+        }
         transactions.syncPending()
         val data = transactions.loadHome()
         _state.value = _state.value.copy(loading = false, transactions = data.transactions, pending = data.pending, opening = data.opening)
