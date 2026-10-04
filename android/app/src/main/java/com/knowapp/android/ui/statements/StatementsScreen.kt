@@ -26,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -57,7 +58,7 @@ private fun Context.findActivity(): Activity? {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit) {
+fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBack: Boolean = true, onViewAudits: () -> Unit = {}) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val rows = state.visible
@@ -74,7 +75,8 @@ fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Statements", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
+                navigationIcon = { if (showBack) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
+                actions = { TextButton(onClick = onViewAudits) { Text("Audits") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },

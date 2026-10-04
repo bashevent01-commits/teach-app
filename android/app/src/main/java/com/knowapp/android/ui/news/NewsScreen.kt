@@ -38,6 +38,7 @@ import com.knowapp.android.ui.theme.SmallRadius
 fun NewsScreen(
     viewModel: NewsViewModel,
     onBack: () -> Unit,
+    showBack: Boolean = true,
 ) {
     val state = viewModel.uiState
 
@@ -45,11 +46,11 @@ fun NewsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("News") },
-                navigationIcon = {
+                navigationIcon = { if (showBack) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
+                } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },

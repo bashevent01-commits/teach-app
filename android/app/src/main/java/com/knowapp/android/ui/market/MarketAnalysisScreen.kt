@@ -50,6 +50,7 @@ import com.knowapp.android.ui.theme.PillShape
 fun MarketAnalysisScreen(
     viewModel: MarketAnalysisViewModel,
     onBack: () -> Unit,
+    showBack: Boolean = true,
     onOpenCategory: (Int) -> Unit,
 ) {
     val state = viewModel.uiState
@@ -59,11 +60,11 @@ fun MarketAnalysisScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Market") },
-                navigationIcon = {
+                navigationIcon = { if (showBack) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
+                } },
                 actions = {
                     IconButton(onClick = {
                         viewModel.loadManageableCategories()

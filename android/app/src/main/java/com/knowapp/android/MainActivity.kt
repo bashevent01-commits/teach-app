@@ -1,6 +1,10 @@
 package com.knowapp.android
 
 import android.os.Bundle
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.knowapp.android.data.ThemeMode
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,7 +22,13 @@ class MainActivity : ComponentActivity() {
         val container = (application as KnowApplication).container
 
         setContent {
-            KnowTheme {
+            val mode by container.themeStore.mode.collectAsState()
+            val dark = when (mode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+            KnowTheme(darkTheme = dark) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     KnowNavGraph(container = container)
                 }

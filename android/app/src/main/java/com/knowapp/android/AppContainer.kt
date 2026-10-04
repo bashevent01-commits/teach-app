@@ -2,6 +2,7 @@ package com.knowapp.android
 
 import android.content.Context
 import com.knowapp.android.data.SessionStore
+import com.knowapp.android.data.ThemeStore
 import com.knowapp.android.data.UpdateManager
 import com.knowapp.android.data.local.OfflineStore
 import com.knowapp.android.data.network.NetworkMonitor
@@ -26,6 +27,7 @@ class AppContainer(context: Context) {
     val offlineStore = OfflineStore(context)
     val networkMonitor = NetworkMonitor(context)
     val updateManager = UpdateManager(context)
+    val themeStore = ThemeStore(context)
     val transactionRepository = TransactionRepository(apiService, offlineStore, sessionStore)
     val booksRepository = BooksRepository(apiService)
     val stockRepository = StockRepository(apiService)

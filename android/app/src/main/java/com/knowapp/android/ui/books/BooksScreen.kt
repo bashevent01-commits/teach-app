@@ -16,6 +16,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -38,7 +39,7 @@ private const val ALL_STAFF = "All staff (collective)"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BooksScreen(viewModel: BooksViewModel, onBack: () -> Unit) {
+fun BooksScreen(viewModel: BooksViewModel, onBack: () -> Unit, showBack: Boolean = true, onViewAudits: () -> Unit = {}) {
     val state by viewModel.state.collectAsState()
     val names = state.staff.associate { it.id to it.fullName }
     val options = listOf(ALL_STAFF) + state.staff.map { "${it.fullName} (${it.username})" }
@@ -48,7 +49,8 @@ fun BooksScreen(viewModel: BooksViewModel, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Books", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
+                navigationIcon = { if (showBack) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
+                actions = { TextButton(onClick = onViewAudits) { Text("Audits") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },

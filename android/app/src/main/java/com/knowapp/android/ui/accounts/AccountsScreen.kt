@@ -51,6 +51,7 @@ private val STAFF_TYPE_OPTIONS = listOf("general", "teacher")
 fun AccountsScreen(
     viewModel: AccountsViewModel,
     onBack: () -> Unit,
+    showBack: Boolean = true,
 ) {
     val state = viewModel.uiState
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -59,11 +60,11 @@ fun AccountsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Accounts") },
-                navigationIcon = {
+                navigationIcon = { if (showBack) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
+                } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },

@@ -1,5 +1,6 @@
 package com.knowapp.android.ui.home
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -7,18 +8,29 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -36,20 +48,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.knowapp.android.R
 import com.knowapp.android.data.model.PendingTransaction
 import com.knowapp.android.data.model.StockItemOut
 import com.knowapp.android.data.model.TransactionOut
 import com.knowapp.android.data.repository.NewTransaction
-import com.knowapp.android.ui.components.AppCard
-import com.knowapp.android.ui.components.Badge
 import com.knowapp.android.ui.components.SimpleDropdown
-import com.knowapp.android.ui.components.StatBox
 import com.knowapp.android.ui.components.kes
+import com.knowapp.android.ui.statements.dateOf
 import com.knowapp.android.ui.theme.CardRadius
 import com.knowapp.android.ui.theme.DangerRed
 import com.knowapp.android.ui.theme.DisplayFontFamily
@@ -58,39 +73,38 @@ import com.knowapp.android.ui.theme.IncomeGreen
 import com.knowapp.android.ui.theme.PillShape
 import com.knowapp.android.ui.theme.SmallRadius
 import com.knowapp.android.ui.theme.WarnAmber
-import kotlinx.coroutines.launch
 import java.math.BigDecimal
-
-private data class MenuItem(val title: String, val description: String, val buttonLabel: String, val onClick: () -> Unit)
+import java.time.LocalDate
+import java.time.LocalTime
 
 private val METHOD_LABELS = listOf("Cash", "M-Pesa", "Bank")
 private val METHOD_VALUES = listOf("cash", "mpesa", "bank")
+private val HeroTeal = Color(0xFF00695F)
 
 private fun methodLabel(value: String) = METHOD_LABELS.getOrElse(METHOD_VALUES.indexOf(value)) { value }
 
-@OptIn(ExperimentalMaterial3Api::class)
+private fun amountOf(raw: String): BigDecimal = raw.toBigDecimalOrNull() ?: BigDecimal.ZERO
+
+private fun greeting(): String {
+    val hour = LocalTime.now().hour
+    return when {
+        hour < 12 -> "Good morning"
+        hour < 17 -> "Good afternoon"
+        else -> "Good evening"
+    }
+}
+
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onViewStock: () -> Unit,
-    onViewNews: () -> Unit,
-    onViewAudits: () -> Unit,
-    onViewBooks: () -> Unit,
-    onViewStatements: () -> Unit,
-    onViewInstitutions: () -> Unit,
-    onViewAccounts: () -> Unit,
-    onViewMarket: () -> Unit,
-    onViewSettings: () -> Unit,
+    onSeeAll: () -> Unit,
+    onToggleTheme: (Boolean) -> Unit,
 ) {
     val session by viewModel.session.collectAsState()
     val state by viewModel.state.collectAsState()
     val snackbar = remember { SnackbarHostState() }
-
-    val role = session?.role
-    val isStaff = role == "staff"
-    val isTeacher = isStaff && session?.staffType == "teacher"
-    val isSuperAdmin = role == "super_admin"
-    val isInstitutionAdmin = role == "institution_admin"
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val isTeacher = session?.staffType == "teacher"
 
     var recordKind by remember { mutableStateOf<String?>(null) }
     var showOpening by remember { mutableStateOf(false) }
@@ -102,21 +116,25 @@ fun HomeScreen(
         }
     }
 
-    val menuItems = buildList {
-        if (!isSuperAdmin) {
-            if (!isTeacher) add(MenuItem("Stock", "Browse items, unit prices, and current quantities.", "View stock", onViewStock))
-            add(MenuItem("News", "Institution announcements and updates.", "View news", onViewNews))
-            add(MenuItem("Statements", "View and print a statement for any period.", "Open statements", onViewStatements))
-            add(MenuItem("Audits", "Submit and review financial audits.", "View audits", onViewAudits))
-        }
-        if (isInstitutionAdmin) add(MenuItem("Books", "Everyone's records together, or one staff member at a time.", "Open books", onViewBooks))
-        if (isInstitutionAdmin || isSuperAdmin) add(MenuItem("Accounts", "Manage staff and admin accounts.", "View accounts", onViewAccounts))
-        if (isSuperAdmin) {
-            add(MenuItem("Institutions", "Onboard and browse institutions on the platform.", "View institutions", onViewInstitutions))
-            add(MenuItem("Market", "Cross-institution pricing insights (5-institution minimum).", "View market insights", onViewMarket))
-        }
-        add(MenuItem("Settings", "App updates, password, and sign out.", "Open settings", onViewSettings))
+    // Pending (not yet synced) entries count immediately; ones the server rejected do not
+    val live = state.pending.filter { !it.failed }
+    val today = LocalDate.now()
+    fun inMonth(iso: String) = dateOf(iso).let { it.year == today.year && it.month == today.month }
+    fun monthTotal(type: String): BigDecimal =
+        state.transactions.filter { it.type == type && inMonth(it.transactionDate) }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) } +
+            live.filter { it.type == type && inMonth(it.createdAt) }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) }
+    fun held(method: String): BigDecimal {
+        val start = amountOf(when (method) { "cash" -> state.opening.cash; "mpesa" -> state.opening.mpesa; else -> state.opening.bank })
+        fun sum(type: String) =
+            state.transactions.filter { it.method == method && it.type == type }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) } +
+                live.filter { it.method == method && it.type == type }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) }
+        return start + sum("income") - sum("expense")
     }
+    val cash = held("cash")
+    val mpesa = held("mpesa")
+    val bank = held("bank")
+    val income = monthTotal("income")
+    val expense = monthTotal("expense")
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -124,27 +142,89 @@ fun HomeScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp),
         ) {
             item {
-                Column {
-                    Text(
-                        text = "Hello, ${session?.fullName ?: ""}",
-                        fontFamily = DisplayFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.headlineSmall,
-                    )
-                    Badge(text = roleLabel(role, session?.staffType), modifier = Modifier.padding(top = 8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(46.dp).clip(RoundedCornerShape(14.dp)).background(HeroTeal), contentAlignment = Alignment.Center) {
+                        Image(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = "KNOW", modifier = Modifier.size(46.dp))
+                    }
+                    Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                        Text(
+                            "${greeting()}, ${session?.fullName?.substringBefore(' ') ?: ""}",
+                            fontFamily = DisplayFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        state.institutionName?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    IconButton(onClick = { onToggleTheme(!dark) }) {
+                        Icon(if (dark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, contentDescription = "Switch theme")
+                    }
                 }
             }
-            if (isStaff) {
-                item { OverviewCard(state, onSetOpening = { showOpening = true }) }
-                item { ActionCard("Receiving", "Money coming into the institution", IncomeGreen) { recordKind = "income" } }
-                item { ActionCard("Paying", "Money leaving the institution", ExpenseOrange) { recordKind = "expense" } }
-                item { ActivityCard(state, onDiscard = viewModel::discardPending) }
+
+            item {
+                Column(modifier = Modifier.fillMaxWidth().background(HeroTeal, CardRadius).padding(20.dp)) {
+                    Text("You hold", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        kes(cash + mpesa + bank),
+                        color = Color.White,
+                        fontFamily = DisplayFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(top = 2.dp, bottom = 14.dp),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HeroTile("Cash", cash, Modifier.weight(1f))
+                        HeroTile("M-Pesa", mpesa, Modifier.weight(1f))
+                        HeroTile("Bank", bank, Modifier.weight(1f))
+                    }
+                    if (!state.opening.isSet) {
+                        TextButton(onClick = { showOpening = true }, modifier = Modifier.padding(top = 4.dp)) {
+                            Text("Add what you already hold", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        }
+                    } else {
+                        TextButton(onClick = { showOpening = true }, modifier = Modifier.padding(top = 4.dp)) {
+                            Text("Edit starting balances", color = Color.White.copy(alpha = 0.85f))
+                        }
+                    }
+                }
             }
-            items(menuItems) { HomeMenuCard(it.title, it.description, it.buttonLabel, it.onClick) }
+
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    QuickAction("Receiving", "Money in", Icons.Outlined.ArrowDownward, IncomeGreen, Modifier.weight(1f)) { recordKind = "income" }
+                    QuickAction("Paying", "Money out", Icons.Outlined.ArrowUpward, ExpenseOrange, Modifier.weight(1f)) { recordKind = "expense" }
+                }
+            }
+
+            item {
+                Text("This month", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                    MonthTile("Income", income, IncomeGreen, Modifier.weight(1f))
+                    MonthTile("Expense", expense, ExpenseOrange, Modifier.weight(1f))
+                    MonthTile("Net", income - expense, MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+                }
+            }
+
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Recent activity", style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = onSeeAll) { Text("See all") }
+                }
+            }
+            val recent = state.transactions.sortedByDescending { it.createdAt }.take(8)
+            if (state.pending.isEmpty() && recent.isEmpty()) {
+                item { Text("Nothing recorded yet. Tap Receiving or Paying to add your first entry.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            // Pending rows are tinted until the server has them, then they appear as normal rows
+            items(state.pending.size) { index -> PendingRow(state.pending[index], viewModel::discardPending) }
+            items(recent.size) { index -> TransactionRow(recent[index]) }
+            item { Spacer(Modifier.height(8.dp)) }
         }
     }
 
@@ -170,104 +250,53 @@ fun HomeScreen(
     }
 }
 
-private fun amountOf(raw: String): BigDecimal = raw.toBigDecimalOrNull() ?: BigDecimal.ZERO
-
 @Composable
-private fun OverviewCard(state: HomeUiState, onSetOpening: () -> Unit) {
-    // Pending (not yet synced) entries count immediately; ones the server rejected do not
-    val live = state.pending.filter { !it.failed }
-    fun total(type: String) =
-        state.transactions.filter { it.type == type }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) } +
-            live.filter { it.type == type }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) }
-    fun held(method: String): BigDecimal {
-        val start = amountOf(
-            when (method) {
-                "cash" -> state.opening.cash
-                "mpesa" -> state.opening.mpesa
-                else -> state.opening.bank
-            },
-        )
-        val inn = state.transactions.filter { it.method == method && it.type == "income" }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) } +
-            live.filter { it.method == method && it.type == "income" }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) }
-        val out = state.transactions.filter { it.method == method && it.type == "expense" }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) } +
-            live.filter { it.method == method && it.type == "expense" }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) }
-        return start + inn - out
-    }
-
-    val income = total("income")
-    val expense = total("expense")
-
-    AppCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Financial overview", style = MaterialTheme.typography.titleMedium)
-        Text(
-            "Calculated from every recorded transaction",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatBox(kes(income), "Income", Modifier.weight(1f))
-            StatBox(kes(expense), "Expense", Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-            StatBox(kes(income - expense), "Net", Modifier.weight(1f))
-            Box(modifier = Modifier.weight(1f))
-        }
-        Text("What you hold", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatBox(kes(held("cash")), "Cash", Modifier.weight(1f))
-            StatBox(kes(held("mpesa")), "M-Pesa", Modifier.weight(1f))
-            StatBox(kes(held("bank")), "Bank", Modifier.weight(1f))
-        }
-        TextButton(onClick = onSetOpening, modifier = Modifier.padding(top = 6.dp)) {
-            Text(if (state.opening.isSet) "Edit starting balances" else "Set starting balances")
-        }
+private fun HeroTile(label: String, value: BigDecimal, modifier: Modifier) {
+    Column(modifier = modifier.background(Color.White.copy(alpha = 0.14f), SmallRadius).padding(10.dp)) {
+        Text(label, color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodySmall)
+        Text(kes(value), color = Color.White, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
     }
 }
 
 @Composable
-private fun ActionCard(title: String, subtitle: String, color: Color, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(color, CardRadius)
-            .clickable(onClick = onClick)
-            .padding(22.dp),
+private fun MonthTile(label: String, value: BigDecimal, color: Color, modifier: Modifier) {
+    Column(modifier = modifier.background(MaterialTheme.colorScheme.surface, SmallRadius).padding(12.dp)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(kes(value), color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+    }
+}
+
+@Composable
+private fun QuickAction(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier, onClick: () -> Unit) {
+    Row(
+        modifier = modifier.clip(CardRadius).background(color).clickable(onClick = onClick).padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
-            Text(title, color = Color.White, fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-            Text(subtitle, color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyMedium)
+        Box(modifier = Modifier.size(38.dp).background(Color.White.copy(alpha = 0.22f), CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = Color.White)
+        }
+        Column(modifier = Modifier.padding(start = 12.dp)) {
+            Text(title, color = Color.White, fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text(subtitle, color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
 @Composable
-private fun ActivityCard(state: HomeUiState, onDiscard: (String) -> Unit) {
-    AppCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Recent activity", style = MaterialTheme.typography.titleMedium)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 12.dp)) {
-            // Pending rows are tinted until the server has them, then they appear as normal rows
-            state.pending.forEach { p -> PendingRow(p, onDiscard) }
-            val recent = state.transactions.sortedByDescending { it.createdAt }.take(8)
-            if (recent.isEmpty() && state.pending.isEmpty()) {
-                Text("No entries yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            recent.forEach { TransactionRow(it) }
-        }
+private fun RowIcon(type: String) {
+    val color = if (type == "income") IncomeGreen else ExpenseOrange
+    Box(modifier = Modifier.size(38.dp).background(color.copy(alpha = 0.15f), CircleShape), contentAlignment = Alignment.Center) {
+        Icon(if (type == "income") Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward, contentDescription = null, tint = color)
     }
 }
 
 @Composable
 private fun PendingRow(p: PendingTransaction, onDiscard: (String) -> Unit) {
     val tint = if (p.failed) DangerRed else WarnAmber
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(tint.copy(alpha = 0.12f), SmallRadius)
-            .padding(12.dp),
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column(modifier = Modifier.weight(1f)) {
+    Column(modifier = Modifier.fillMaxWidth().background(tint.copy(alpha = 0.14f), SmallRadius).padding(12.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            RowIcon(p.type)
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text(p.category?.takeIf { it.isNotBlank() } ?: "Stock entry", fontWeight = FontWeight.SemiBold)
                 Text(methodLabel(p.method), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -287,19 +316,13 @@ private fun PendingRow(p: PendingTransaction, onDiscard: (String) -> Unit) {
 @Composable
 private fun TransactionRow(t: TransactionOut) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, SmallRadius)
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, SmallRadius).padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        RowIcon(t.type)
+        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(t.category, fontWeight = FontWeight.SemiBold)
-            Text(
-                "${methodLabel(t.method)} · ${t.transactionDate.take(10)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text("${methodLabel(t.method)} · ${t.transactionDate.take(10)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(
             "${if (t.type == "income") "+" else "-"}${kes(t.amount)}",
@@ -443,28 +466,3 @@ private fun OpeningSheet(cash: String, mpesa: String, bank: String, onDismiss: (
     }
 }
 
-@Composable
-private fun HomeMenuCard(title: String, description: String, buttonLabel: String, onClick: () -> Unit) {
-    AppCard(modifier = Modifier.fillMaxWidth()) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        Text(
-            description,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
-        )
-        Button(
-            onClick = onClick,
-            shape = PillShape,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(buttonLabel, fontWeight = FontWeight.SemiBold) }
-    }
-}
-
-private fun roleLabel(role: String?, staffType: String?): String = when (role) {
-    "super_admin" -> "Super admin"
-    "institution_admin" -> "Sub admin"
-    "staff" -> if (staffType == "teacher") "Staff · Teacher" else "Staff"
-    else -> role ?: ""
-}

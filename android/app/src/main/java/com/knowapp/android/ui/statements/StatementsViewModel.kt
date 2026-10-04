@@ -72,7 +72,7 @@ data class StatementsUiState(
     val title: String get() = if (method == "all") "Combined Statement" else "${STATEMENT_METHODS.first { it.first == method }.second} Movement Statement"
 }
 
-private fun dateOf(iso: String): LocalDate = try {
+internal fun dateOf(iso: String): LocalDate = try {
     OffsetDateTime.parse(iso).atZoneSameInstant(ZoneId.systemDefault()).toLocalDate()
 } catch (e: Exception) {
     try {

@@ -11,6 +11,8 @@ import com.knowapp.android.data.model.StockItemOut
 import com.knowapp.android.data.model.TransactionOut
 import com.knowapp.android.data.network.NetworkMonitor
 import com.knowapp.android.data.repository.AuthRepository
+import com.knowapp.android.data.repository.InstitutionsRepository
+import com.knowapp.android.data.repository.InstitutionsResult
 import com.knowapp.android.data.repository.NewTransaction
 import com.knowapp.android.data.repository.RecordResult
 import com.knowapp.android.data.repository.StockRepository
@@ -28,6 +30,7 @@ data class HomeUiState(
     val pending: List<PendingTransaction> = emptyList(),
     val opening: OpeningBalancesOut = OpeningBalancesOut("0", "0", "0", false),
     val stock: List<StockItemOut> = emptyList(),
+    val institutionName: String? = null,
     val saving: Boolean = false,
     val message: String? = null,
 )
@@ -38,6 +41,7 @@ class HomeViewModel(
     private val stockRepository: StockRepository,
     private val offlineStore: OfflineStore,
     private val sessionStore: SessionStore,
+    private val institutions: InstitutionsRepository,
     network: NetworkMonitor,
 ) : ViewModel() {
     val session: StateFlow<Session?> = authRepository.session
@@ -47,6 +51,13 @@ class HomeViewModel(
 
     init {
         viewModelScope.launch { refresh() }
+        viewModelScope.launch {
+            val id = sessionStore.session.value?.institutionId
+            val result = institutions.list()
+            if (result is InstitutionsResult.Success) {
+                _state.value = _state.value.copy(institutionName = result.institutions.firstOrNull { it.id == id }?.name)
+            }
+        }
         // Entries saved offline go to the server as soon as a connection returns
         viewModelScope.launch {
             network.online.drop(1).filter { it }.collect { refresh() }

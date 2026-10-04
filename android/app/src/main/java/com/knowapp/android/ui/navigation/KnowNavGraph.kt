@@ -1,5 +1,27 @@
 package com.knowapp.android.ui.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.Article
+import androidx.compose.material.icons.outlined.Business
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.Receipt
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.knowapp.android.data.ThemeMode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,19 +66,84 @@ private fun <T> vmFactory(create: () -> T) = object : androidx.lifecycle.ViewMod
     override fun <VM : androidx.lifecycle.ViewModel> create(modelClass: Class<VM>): VM = create() as VM
 }
 
+private data class Tab(val route: String, val label: String, val icon: ImageVector)
+
+// Every destination on the bar is its own page; what appears depends on who is signed in
+private fun tabsFor(role: String?, staffType: String?): List<Tab> = when (role) {
+    "super_admin" -> listOf(
+        Tab(Routes.INSTITUTIONS, "Institutions", Icons.Outlined.Business),
+        Tab(Routes.ACCOUNTS, "Accounts", Icons.Outlined.Group),
+        Tab(Routes.MARKET, "Market", Icons.Outlined.Insights),
+        Tab(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
+    )
+    "institution_admin" -> listOf(
+        Tab(Routes.BOOKS, "Books", Icons.Outlined.AccountBalance),
+        Tab(Routes.STOCK, "Stock", Icons.Outlined.Inventory2),
+        Tab(Routes.NEWS, "News", Icons.Outlined.Article),
+        Tab(Routes.ACCOUNTS, "Accounts", Icons.Outlined.Group),
+        Tab(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
+    )
+    else -> buildList {
+        add(Tab(Routes.HOME, "Home", Icons.Outlined.Home))
+        if (staffType != "teacher") add(Tab(Routes.STOCK, "Stock", Icons.Outlined.Inventory2))
+        add(Tab(Routes.NEWS, "News", Icons.Outlined.Article))
+        add(Tab(Routes.STATEMENTS, "Statements", Icons.Outlined.Receipt))
+        add(Tab(Routes.SETTINGS, "Settings", Icons.Outlined.Settings))
+    }
+}
+
+private fun startFor(role: String?): String = when (role) {
+    "super_admin" -> Routes.INSTITUTIONS
+    "institution_admin" -> Routes.BOOKS
+    else -> Routes.HOME
+}
+
 @Composable
 fun KnowNavGraph(container: AppContainer) {
     val navController = rememberNavController()
     val session by container.sessionStore.session.collectAsState()
-    val startDestination = if (session != null) Routes.HOME else Routes.LOGIN
+    val tabs = tabsFor(session?.role, session?.staffType)
+    val startDestination = if (session == null) Routes.LOGIN else startFor(session?.role)
+    val backStack by navController.currentBackStackEntryAsState()
+    val currentRoute = backStack?.destination?.route
+    val showBar = session != null && tabs.any { it.route == currentRoute }
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    fun goTab(route: String) {
+        navController.navigate(route) {
+            popUpTo(startFor(session?.role)) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    Scaffold(
+        bottomBar = {
+            if (showBar) {
+                NavigationBar {
+                    tabs.forEach { tab ->
+                        NavigationBarItem(
+                            selected = currentRoute == tab.route,
+                            onClick = { goTab(tab.route) },
+                            icon = { Icon(tab.icon, contentDescription = tab.label) },
+                            label = { Text(tab.label) },
+                        )
+                    }
+                }
+            }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { outerPadding ->
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        modifier = Modifier.padding(outerPadding).consumeWindowInsets(outerPadding),
+    ) {
         composable(Routes.LOGIN) {
             val viewModel: LoginViewModel = viewModel(factory = vmFactory { LoginViewModel(container.authRepository) })
             LoginScreen(
                 viewModel = viewModel,
                 onLoginSuccess = {
-                    navController.navigate(Routes.HOME) {
+                    navController.navigate(startFor(container.sessionStore.session.value?.role)) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 },
@@ -71,27 +158,21 @@ fun KnowNavGraph(container: AppContainer) {
                         container.stockRepository,
                         container.offlineStore,
                         container.sessionStore,
+                        container.institutionsRepository,
                         container.networkMonitor,
                     )
                 },
             )
             HomeScreen(
                 viewModel = viewModel,
-                onViewStock = { navController.navigate(Routes.STOCK) },
-                onViewNews = { navController.navigate(Routes.NEWS) },
-                onViewAudits = { navController.navigate(Routes.AUDITS) },
-                onViewBooks = { navController.navigate(Routes.BOOKS) },
-                onViewStatements = { navController.navigate(Routes.STATEMENTS) },
-                onViewInstitutions = { navController.navigate(Routes.INSTITUTIONS) },
-                onViewAccounts = { navController.navigate(Routes.ACCOUNTS) },
-                onViewMarket = { navController.navigate(Routes.MARKET) },
-                onViewSettings = { navController.navigate(Routes.SETTINGS) },
+                onSeeAll = { goTab(Routes.STATEMENTS) },
+                onToggleTheme = { makeDark -> container.themeStore.set(if (makeDark) ThemeMode.DARK else ThemeMode.LIGHT) },
             )
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 updateManager = container.updateManager,
-                onBack = { navController.popBackStack() },
+                themeStore = container.themeStore,
                 onSignOut = {
                     container.authRepository.logout()
                     navController.navigate(Routes.LOGIN) { popUpTo(0) { inclusive = true } }
@@ -100,19 +181,19 @@ fun KnowNavGraph(container: AppContainer) {
         }
         composable(Routes.STATEMENTS) {
             val viewModel: StatementsViewModel = viewModel(factory = vmFactory { StatementsViewModel(container.transactionRepository) })
-            StatementsScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+            StatementsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false, onViewAudits = { navController.navigate(Routes.AUDITS) })
         }
         composable(Routes.BOOKS) {
             val viewModel: BooksViewModel = viewModel(factory = vmFactory { BooksViewModel(container.booksRepository) })
-            BooksScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+            BooksScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false, onViewAudits = { navController.navigate(Routes.AUDITS) })
         }
         composable(Routes.STOCK) {
             val viewModel: StockViewModel = viewModel(factory = vmFactory { StockViewModel(container.stockRepository) })
-            StockScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+            StockScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false)
         }
         composable(Routes.NEWS) {
             val viewModel: NewsViewModel = viewModel(factory = vmFactory { NewsViewModel(container.postsRepository) })
-            NewsScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+            NewsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false)
         }
         composable(Routes.AUDITS) {
             val viewModel: AuditsViewModel = viewModel(factory = vmFactory { AuditsViewModel(container.auditRepository, container.sessionStore) })
@@ -133,13 +214,13 @@ fun KnowNavGraph(container: AppContainer) {
         }
         composable(Routes.INSTITUTIONS) {
             val viewModel: InstitutionsViewModel = viewModel(factory = vmFactory { InstitutionsViewModel(container.institutionsRepository) })
-            InstitutionsScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+            InstitutionsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false)
         }
         composable(Routes.ACCOUNTS) {
             val viewModel: AccountsViewModel = viewModel(
                 factory = vmFactory { AccountsViewModel(container.usersRepository, container.institutionsRepository, container.sessionStore) },
             )
-            AccountsScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+            AccountsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false)
         }
         composable(Routes.MARKET) {
             val viewModel: MarketAnalysisViewModel = viewModel(
@@ -148,6 +229,7 @@ fun KnowNavGraph(container: AppContainer) {
             MarketAnalysisScreen(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
+                showBack = false,
                 onOpenCategory = { categoryId -> navController.navigate(Routes.categoryDetail(categoryId)) },
             )
         }
@@ -159,5 +241,6 @@ fun KnowNavGraph(container: AppContainer) {
             val viewModel: CategoryDetailViewModel = viewModel(factory = vmFactory { CategoryDetailViewModel(container.marketAnalysisRepository, categoryId) })
             CategoryDetailScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
         }
+    }
     }
 }

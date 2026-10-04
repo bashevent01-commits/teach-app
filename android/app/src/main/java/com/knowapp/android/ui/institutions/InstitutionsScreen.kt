@@ -47,6 +47,7 @@ import com.knowapp.android.ui.theme.PillShape
 fun InstitutionsScreen(
     viewModel: InstitutionsViewModel,
     onBack: () -> Unit,
+    showBack: Boolean = true,
 ) {
     val state = viewModel.uiState
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -55,11 +56,11 @@ fun InstitutionsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Institutions") },
-                navigationIcon = {
+                navigationIcon = { if (showBack) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
+                } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },

@@ -35,6 +35,7 @@ import com.knowapp.android.ui.components.KpiRow
 fun StockScreen(
     viewModel: StockViewModel,
     onBack: () -> Unit,
+    showBack: Boolean = true,
 ) {
     val state = viewModel.uiState
 
@@ -42,11 +43,11 @@ fun StockScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Stock") },
-                navigationIcon = {
+                navigationIcon = { if (showBack) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
+                } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },

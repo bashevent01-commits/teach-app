@@ -2,17 +2,15 @@ package com.knowapp.android.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -27,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.knowapp.android.BuildConfig
+import com.knowapp.android.data.ThemeMode
+import com.knowapp.android.data.ThemeStore
 import com.knowapp.android.data.UpdateManager
 import com.knowapp.android.data.UpdateState
 import com.knowapp.android.ui.components.AppCard
@@ -36,7 +36,8 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(updateManager: UpdateManager, onBack: () -> Unit, onSignOut: suspend () -> Unit) {
+fun SettingsScreen(updateManager: UpdateManager, themeStore: ThemeStore, onSignOut: suspend () -> Unit) {
+    val themeMode by themeStore.mode.collectAsState()
     val state by updateManager.state.collectAsState()
     val scope = rememberCoroutineScope()
     val installed = "Installed: v${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})"
@@ -58,7 +59,6 @@ fun SettingsScreen(updateManager: UpdateManager, onBack: () -> Unit, onSignOut: 
         topBar = {
             TopAppBar(
                 title = { Text("Settings", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
@@ -68,6 +68,14 @@ fun SettingsScreen(updateManager: UpdateManager, onBack: () -> Unit, onSignOut: 
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            AppCard(modifier = Modifier.fillMaxWidth()) {
+                Text("Appearance", style = MaterialTheme.typography.titleMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {
+                    listOf(ThemeMode.SYSTEM to "System", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark").forEach { (mode, label) ->
+                        FilterChip(selected = themeMode == mode, onClick = { themeStore.set(mode) }, label = { Text(label) })
+                    }
+                }
+            }
             AppCard(modifier = Modifier.fillMaxWidth()) {
                 Text("App update", style = MaterialTheme.typography.titleMedium)
                 Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp, bottom = 14.dp))
