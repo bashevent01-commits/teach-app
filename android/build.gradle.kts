@@ -9,3 +9,11 @@ plugins {
     // version above — required whenever buildFeatures.compose = true.
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.20" apply false
 }
+
+// Surface Kotlin compile errors as CI annotations so a failed build explains itself
+logging.addStandardErrorListener(
+    StandardOutputListener { message ->
+        val text = message.toString().trim()
+        if (text.startsWith("e: ")) println("::error::" + text.replace("\n", " ").take(450))
+    },
+)
