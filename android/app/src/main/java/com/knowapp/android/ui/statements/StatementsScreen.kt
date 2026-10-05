@@ -64,7 +64,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knowapp.android.ui.components.HeroCard
-import com.knowapp.android.ui.components.SimpleDropdown
 import com.knowapp.android.ui.components.kes
 import com.knowapp.android.ui.components.kesNumber
 import com.knowapp.android.ui.theme.DisplayFontFamily
@@ -167,12 +166,6 @@ fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBac
                         Text("STAFF MEMBER", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         com.knowapp.android.ui.components.SimpleDropdown("Show", options, current, { choice ->
                             viewModel.selectStaff(state.staff.firstOrNull { "${it.fullName} (${it.username})" == choice }?.id)
-                        })
-                    }
-                    if (state.isAdmin) {
-                        val everyone = "All staff (collective)"
-                        SimpleDropdown("Staff member", listOf(everyone) + state.staff.map { it.fullName }, state.viewingName ?: everyone, { choice ->
-                            viewModel.selectStaff(state.staff.firstOrNull { it.fullName == choice }?.id)
                         })
                     }
                     Text("ACCOUNT", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

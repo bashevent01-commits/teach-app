@@ -3,9 +3,6 @@ package com.knowapp.android.ui.home
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.layout.ContentScale
@@ -38,9 +35,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
-import androidx.compose.material.icons.outlined.AttachFile
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Payments
@@ -79,13 +73,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.window.Dialog
-import androidx.core.content.FileProvider
-import coil.compose.AsyncImage
-import com.knowapp.android.data.model.resolveMediaUrl
-import java.io.File
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -155,7 +142,6 @@ fun HomeScreen(
 
     var recordKind by remember { mutableStateOf<String?>(null) }
     var showOpening by remember { mutableStateOf(false) }
-    var viewingPhoto by remember { mutableStateOf<String?>(null) }
     var detail by remember { mutableStateOf<TransactionOut?>(null) }
 
     LaunchedEffect(state.message) {
@@ -307,17 +293,6 @@ fun HomeScreen(
 
     detail?.let { t -> DetailSheet(t) { detail = null } }
 
-    viewingPhoto?.let { url ->
-        Dialog(onDismissRequest = { viewingPhoto = null }) {
-            AsyncImage(
-                model = url,
-                contentDescription = "Attached photo",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable { viewingPhoto = null },
-            )
-        }
-    }
-
     if (showOpening) {
         OpeningSheet(
             cash = state.opening.cash,
@@ -405,10 +380,7 @@ private fun PendingRow(p: PendingTransaction, onDiscard: (String) -> Unit) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             RowIcon(p.type)
             Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(p.category?.takeIf { it.isNotBlank() } ?: "Stock entry", fontWeight = FontWeight.SemiBold)
-                    if (p.imagePath != null) Icon(Icons.Outlined.AttachFile, contentDescription = "Has a photo", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 6.dp).size(16.dp))
-                }
+                Text(p.category?.takeIf { it.isNotBlank() } ?: "Stock entry", fontWeight = FontWeight.SemiBold)
                 Text(methodLabel(p.method), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(

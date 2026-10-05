@@ -158,7 +158,6 @@ fun KnowNavGraph(container: AppContainer) {
                         container.transactionRepository,
                         container.stockRepository,
                         container.offlineStore,
-                        container.photoStore,
                         container.sessionStore,
                         container.institutionsRepository,
                         container.photoStore,

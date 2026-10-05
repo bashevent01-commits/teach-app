@@ -2,11 +2,7 @@ package com.knowapp.android.ui.statements
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.knowapp.android.data.SessionStore
 import com.knowapp.android.data.model.PendingTransaction
-import com.knowapp.android.data.model.UserOut
-import com.knowapp.android.data.repository.BooksRepository
-import com.knowapp.android.data.repository.TransactionsResult
 import com.knowapp.android.data.model.TransactionOut
 import com.knowapp.android.data.model.UserOut
 import com.knowapp.android.data.repository.BooksRepository

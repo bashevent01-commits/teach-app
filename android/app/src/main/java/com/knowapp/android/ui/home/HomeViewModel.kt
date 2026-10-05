@@ -1,15 +1,11 @@
 package com.knowapp.android.ui.home
 
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.knowapp.android.data.Session
 import com.knowapp.android.data.SessionStore
 import android.net.Uri
 import com.knowapp.android.data.local.OfflineStore
-import com.knowapp.android.data.local.PhotoStore
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import com.knowapp.android.data.local.PhotoStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -48,7 +44,6 @@ class HomeViewModel(
     private val transactions: TransactionRepository,
     private val stockRepository: StockRepository,
     private val offlineStore: OfflineStore,
-    private val photoStore: PhotoStore,
     private val sessionStore: SessionStore,
     private val institutions: InstitutionsRepository,
     private val photos: PhotoStore,
