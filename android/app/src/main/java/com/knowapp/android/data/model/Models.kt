@@ -51,6 +51,7 @@ data class PostOut(
     @SerializedName("institution_id") val institutionId: Int,
     @SerializedName("author_id") val authorId: Int,
     @SerializedName("author_name") val authorName: String? = null,
+    @SerializedName("comment_count") val commentCount: Int = 0,
     val title: String,
     val body: String,
     @SerializedName("image_path") val imagePath: String? = null,
@@ -198,4 +199,14 @@ data class PendingTransaction(
     val failed: Boolean = false,
     val error: String? = null,
     val imagePath: String? = null,
+)
+
+
+data class PostCommentOut(
+    val id: Int,
+    @SerializedName("post_id") val postId: Int,
+    @SerializedName("author_id") val authorId: Int,
+    @SerializedName("author_name") val authorName: String? = null,
+    val body: String,
+    @SerializedName("created_at") val createdAt: String,
 )

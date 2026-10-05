@@ -87,6 +87,7 @@ class TransactionRepository(
     private val store: OfflineStore,
     private val sessionStore: SessionStore,
     private val photos: PhotoStore,
+    private val isOnline: () -> Boolean = { true },
 ) {
     private val pendingLock = Mutex()
 
@@ -123,25 +124,30 @@ class TransactionRepository(
         val uid = userId() ?: return@withContext HomeData(emptyList(), emptyList(), OpeningBalancesOut("0", "0", "0", false))
         var transactions = store.transactions(uid) ?: emptyList()
         var opening = store.opening(uid) ?: OpeningBalancesOut("0", "0", "0", false)
-        try {
-            val txResponse = api.listTransactions()
-            if (txResponse.isSuccessful) {
-                transactions = txResponse.body() ?: emptyList()
-                store.saveTransactions(uid, transactions)
+        // Offline: skip the network entirely so the screen opens instantly from the cached copy above
+        if (isOnline()) {
+            try {
+                val txResponse = api.listTransactions()
+                if (txResponse.isSuccessful) {
+                    transactions = txResponse.body() ?: emptyList()
+                    store.saveTransactions(uid, transactions)
+                }
+                val openingResponse = api.getOpeningBalances()
+                if (openingResponse.isSuccessful) {
+                    opening = openingResponse.body() ?: opening
+                    store.saveOpening(uid, opening)
+                }
+            } catch (e: IOException) {
+                // the connection dropped part way: the cached copy is what the screen shows
             }
-            val openingResponse = api.getOpeningBalances()
-            if (openingResponse.isSuccessful) {
-                opening = openingResponse.body() ?: opening
-                store.saveOpening(uid, opening)
-            }
-        } catch (e: IOException) {
-            // offline: the cached copy above is what the screen shows
         }
         HomeData(transactions, store.pending(uid), opening)
     }
 
     suspend fun record(draft: NewTransaction): RecordResult = withContext(Dispatchers.IO) {
         val uid = userId() ?: return@withContext RecordResult.Rejected("You are signed out. Please sign in again.")
+        // No connection: keep it on the phone straight away instead of waiting for a timeout
+        if (!isOnline()) return@withContext enqueue(uid, draft)
         try {
             val response = send(draft.toFields(), draft.imagePath)
             photos.delete(draft.imagePath)
@@ -151,6 +157,11 @@ class TransactionRepository(
                 RecordResult.Rejected(errorDetail(response.errorBody()?.string(), response.code()))
             }
         } catch (e: IOException) {
+            enqueue(uid, draft)
+        }
+    }
+
+    private suspend fun enqueue(uid: Int, draft: NewTransaction): RecordResult {
             pendingLock.withLock {
                 val queued = PendingTransaction(
                     localId = UUID.randomUUID().toString(),
@@ -169,8 +180,7 @@ class TransactionRepository(
                 )
                 store.savePending(uid, store.pending(uid) + queued)
             }
-            RecordResult.Queued
-        }
+        return RecordResult.Queued
     }
 
     // Sends queued entries in order; stops at the first network failure and marks server-rejected ones as failed

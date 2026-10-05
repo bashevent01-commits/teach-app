@@ -30,6 +30,7 @@ class PostOut(BaseModel):
     institution_id: int
     author_id: int
     author_name: str | None = None
+    comment_count: int = 0
     title: str
     body: str
     image_path: str | None
@@ -60,3 +61,28 @@ class PostReportOut(BaseModel):
     resolved_at: datetime | None
     resolved_by_id: int | None
     resolution: str | None
+
+
+class PostCommentCreate(BaseModel):
+    body: str
+
+    @field_validator("body")
+    @classmethod
+    def clean(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("comment cannot be empty")
+        if len(v) > 1000:
+            raise ValueError("comment is too long (1000 characters max)")
+        return v
+
+
+class PostCommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    post_id: int
+    author_id: int
+    author_name: str | None = None
+    body: str
+    created_at: datetime

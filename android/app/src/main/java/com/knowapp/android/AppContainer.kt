@@ -3,6 +3,10 @@ package com.knowapp.android
 import android.content.Context
 import com.knowapp.android.data.SessionStore
 import com.knowapp.android.data.ThemeStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import com.knowapp.android.data.UpdateManager
 import com.knowapp.android.data.local.OfflineStore
 import com.knowapp.android.data.local.PhotoStore
@@ -30,7 +34,7 @@ class AppContainer(context: Context) {
     val networkMonitor = NetworkMonitor(context)
     val updateManager = UpdateManager(context)
     val themeStore = ThemeStore(context)
-    val transactionRepository = TransactionRepository(apiService, offlineStore, sessionStore, photoStore)
+    val transactionRepository = TransactionRepository(apiService, offlineStore, sessionStore, photoStore) { networkMonitor.online.value }
     val booksRepository = BooksRepository(apiService)
     val stockRepository = StockRepository(apiService)
     val postsRepository = PostsRepository(apiService, photoStore)
@@ -39,4 +43,15 @@ class AppContainer(context: Context) {
     val usersRepository = UsersRepository(apiService)
     val marketAnalysisRepository = MarketAnalysisRepository(apiService)
     val productCategoriesRepository = ProductCategoriesRepository(apiService)
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        // Entries saved offline reach the server as soon as a connection is back, whichever screen is open
+        appScope.launch {
+            networkMonitor.online.collect { online ->
+                if (online) runCatching { transactionRepository.syncPending() }
+            }
+        }
+    }
 }

@@ -5,6 +5,7 @@ import com.knowapp.android.data.model.CategoryDetailOut
 import com.knowapp.android.data.model.CategoryInsightOut
 import com.knowapp.android.data.model.InstitutionOut
 import com.knowapp.android.data.model.OpeningBalancesOut
+import com.knowapp.android.data.model.PostCommentOut
 import com.knowapp.android.data.model.SummaryOut
 import com.knowapp.android.data.model.TrialBalanceOut
 import com.knowapp.android.data.model.PostOut
@@ -73,6 +74,15 @@ interface ApiService {
         @PartMap fields: Map<String, @JvmSuppressWildcards RequestBody>,
         @Part image: MultipartBody.Part?,
     ): Response<PostOut>
+
+    @GET("/api/posts/{postId}/comments")
+    suspend fun listComments(@Path("postId") postId: Int): Response<List<PostCommentOut>>
+
+    @POST("/api/posts/{postId}/comments")
+    suspend fun addComment(@Path("postId") postId: Int, @Body body: Map<String, String>): Response<PostCommentOut>
+
+    @DELETE("/api/posts/comments/{commentId}")
+    suspend fun deleteComment(@Path("commentId") commentId: Int): Response<Unit>
 
     @DELETE("/api/posts/{postId}")
     suspend fun deletePost(@Path("postId") postId: Int): Response<Unit>

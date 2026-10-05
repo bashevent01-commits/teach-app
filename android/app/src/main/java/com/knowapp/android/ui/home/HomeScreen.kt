@@ -6,7 +6,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import com.knowapp.android.data.MpesaParser
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.knowapp.android.data.model.resolveMediaUrl
@@ -376,7 +378,7 @@ private fun RowIcon(type: String) {
 @Composable
 private fun PendingRow(p: PendingTransaction, onDiscard: (String) -> Unit) {
     val tint = if (p.failed) DangerRed else WarnAmber
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).background(tint.copy(alpha = 0.14f), SmallRadius).padding(12.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).background(tint.copy(alpha = 0.10f), SmallRadius).padding(12.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             RowIcon(p.type)
             Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -461,7 +463,19 @@ private fun RecordSheet(
     var quantity by remember { mutableStateOf("") }
     var mpesaCode by remember { mutableStateOf("") }
     var payer by remember { mutableStateOf("") }
+    var mpesaMessage by remember { mutableStateOf("") }
+    var detected by remember { mutableStateOf<MpesaParser.Parsed?>(null) }
+    val clipboard = LocalClipboardManager.current
     var error by remember { mutableStateOf<String?>(null) }
+
+    fun applyMessage(text: String) {
+        mpesaMessage = text
+        val parsed = MpesaParser.parse(text)
+        detected = if (parsed.code != null || parsed.amount != null) parsed else null
+        parsed.code?.let { mpesaCode = it }
+        parsed.party?.let { payer = it }
+        if (parsed.amount != null && amount.isBlank()) amount = parsed.amount
+    }
     var photo by remember { mutableStateOf<Uri?>(null) }
     val context = LocalContext.current
     var cameraTarget by remember { mutableStateOf<Uri?>(null) }
@@ -517,9 +531,47 @@ private fun RecordSheet(
                     modifier = Modifier.fillMaxWidth().background(accent.copy(alpha = 0.08f), RoundedCornerShape(16.dp)).padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    SectionLabel("M-Pesa details (optional)")
-                    OutlinedTextField(value = mpesaCode, onValueChange = { mpesaCode = it }, label = { Text("Transaction code") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
-                    OutlinedTextField(value = payer, onValueChange = { payer = it }, label = { Text("Name on M-Pesa") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+                    SectionLabel("M-Pesa message")
+                    OutlinedTextField(
+                        value = mpesaMessage,
+                        onValueChange = { applyMessage(it) },
+                        label = { Text("Paste the M-Pesa confirmation message") },
+                        minLines = 3,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = SmallRadius,
+                    )
+                    OutlinedButton(
+                        onClick = { clipboard.getText()?.text?.let { applyMessage(it) } },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Paste from clipboard") }
+                    detected?.let { d ->
+                        Text(
+                            "Found: ${d.code ?: "no code"}${d.amount?.let { " · KES $it" } ?: ""}${d.party?.let { " · $it" } ?: ""}",
+                            color = accent,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                        )
+                        if (d.incoming != null && d.incoming != isIncome) {
+                            Text(
+                                if (d.incoming) "This message looks like money received. Check you chose the right button." else "This message looks like money sent. Check you chose the right button.",
+                                color = WarnAmber,
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
+                    OutlinedTextField(value = mpesaCode, onValueChange = { mpesaCode = it.uppercase() }, label = { Text("Transaction code") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+                    OutlinedTextField(value = payer, onValueChange = { payer = it }, label = { Text(if (isIncome) "Received from (optional)" else "Paid to (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+                }
+            }
+
+            if (method == "bank") {
+                Column(
+                    modifier = Modifier.fillMaxWidth().background(accent.copy(alpha = 0.08f), RoundedCornerShape(16.dp)).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SectionLabel("Bank details")
+                    OutlinedTextField(value = mpesaCode, onValueChange = { mpesaCode = it.uppercase() }, label = { Text("Bank reference or slip number") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
                 }
             }
 
@@ -560,10 +612,10 @@ private fun RecordSheet(
                 }
             }
 
-            OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Note (optional)") }, minLines = 2, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+            OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text(if (method != "mpesa" && !useStock) "Note (add a note or a photo as evidence)" else "Note (optional)") }, minLines = 2, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel("Receipt or proof (optional)")
+                SectionLabel(if (method != "mpesa" && !useStock) "Photo evidence" else "Receipt or proof (optional)")
                 if (photo != null) {
                     Box {
                         AsyncImage(
@@ -601,6 +653,8 @@ private fun RecordSheet(
                         useStock && item == null -> "Choose a stock item."
                         useStock && (qty == null || qty <= BigDecimal.ZERO) -> "Enter a quantity."
                         !useStock && category.isBlank() -> "Pick or type a category."
+                        method == "mpesa" && mpesaCode.trim().length < 8 -> "Paste the M-Pesa message, or type its transaction code."
+                        method != "mpesa" && !useStock && description.isBlank() && photo == null && !(method == "bank" && mpesaCode.isNotBlank()) -> "Add a short note or a photo as evidence."
                         chosenAmount == null || chosenAmount <= BigDecimal.ZERO -> "Enter an amount."
                         else -> null
                     }
@@ -615,7 +669,7 @@ private fun RecordSheet(
                                 amount = chosenAmount!!.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString(),
                                 stockItemId = if (useStock) item?.id else null,
                                 quantity = if (useStock) quantity else null,
-                                mpesaCode = if (method == "mpesa") mpesaCode.trim().ifBlank { null } else null,
+                                mpesaCode = if (method != "cash") mpesaCode.trim().ifBlank { null } else null,
                                 mpesaPayerName = if (method == "mpesa") payer.trim().ifBlank { null } else null,
                             ),
                             photo,

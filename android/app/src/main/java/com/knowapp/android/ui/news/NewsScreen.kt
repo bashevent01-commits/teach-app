@@ -23,7 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Flag
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -173,6 +176,8 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
                         canAct = viewModel.canPost,
                         onDelete = { deleting = post },
                         onReport = { reporting = post },
+                        canComment = viewModel.canComment,
+                        onComments = { viewModel.openComments(post) },
                         onViewPhoto = { viewingPhoto = it },
                     )
                 }
@@ -206,6 +211,21 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
         )
     }
 
+    state.commentsFor?.let { post ->
+        CommentsSheet(
+            post = post,
+            comments = state.comments,
+            loading = state.commentsLoading,
+            sending = state.sendingComment,
+            canComment = viewModel.canComment,
+            myId = viewModel.userId,
+            isAdmin = viewModel.isAdmin,
+            onDismiss = viewModel::closeComments,
+            onSend = { text, done -> viewModel.sendComment(text, done) },
+            onDelete = viewModel::deleteComment,
+        )
+    }
+
     viewingPhoto?.let { url ->
         Dialog(onDismissRequest = { viewingPhoto = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.94f)).clickable { viewingPhoto = null }, contentAlignment = Alignment.Center) {
@@ -219,7 +239,7 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
 }
 
 @Composable
-private fun PostCard(post: PostOut, mine: Boolean, canAct: Boolean, onDelete: () -> Unit, onReport: () -> Unit, onViewPhoto: (String) -> Unit) {
+private fun PostCard(post: PostOut, mine: Boolean, canAct: Boolean, canComment: Boolean, onComments: () -> Unit, onDelete: () -> Unit, onReport: () -> Unit, onViewPhoto: (String) -> Unit) {
     val author = post.authorName ?: "Staff member"
     val photoUrl = resolveMediaUrl(post.imagePath)
     var menuOpen by remember { mutableStateOf(false) }
@@ -291,6 +311,20 @@ private fun PostCard(post: PostOut, mine: Boolean, canAct: Boolean, onDelete: ()
         } else {
             Box(modifier = Modifier.padding(bottom = 12.dp))
         }
+        HorizontalDivider(modifier = Modifier.padding(top = 12.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(enabled = canComment || post.commentCount > 0) { onComments() }.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+            Text(
+                when (post.commentCount) { 0 -> "Comment"; 1 -> "1 comment"; else -> "${post.commentCount} comments" },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
     }
 }
 
@@ -343,6 +377,85 @@ private fun ReportSheet(onDismiss: () -> Unit, onSend: (String) -> Unit) {
             Text("Report post", style = MaterialTheme.typography.titleLarge, fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold)
             OutlinedTextField(value = reason, onValueChange = { reason = it }, label = { Text("What's wrong with this post? (optional)") }, minLines = 3, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
             Button(onClick = { onSend(reason) }, shape = PillShape, modifier = Modifier.fillMaxWidth()) { Text("Send report", fontWeight = FontWeight.SemiBold) }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CommentsSheet(
+    post: PostOut,
+    comments: List<com.knowapp.android.data.model.PostCommentOut>,
+    loading: Boolean,
+    sending: Boolean,
+    canComment: Boolean,
+    myId: Int?,
+    isAdmin: Boolean,
+    onDismiss: () -> Unit,
+    onSend: (String, (Boolean) -> Unit) -> Unit,
+    onDelete: (com.knowapp.android.data.model.PostCommentOut) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var text by remember { mutableStateOf("") }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp)) {
+            Text("Comments", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Text(post.title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 420.dp).verticalScroll(rememberScrollState()).padding(top = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                when {
+                    loading -> Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    comments.isEmpty() -> Text("No comments yet. Start the conversation.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else -> comments.forEach { c ->
+                        Row(verticalAlignment = Alignment.Top) {
+                            Avatar(c.authorName ?: "Staff member", size = 36)
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 10.dp)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(c.authorName ?: "Staff member", fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                                    Text(relativeDay(c.createdAt), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Text(c.body, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 2.dp))
+                                if (c.authorId == myId || isAdmin) {
+                                    Text(
+                                        "Delete",
+                                        color = DangerRed,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.clickable { onDelete(c) }.padding(top = 4.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (canComment) {
+                Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        placeholder = { Text("Add a comment…") },
+                        maxLines = 4,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(24.dp),
+                    )
+                    IconButton(
+                        onClick = { onSend(text) { ok -> if (ok) text = "" } },
+                        enabled = !sending && text.isNotBlank(),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
         }
     }
 }

@@ -5,9 +5,10 @@ from app.core.database import get_db
 from app.core.deps import get_current_user, require_institution_scope
 from app.core.limiter import limiter
 from app.models.post import Post
+from app.models.post_comment import PostComment
 from app.models.post_report import PostReport
 from app.models.user import User, UserRole
-from app.schemas.post import PostOut, PostReportCreate, PostReportOut
+from app.schemas.post import PostCommentCreate, PostCommentOut, PostOut, PostReportCreate, PostReportOut
 from app.utils.uploads import save_post_image, delete_storage_object
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
@@ -119,3 +120,54 @@ def report_post(
     db.commit()
     db.refresh(report)
     return report
+
+
+def _visible_post(db: Session, post_id: int, current_user: User) -> Post:
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    if current_user.role != UserRole.SUPER_ADMIN and post.institution_id != current_user.institution_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to view this post")
+    return post
+
+
+@router.get("/{post_id}/comments", response_model=list[PostCommentOut])
+def list_comments(post_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    post = _visible_post(db, post_id, current_user)
+    return post.comments
+
+
+@router.post("/{post_id}/comments", response_model=PostCommentOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
+def add_comment(
+    post_id: int,
+    request: Request,
+    payload: PostCommentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only members of the institution can comment")
+    post = _visible_post(db, post_id, current_user)
+    comment = PostComment(post_id=post.id, author_id=current_user.id, body=payload.body)
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return comment
+
+
+@router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_comment(comment_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    comment = db.query(PostComment).filter(PostComment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+    post = comment.post
+    allowed = (
+        comment.author_id == current_user.id
+        or current_user.role == UserRole.SUPER_ADMIN
+        or (current_user.role == UserRole.INSTITUTION_ADMIN and post.institution_id == current_user.institution_id)
+    )
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the author or an admin can delete this comment")
+    db.delete(comment)
+    db.commit()

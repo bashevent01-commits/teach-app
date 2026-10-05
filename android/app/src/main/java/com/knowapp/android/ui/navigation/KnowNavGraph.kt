@@ -182,7 +182,7 @@ fun KnowNavGraph(container: AppContainer) {
             )
         }
         composable(Routes.STATEMENTS) {
-            val viewModel: StatementsViewModel = viewModel(factory = vmFactory { StatementsViewModel(container.transactionRepository, container.booksRepository, session?.role == "institution_admin") })
+            val viewModel: StatementsViewModel = viewModel(factory = vmFactory { StatementsViewModel(container.transactionRepository, container.booksRepository, container.institutionsRepository, container.sessionStore, session?.role == "institution_admin") })
             StatementsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = session?.role == "institution_admin", onViewAudits = { navController.navigate(Routes.AUDITS) })
         }
         composable(Routes.BOOKS) {

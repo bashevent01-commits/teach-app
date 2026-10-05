@@ -1,6 +1,7 @@
 package com.knowapp.android.data.repository
 
 import com.knowapp.android.data.local.PhotoStore
+import com.knowapp.android.data.model.PostCommentOut
 import com.knowapp.android.data.model.PostOut
 import com.knowapp.android.data.network.ApiService
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +47,38 @@ class PostsRepository(private val api: ApiService, private val photos: PhotoStor
             photos.delete(imagePath)
             val post = response.body()
             if (response.isSuccessful && post != null) Result.success(post)
+            else Result.failure(Exception(errorDetail(response.errorBody()?.string(), response.code())))
+        } catch (e: IOException) {
+            Result.failure(Exception(offline))
+        }
+    }
+
+    suspend fun comments(postId: Int): Result<List<PostCommentOut>> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.listComments(postId)
+            val body = response.body()
+            if (response.isSuccessful && body != null) Result.success(body)
+            else Result.failure(Exception(errorDetail(response.errorBody()?.string(), response.code())))
+        } catch (e: IOException) {
+            Result.failure(Exception(offline))
+        }
+    }
+
+    suspend fun addComment(postId: Int, text: String): Result<PostCommentOut> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.addComment(postId, mapOf("body" to text))
+            val body = response.body()
+            if (response.isSuccessful && body != null) Result.success(body)
+            else Result.failure(Exception(errorDetail(response.errorBody()?.string(), response.code())))
+        } catch (e: IOException) {
+            Result.failure(Exception(offline))
+        }
+    }
+
+    suspend fun deleteComment(commentId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deleteComment(commentId)
+            if (response.isSuccessful) Result.success(Unit)
             else Result.failure(Exception(errorDetail(response.errorBody()?.string(), response.code())))
         } catch (e: IOException) {
             Result.failure(Exception(offline))

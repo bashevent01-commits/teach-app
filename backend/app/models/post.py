@@ -20,7 +20,12 @@ class Post(Base):
     institution = relationship("Institution", back_populates="posts")
     author = relationship("User", back_populates="posts")
     reports = relationship("PostReport", back_populates="post", cascade="all, delete-orphan")
+    comments = relationship("PostComment", back_populates="post", cascade="all, delete-orphan", order_by="PostComment.created_at")
 
     @property
     def author_name(self) -> str | None:
         return self.author.full_name if self.author else None
+
+    @property
+    def comment_count(self) -> int:
+        return len(self.comments)

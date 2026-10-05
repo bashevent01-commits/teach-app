@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.knowapp.android.data.SessionStore
 import com.knowapp.android.data.local.PhotoStore
+import com.knowapp.android.data.model.PostCommentOut
 import com.knowapp.android.data.model.PostOut
 import com.knowapp.android.data.repository.PostsRepository
 import com.knowapp.android.data.repository.PostsResult
@@ -20,6 +21,10 @@ data class NewsUiState(
     val error: String? = null,
     val message: String? = null,
     val posting: Boolean = false,
+    val commentsFor: PostOut? = null,
+    val comments: List<PostCommentOut> = emptyList(),
+    val commentsLoading: Boolean = false,
+    val sendingComment: Boolean = false,
 )
 
 class NewsViewModel(
@@ -30,6 +35,8 @@ class NewsViewModel(
     val userId: Int? = sessionStore.session.value?.userId
     val canPost: Boolean = sessionStore.session.value?.role == "staff"
     val userName: String = sessionStore.session.value?.fullName ?: ""
+    val canComment: Boolean = sessionStore.session.value?.role.let { it == "staff" || it == "institution_admin" }
+    val isAdmin: Boolean = sessionStore.session.value?.role == "institution_admin"
 
     private val _state = MutableStateFlow(NewsUiState())
     val state: StateFlow<NewsUiState> = _state
@@ -45,6 +52,54 @@ class NewsViewModel(
                 is PostsResult.Success -> _state.value = _state.value.copy(loading = false, posts = result.posts)
                 is PostsResult.Failure -> _state.value = _state.value.copy(loading = false, error = result.message)
             }
+        }
+    }
+
+    fun openComments(post: PostOut) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(commentsFor = post, comments = emptyList(), commentsLoading = true)
+            repository.comments(post.id)
+                .onSuccess { _state.value = _state.value.copy(comments = it, commentsLoading = false) }
+                .onFailure { _state.value = _state.value.copy(commentsLoading = false, message = it.message) }
+        }
+    }
+
+    fun closeComments() {
+        _state.value = _state.value.copy(commentsFor = null, comments = emptyList())
+    }
+
+    private fun bumpCount(postId: Int, delta: Int) {
+        _state.value = _state.value.copy(
+            posts = _state.value.posts.map { if (it.id == postId) it.copy(commentCount = (it.commentCount + delta).coerceAtLeast(0)) else it },
+        )
+    }
+
+    fun sendComment(text: String, onDone: (Boolean) -> Unit) {
+        val post = _state.value.commentsFor ?: return
+        if (text.isBlank()) return onDone(false)
+        viewModelScope.launch {
+            _state.value = _state.value.copy(sendingComment = true)
+            repository.addComment(post.id, text.trim())
+                .onSuccess {
+                    _state.value = _state.value.copy(sendingComment = false, comments = _state.value.comments + it)
+                    bumpCount(post.id, 1)
+                    onDone(true)
+                }
+                .onFailure {
+                    _state.value = _state.value.copy(sendingComment = false, message = it.message ?: "Couldn't post the comment.")
+                    onDone(false)
+                }
+        }
+    }
+
+    fun deleteComment(comment: PostCommentOut) {
+        viewModelScope.launch {
+            repository.deleteComment(comment.id)
+                .onSuccess {
+                    _state.value = _state.value.copy(comments = _state.value.comments.filter { c -> c.id != comment.id })
+                    bumpCount(comment.postId, -1)
+                }
+                .onFailure { _state.value = _state.value.copy(message = it.message ?: "Couldn't delete the comment.") }
         }
     }
 
