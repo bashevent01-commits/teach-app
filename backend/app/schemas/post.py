@@ -29,6 +29,7 @@ class PostOut(BaseModel):
     id: int
     institution_id: int
     author_id: int
+    author_name: str | None = None
     title: str
     body: str
     image_path: str | None

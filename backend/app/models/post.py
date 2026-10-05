@@ -20,3 +20,7 @@ class Post(Base):
     institution = relationship("Institution", back_populates="posts")
     author = relationship("User", back_populates="posts")
     reports = relationship("PostReport", back_populates="post", cascade="all, delete-orphan")
+
+    @property
+    def author_name(self) -> str | None:
+        return self.author.full_name if self.author else None

@@ -5,28 +5,36 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Article
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -49,9 +57,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.knowapp.android.data.model.PostOut
 import com.knowapp.android.data.model.resolveMediaUrl
@@ -61,6 +74,25 @@ import com.knowapp.android.ui.theme.DisplayFontFamily
 import com.knowapp.android.ui.theme.PillShape
 import com.knowapp.android.ui.theme.SmallRadius
 
+private val AvatarColors = listOf(Color(0xFF0F766E), Color(0xFF2563EB), Color(0xFF9333EA), Color(0xFFD97706), Color(0xFFDB2777), Color(0xFF475569))
+
+private fun initialsOf(name: String): String {
+    val parts = name.trim().split(" ").filter { it.isNotBlank() }
+    return when {
+        parts.isEmpty() -> "?"
+        parts.size == 1 -> parts[0].take(1).uppercase()
+        else -> (parts[0].take(1) + parts[1].take(1)).uppercase()
+    }
+}
+
+@Composable
+private fun Avatar(name: String, size: Int = 44) {
+    val color = AvatarColors[(name.hashCode() and 0x7fffffff) % AvatarColors.size]
+    Box(modifier = Modifier.size(size.dp).background(color, CircleShape), contentAlignment = Alignment.Center) {
+        Text(initialsOf(name), color = Color.White, fontWeight = FontWeight.Bold, fontSize = (size * 0.36f).sp)
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean = true) {
@@ -69,6 +101,7 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
     var composing by remember { mutableStateOf(false) }
     var reporting by remember { mutableStateOf<PostOut?>(null) }
     var deleting by remember { mutableStateOf<PostOut?>(null) }
+    var viewingPhoto by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -84,27 +117,39 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
-        floatingActionButton = {
-            if (viewModel.canPost) {
-                ExtendedFloatingActionButton(
-                    onClick = { composing = true },
-                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("Post") },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                )
-            }
-        },
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 96.dp),
+            modifier = Modifier.fillMaxSize().padding(padding),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (viewModel.canPost) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Avatar(viewModel.userName)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 12.dp)
+                                .clip(PillShape)
+                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.7f), PillShape)
+                                .clickable { composing = true }
+                                .padding(horizontal = 18.dp, vertical = 13.dp),
+                        ) {
+                            Text("Start a post", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                        }
+                        IconButton(onClick = { composing = true }) {
+                            Icon(Icons.Outlined.Image, contentDescription = "Add a photo", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
             when {
-                state.loading && state.posts.isEmpty() -> item { Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                state.loading && state.posts.isEmpty() -> item { Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(20.dp)) }
                 state.error != null && state.posts.isEmpty() -> item {
                     Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(state.error ?: "", color = DangerRed)
@@ -113,12 +158,12 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
                 }
                 state.posts.isEmpty() -> item {
                     Column(
-                        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(18.dp)).padding(28.dp),
+                        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(36.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Icon(Icons.Outlined.Article, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(34.dp))
                         Text("No news yet", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
-                        if (viewModel.canPost) Text("Post the first update for your institution.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                        if (viewModel.canPost) Text("Be the first to share an update.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
                 else -> items(state.posts, key = { it.id }) { post ->
@@ -128,6 +173,7 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
                         canAct = viewModel.canPost,
                         onDelete = { deleting = post },
                         onReport = { reporting = post },
+                        onViewPhoto = { viewingPhoto = it },
                     )
                 }
             }
@@ -136,6 +182,7 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
 
     if (composing) {
         ComposeSheet(
+            name = viewModel.userName,
             posting = state.posting,
             onDismiss = { composing = false },
             onPublish = { title, body, photo -> viewModel.publish(title, body, photo) { ok -> if (ok) composing = false } },
@@ -158,62 +205,129 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
         )
     }
+
+    viewingPhoto?.let { url ->
+        Dialog(onDismissRequest = { viewingPhoto = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.94f)).clickable { viewingPhoto = null }, contentAlignment = Alignment.Center) {
+                AsyncImage(model = url, contentDescription = "Photo", contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth())
+                IconButton(onClick = { viewingPhoto = null }, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) {
+                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
+                }
+            }
+        }
+    }
 }
 
 @Composable
-private fun PostCard(post: PostOut, mine: Boolean, canAct: Boolean, onDelete: () -> Unit, onReport: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(18.dp))
-            .padding(16.dp),
-    ) {
-        Text(post.title, fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-        Text(relativeDay(post.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
-        Text(post.body, style = MaterialTheme.typography.bodyMedium)
-        resolveMediaUrl(post.imagePath)?.let { url ->
-            AsyncImage(
-                model = url,
-                contentDescription = "Photo attached to ${post.title}",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.padding(top = 12.dp).fillMaxWidth().height(190.dp).clip(RoundedCornerShape(14.dp)),
+private fun PostCard(post: PostOut, mine: Boolean, canAct: Boolean, onDelete: () -> Unit, onReport: () -> Unit, onViewPhoto: (String) -> Unit) {
+    val author = post.authorName ?: "Staff member"
+    val photoUrl = resolveMediaUrl(post.imagePath)
+    var menuOpen by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+    var overflowing by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Avatar(author)
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text(author, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(relativeDay(post.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (canAct) {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "More options", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        if (mine) {
+                            DropdownMenuItem(
+                                text = { Text("Delete post", color = DangerRed) },
+                                leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = DangerRed) },
+                                onClick = { menuOpen = false; onDelete() },
+                            )
+                        } else {
+                            DropdownMenuItem(
+                                text = { Text("Report post") },
+                                leadingIcon = { Icon(Icons.Outlined.Flag, contentDescription = null) },
+                                onClick = { menuOpen = false; onReport() },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Text(post.title, fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp))
+        Text(
+            post.body,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = if (expanded) Int.MAX_VALUE else 4,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { if (!expanded) overflowing = it.hasVisualOverflow },
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp),
+        )
+        if (overflowing || expanded) {
+            Text(
+                if (expanded) "Show less" else "…see more",
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                modifier = Modifier.clickable { expanded = !expanded }.padding(horizontal = 16.dp, vertical = 6.dp),
             )
         }
-        if (canAct) {
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
-                if (mine) TextButton(onClick = onDelete) { Text("Delete", color = DangerRed) }
-                else TextButton(onClick = onReport) { Text("Report") }
-            }
+
+        if (photoUrl != null) {
+            AsyncImage(
+                model = photoUrl,
+                contentDescription = "Photo attached to ${post.title}",
+                contentScale = ContentScale.FillWidth,
+                modifier = Modifier
+                    .padding(top = 12.dp)
+                    .fillMaxWidth()
+                    .heightIn(min = 180.dp, max = 560.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { onViewPhoto(photoUrl) },
+            )
+        } else {
+            Box(modifier = Modifier.padding(bottom = 12.dp))
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ComposeSheet(posting: Boolean, onDismiss: () -> Unit, onPublish: (String, String, Uri?) -> Unit) {
+private fun ComposeSheet(name: String, posting: Boolean, onDismiss: () -> Unit, onPublish: (String, String, Uri?) -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
     var photo by remember { mutableStateOf<Uri?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) photo = uri }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
         Column(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("New post", style = MaterialTheme.typography.titleLarge, fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold)
-            OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
-            OutlinedTextField(value = body, onValueChange = { body = it }, label = { Text("What's the update?") }, minLines = 4, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Avatar(name)
+                Column(modifier = Modifier.padding(start = 12.dp)) {
+                    Text(name, fontWeight = FontWeight.Bold)
+                    Text("Posting to your institution", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Headline") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+            OutlinedTextField(value = body, onValueChange = { body = it }, label = { Text("What do you want to share?") }, minLines = 5, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
             if (photo != null) {
-                AsyncImage(model = photo, contentDescription = "Selected photo", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(14.dp)))
+                AsyncImage(model = photo, contentDescription = "Selected photo", contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp).clip(RoundedCornerShape(14.dp)))
                 TextButton(onClick = { photo = null }) { Text("Remove photo") }
             } else {
-                OutlinedButton(onClick = { picker.launch("image/*") }, shape = PillShape, modifier = Modifier.fillMaxWidth()) { Text("Add a photo (optional)") }
+                OutlinedButton(onClick = { picker.launch("image/*") }, shape = PillShape, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text("Add a photo", modifier = Modifier.padding(start = 8.dp))
+                }
             }
             Button(onClick = { onPublish(title, body, photo) }, enabled = !posting, shape = PillShape, modifier = Modifier.fillMaxWidth()) {
-                Text(if (posting) "Publishing…" else "Publish", fontWeight = FontWeight.SemiBold)
+                Text(if (posting) "Publishing…" else "Post", fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -224,7 +338,7 @@ private fun ComposeSheet(posting: Boolean, onDismiss: () -> Unit, onPublish: (St
 private fun ReportSheet(onDismiss: () -> Unit, onSend: (String) -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var reason by remember { mutableStateOf("") }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Report post", style = MaterialTheme.typography.titleLarge, fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold)
             OutlinedTextField(value = reason, onValueChange = { reason = it }, label = { Text("What's wrong with this post? (optional)") }, minLines = 3, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)

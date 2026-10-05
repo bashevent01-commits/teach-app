@@ -50,6 +50,7 @@ data class PostOut(
     val id: Int,
     @SerializedName("institution_id") val institutionId: Int,
     @SerializedName("author_id") val authorId: Int,
+    @SerializedName("author_name") val authorName: String? = null,
     val title: String,
     val body: String,
     @SerializedName("image_path") val imagePath: String? = null,

@@ -29,6 +29,7 @@ class NewsViewModel(
 ) : ViewModel() {
     val userId: Int? = sessionStore.session.value?.userId
     val canPost: Boolean = sessionStore.session.value?.role == "staff"
+    val userName: String = sessionStore.session.value?.fullName ?: ""
 
     private val _state = MutableStateFlow(NewsUiState())
     val state: StateFlow<NewsUiState> = _state
