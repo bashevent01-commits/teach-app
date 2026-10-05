@@ -6,6 +6,7 @@ import com.knowapp.android.data.model.CategoryInsightOut
 import com.knowapp.android.data.model.InstitutionOut
 import com.knowapp.android.data.model.OpeningBalancesOut
 import com.knowapp.android.data.model.PostCommentOut
+import com.knowapp.android.data.model.ReferenceCheckOut
 import com.knowapp.android.data.model.SummaryOut
 import com.knowapp.android.data.model.TrialBalanceOut
 import com.knowapp.android.data.model.PostOut
@@ -89,6 +90,9 @@ interface ApiService {
 
     @POST("/api/posts/{postId}/report")
     suspend fun reportPost(@Path("postId") postId: Int, @Body body: Map<String, String>): Response<Unit>
+
+    @GET("/api/transactions/reference-check")
+    suspend fun checkReference(@Query("code") code: String): Response<ReferenceCheckOut>
 
     @GET("/api/accounting/opening-balances")
     suspend fun getOpeningBalances(): Response<OpeningBalancesOut>

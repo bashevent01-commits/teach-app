@@ -210,3 +210,11 @@ data class PostCommentOut(
     val body: String,
     @SerializedName("created_at") val createdAt: String,
 )
+
+
+data class ReferenceCheckOut(
+    val exists: Boolean,
+    val mine: Boolean = false,
+    val date: String? = null,
+    val amount: String? = null,
+)

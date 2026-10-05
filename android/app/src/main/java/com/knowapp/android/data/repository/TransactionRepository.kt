@@ -6,6 +6,7 @@ import com.knowapp.android.data.local.OfflineStore
 import com.knowapp.android.data.local.PhotoStore
 import com.knowapp.android.data.model.OpeningBalancesOut
 import com.knowapp.android.data.model.PendingTransaction
+import com.knowapp.android.data.model.ReferenceCheckOut
 import com.knowapp.android.data.model.TransactionOut
 import com.knowapp.android.data.network.ApiService
 import kotlinx.coroutines.Dispatchers
@@ -142,6 +143,28 @@ class TransactionRepository(
             }
         }
         HomeData(transactions, store.pending(uid), opening)
+    }
+
+    // Was this M-Pesa code or bank reference already recorded? Checks the phone first, then the server when online
+    suspend fun checkReference(code: String): ReferenceCheckOut? = withContext(Dispatchers.IO) {
+        val clean = code.trim().uppercase()
+        if (clean.length < 6) return@withContext null
+        val uid = userId()
+        if (uid != null) {
+            store.pending(uid).firstOrNull { it.mpesaCode?.trim()?.uppercase() == clean && !it.failed }?.let {
+                return@withContext ReferenceCheckOut(exists = true, mine = true, date = it.createdAt, amount = it.amount)
+            }
+            store.transactions(uid)?.firstOrNull { it.mpesaCode?.trim()?.uppercase() == clean }?.let {
+                return@withContext ReferenceCheckOut(exists = true, mine = true, date = it.transactionDate, amount = it.amount)
+            }
+        }
+        if (!isOnline()) return@withContext null
+        try {
+            val response = api.checkReference(clean)
+            if (response.isSuccessful) response.body()?.takeIf { it.exists } else null
+        } catch (e: IOException) {
+            null
+        }
     }
 
     suspend fun record(draft: NewTransaction): RecordResult = withContext(Dispatchers.IO) {

@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.activity_log import log_activity
@@ -167,6 +168,30 @@ def list_transactions(
     if end_date is not None:
         query = query.filter(Transaction.transaction_date <= end_date)
     return query.order_by(Transaction.transaction_date.desc()).all()
+
+
+@router.get("/reference-check")
+def reference_check(code: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Tells the app whether an M-Pesa code or bank reference was already recorded in this institution
+    code = code.strip().upper()
+    if len(code) < 6 or current_user.role not in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN):
+        return {"exists": False, "mine": False}
+    match = (
+        db.query(Transaction)
+        .filter(Transaction.institution_id == current_user.institution_id, func.upper(Transaction.mpesa_code) == code)
+        .order_by(Transaction.id.desc())
+        .first()
+    )
+    if not match:
+        return {"exists": False, "mine": False}
+    # Staff only get details of their own entry; a colleague's entry is reported without amounts
+    mine = current_user.role == UserRole.INSTITUTION_ADMIN or match.recorded_by_id == current_user.id
+    return {
+        "exists": True,
+        "mine": mine,
+        "date": match.transaction_date.isoformat() if mine else None,
+        "amount": str(match.amount) if mine else None,
+    }
 
 
 @router.get("/{transaction_id}", response_model=TransactionOut)

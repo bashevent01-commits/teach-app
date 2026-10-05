@@ -290,6 +290,7 @@ fun HomeScreen(
             saving = state.saving,
             onDismiss = { recordKind = null },
             onSubmit = { draft, photo -> viewModel.record(draft, photo) { ok -> if (ok) recordKind = null } },
+            onCheckCode = { code -> viewModel.checkReference(code) },
         )
     }
 
@@ -421,6 +422,19 @@ private val INCOME_SUGGESTIONS = listOf("Fees", "Sales", "Donation", "Other")
 private val EXPENSE_SUGGESTIONS = listOf("Rent", "Salaries", "Transport", "Utilities", "Supplies", "Other")
 
 @Composable
+private fun DuplicateWarning(found: com.knowapp.android.data.model.ReferenceCheckOut) {
+    val detail = if (found.mine && found.amount != null) {
+        "Already recorded on ${found.date?.take(10) ?: "an earlier date"} for ${kes(found.amount)}."
+    } else {
+        "Someone in your institution already recorded this code."
+    }
+    Column(modifier = Modifier.fillMaxWidth().background(WarnAmber.copy(alpha = 0.14f), SmallRadius).padding(12.dp)) {
+        Text("This code has been used before", color = WarnAmber, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        Text("$detail Make sure this is a different payment.", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+@Composable
 private fun SectionLabel(text: String) {
     Text(text.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
@@ -450,6 +464,7 @@ private fun RecordSheet(
     saving: Boolean,
     onDismiss: () -> Unit,
     onSubmit: (NewTransaction, Uri?) -> Unit,
+    onCheckCode: suspend (String) -> com.knowapp.android.data.model.ReferenceCheckOut?,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val isIncome = kind == "income"
@@ -467,6 +482,17 @@ private fun RecordSheet(
     var detected by remember { mutableStateOf<MpesaParser.Parsed?>(null) }
     val clipboard = LocalClipboardManager.current
     var error by remember { mutableStateOf<String?>(null) }
+    var duplicate by remember { mutableStateOf<com.knowapp.android.data.model.ReferenceCheckOut?>(null) }
+    var confirmingDuplicate by remember { mutableStateOf(false) }
+
+    // Re-checks half a second after the code stops changing
+    LaunchedEffect(mpesaCode, method) {
+        duplicate = null
+        if (method != "cash" && mpesaCode.trim().length >= 8) {
+            kotlinx.coroutines.delay(500)
+            duplicate = onCheckCode(mpesaCode.trim())
+        }
+    }
 
     fun applyMessage(text: String) {
         mpesaMessage = text
@@ -486,6 +512,24 @@ private fun RecordSheet(
     val qty = quantity.toBigDecimalOrNull()
     val computed = if (useStock && item?.unitPrice != null && qty != null) item.unitPrice.toBigDecimalOrNull()?.multiply(qty) else null
     val shownTotal = amount.toBigDecimalOrNull() ?: computed
+
+    fun submitNow(chosenAmount: BigDecimal) {
+        onSubmit(
+            NewTransaction(
+                type = kind,
+                method = method,
+                categoryType = if (useStock) "STOCK" else "OTHER",
+                category = if (useStock) item?.name else category.trim(),
+                description = description.trim().ifBlank { null },
+                amount = chosenAmount.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString(),
+                stockItemId = if (useStock) item?.id else null,
+                quantity = if (useStock) quantity else null,
+                mpesaCode = if (method != "cash") mpesaCode.trim().ifBlank { null } else null,
+                mpesaPayerName = if (method == "mpesa") payer.trim().ifBlank { null } else null,
+            ),
+            photo,
+        )
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
         Column(
@@ -561,6 +605,7 @@ private fun RecordSheet(
                         }
                     }
                     OutlinedTextField(value = mpesaCode, onValueChange = { mpesaCode = it.uppercase() }, label = { Text("Transaction code") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+                    duplicate?.takeIf { it.exists }?.let { DuplicateWarning(it) }
                     OutlinedTextField(value = payer, onValueChange = { payer = it }, label = { Text(if (isIncome) "Received from (optional)" else "Paid to (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
                 }
             }
@@ -572,6 +617,7 @@ private fun RecordSheet(
                 ) {
                     SectionLabel("Bank details")
                     OutlinedTextField(value = mpesaCode, onValueChange = { mpesaCode = it.uppercase() }, label = { Text("Bank reference or slip number") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+                    duplicate?.takeIf { it.exists }?.let { DuplicateWarning(it) }
                 }
             }
 
@@ -658,22 +704,10 @@ private fun RecordSheet(
                         chosenAmount == null || chosenAmount <= BigDecimal.ZERO -> "Enter an amount."
                         else -> null
                     }
-                    if (error == null) {
-                        onSubmit(
-                            NewTransaction(
-                                type = kind,
-                                method = method,
-                                categoryType = if (useStock) "STOCK" else "OTHER",
-                                category = if (useStock) item?.name else category.trim(),
-                                description = description.trim().ifBlank { null },
-                                amount = chosenAmount!!.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString(),
-                                stockItemId = if (useStock) item?.id else null,
-                                quantity = if (useStock) quantity else null,
-                                mpesaCode = if (method != "cash") mpesaCode.trim().ifBlank { null } else null,
-                                mpesaPayerName = if (method == "mpesa") payer.trim().ifBlank { null } else null,
-                            ),
-                            photo,
-                        )
+                    if (error == null && duplicate?.exists == true) {
+                        confirmingDuplicate = true
+                    } else if (error == null) {
+                        submitNow(chosenAmount!!)
                     }
                 },
                 enabled = !saving,
@@ -689,7 +723,24 @@ private fun RecordSheet(
             }
         }
     }
+
+    if (confirmingDuplicate) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmingDuplicate = false },
+            title = { Text("This code was already recorded") },
+            text = { Text("Check that this is a different payment before you save it again.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingDuplicate = false
+                    val finalAmount = amount.toBigDecimalOrNull() ?: computed
+                    if (finalAmount != null && finalAmount > BigDecimal.ZERO) submitNow(finalAmount)
+                }) { Text("Save anyway") }
+            },
+            dismissButton = { TextButton(onClick = { confirmingDuplicate = false }) { Text("Go back") } },
+        )
+    }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

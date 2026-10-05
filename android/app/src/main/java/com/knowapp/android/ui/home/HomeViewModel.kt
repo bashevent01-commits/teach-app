@@ -122,6 +122,8 @@ class HomeViewModel(
         }
     }
 
+    suspend fun checkReference(code: String) = transactions.checkReference(code)
+
     fun saveOpening(cash: Double, mpesa: Double, bank: Double, onFinished: (Boolean) -> Unit) {
         viewModelScope.launch {
             val result = transactions.setOpening(cash, mpesa, bank)
