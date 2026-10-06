@@ -69,6 +69,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.knowapp.android.ui.components.HeroCard
+import com.knowapp.android.ui.components.SkeletonRows
+import com.knowapp.android.ui.components.categoryIcon
 import com.knowapp.android.ui.components.SimpleDropdown
 import com.knowapp.android.ui.components.kes
 import com.knowapp.android.ui.components.kesNumber
@@ -257,6 +259,18 @@ fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBac
 
             if (state.refreshing) item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
 
+            if (state.loading && lines.isEmpty()) item { SkeletonRows() }
+
+            val spend = lines.filter { it.row.type == "expense" }
+                .groupBy { it.row.category }
+                .mapValues { (_, v) -> v.fold(BigDecimal.ZERO) { a, l -> a + l.row.amount } }
+                .toList()
+                .sortedByDescending { it.second }
+                .take(5)
+            if (spend.isNotEmpty() && state.expense.signum() > 0) {
+                item { CategoryBreakdown(spend, state.expense) }
+            }
+
             if (lines.isEmpty()) {
                 item {
                     Column(
@@ -277,7 +291,7 @@ fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBac
                     Column {
                         Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(dayHeading(day), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-                            Text("${if (net >= BigDecimal.ZERO) "+" else "-"}${kes(net.abs())}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${if (net >= BigDecimal.ZERO) "+" else "\u2212"}${kes(net.abs())}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Column(
                             modifier = Modifier
@@ -342,7 +356,7 @@ private fun StatementLineItem(line: StatementLine) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = Modifier.size(38.dp).background(color.copy(alpha = 0.15f), CircleShape), contentAlignment = Alignment.Center) {
-            Icon(if (row.type == "income") Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+            Icon(categoryIcon(row.category, row.type), contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
         }
         Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(row.category, fontWeight = FontWeight.SemiBold, maxLines = 1)
@@ -350,7 +364,7 @@ private fun StatementLineItem(line: StatementLine) {
             if (detail.isNotBlank()) Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("${if (row.type == "income") "+" else "-"}${kes(row.amount)}", color = color, fontWeight = FontWeight.Bold)
+            Text("${if (row.type == "income") "+" else "\u2212"}${kes(row.amount)}", color = color, fontWeight = FontWeight.Bold)
             line.balance?.let { Text("Bal ${kesNumber(it)}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
@@ -420,4 +434,35 @@ private fun DatePick(initial: LocalDate, onDismiss: () -> Unit, onPicked: (Local
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     ) { DatePicker(state = pickerState) }
+}
+
+@Composable
+private fun CategoryBreakdown(rows: List<Pair<String, BigDecimal>>, total: BigDecimal) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(22.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f), RoundedCornerShape(22.dp))
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Text("Where the money went", style = MaterialTheme.typography.titleMedium)
+        rows.forEach { (name, amount) ->
+            val share = amount.divide(total, 4, java.math.RoundingMode.HALF_UP).toFloat().coerceIn(0.02f, 1f)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(34.dp).background(ExpenseOrange.copy(alpha = 0.15f), CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(categoryIcon(name, "expense"), contentDescription = null, tint = ExpenseOrange, modifier = Modifier.size(18.dp))
+                }
+                Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                        Text(kes(amount), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    }
+                    Box(modifier = Modifier.padding(top = 6.dp).fillMaxWidth().height(6.dp).background(MaterialTheme.colorScheme.surfaceVariant, PillShape)) {
+                        Box(modifier = Modifier.fillMaxWidth(share).height(6.dp).background(ExpenseOrange, PillShape))
+                    }
+                }
+            }
+        }
+    }
 }

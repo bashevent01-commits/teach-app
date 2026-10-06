@@ -165,8 +165,11 @@ fun KnowNavGraph(container: AppContainer) {
                     )
                 },
             )
+            val hideBalances by container.themeStore.hideBalances.collectAsState()
             HomeScreen(
                 viewModel = viewModel,
+                hideBalances = hideBalances,
+                onToggleHideBalances = { container.themeStore.setHideBalances(!hideBalances) },
                 onSeeAll = { goTab(Routes.STATEMENTS) },
                 onToggleTheme = { makeDark -> container.themeStore.set(if (makeDark) ThemeMode.DARK else ThemeMode.LIGHT) },
             )

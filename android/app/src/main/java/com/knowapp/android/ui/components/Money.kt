@@ -5,9 +5,11 @@ import java.text.DecimalFormat
 
 private val kesFormat = DecimalFormat("#,##0.00")
 
-// Non-breaking space so "KES" never wraps away from its amount
-fun kes(value: BigDecimal): String = "KES\u00A0${kesFormat.format(value)}"
+private fun plain(value: BigDecimal): String = kesFormat.format(value.abs())
+
+// Non-breaking space so "KES" never wraps away from its amount; a real minus sign for negatives
+fun kes(value: BigDecimal): String = (if (value.signum() < 0) "\u2212" else "") + "KES\u00A0" + plain(value)
 
 fun kes(raw: String?): String = kes(raw?.toBigDecimalOrNull() ?: BigDecimal.ZERO)
 
-fun kesNumber(value: BigDecimal): String = kesFormat.format(value)
+fun kesNumber(value: BigDecimal): String = (if (value.signum() < 0) "\u2212" else "") + plain(value)

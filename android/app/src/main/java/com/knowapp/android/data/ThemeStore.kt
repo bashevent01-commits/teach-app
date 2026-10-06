@@ -17,6 +17,14 @@ class ThemeStore(context: Context) {
         ThemeMode.SYSTEM
     }
 
+    private val _hideBalances = MutableStateFlow(prefs.getBoolean("hide_balances", false))
+    val hideBalances: StateFlow<Boolean> = _hideBalances
+
+    fun setHideBalances(hide: Boolean) {
+        prefs.edit().putBoolean("hide_balances", hide).apply()
+        _hideBalances.value = hide
+    }
+
     fun set(mode: ThemeMode) {
         prefs.edit().putString("mode", mode.name).apply()
         _mode.value = mode

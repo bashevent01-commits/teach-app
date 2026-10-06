@@ -2,39 +2,35 @@ package com.knowapp.android.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
+import com.knowapp.android.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// The web app uses --font: "Plus Jakarta Sans" (body) and --display:
-// "Space Grotesk" (h1/h2/h3, greeting, amounts) — see styles.css's :root.
-//
-// These default to FontFamily.Default so the project builds and runs with
-// zero setup. To match the web app exactly:
-//   1. In Android Studio: Resource Manager (View > Tool Windows) > "+" >
-//      "Font" > search "Plus Jakarta Sans" > pick weights 400/500/600/700
-//      > "Add font to project". Repeat for "Space Grotesk" (weights 500/600/700).
-//   2. Studio generates res/font/*.xml and downloadable-font resources for you.
-//   3. Uncomment the two FontFamily blocks below and point BodyFontFamily /
-//      DisplayFontFamily at them instead of FontFamily.Default.
-// Doing it via the wizard (rather than hand-writing font resource XML) avoids
-// any risk of an invalid downloadable-font certificate reference.
+// The website's own fonts: Plus Jakarta Sans for text, Space Grotesk for headings and big numbers
+@OptIn(ExperimentalTextApi::class)
+private fun variable(resId: Int, weight: FontWeight) = Font(
+    resId = resId,
+    weight = weight,
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
+)
 
-// import com.knowapp.android.R
-// private val PlusJakartaSans = FontFamily(
-//     Font(R.font.plus_jakarta_sans, FontWeight.Normal),
-//     Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium),
-//     Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
-//     Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold),
-// )
-// private val SpaceGrotesk = FontFamily(
-//     Font(R.font.space_grotesk_medium, FontWeight.Medium),
-//     Font(R.font.space_grotesk_semibold, FontWeight.SemiBold),
-//     Font(R.font.space_grotesk_bold, FontWeight.Bold),
-// )
+val BodyFontFamily = FontFamily(
+    variable(R.font.plus_jakarta_sans, FontWeight.Normal),
+    variable(R.font.plus_jakarta_sans, FontWeight.Medium),
+    variable(R.font.plus_jakarta_sans, FontWeight.SemiBold),
+    variable(R.font.plus_jakarta_sans, FontWeight.Bold),
+    variable(R.font.plus_jakarta_sans, FontWeight.ExtraBold),
+)
 
-val BodyFontFamily = FontFamily.Default // swap for PlusJakartaSans once added
-val DisplayFontFamily = FontFamily.Default // swap for SpaceGrotesk once added
+val DisplayFontFamily = FontFamily(
+    variable(R.font.space_grotesk, FontWeight.Medium),
+    variable(R.font.space_grotesk, FontWeight.SemiBold),
+    variable(R.font.space_grotesk, FontWeight.Bold),
+)
 
 val KnowTypography = Typography(
     headlineMedium = TextStyle(

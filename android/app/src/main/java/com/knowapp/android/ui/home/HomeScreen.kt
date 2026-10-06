@@ -74,6 +74,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -86,6 +87,7 @@ import com.knowapp.android.data.model.TransactionOut
 import com.knowapp.android.data.repository.NewTransaction
 import com.knowapp.android.ui.components.HeroCard
 import com.knowapp.android.ui.components.SimpleDropdown
+import com.knowapp.android.ui.components.categoryIcon
 import com.knowapp.android.ui.components.kes
 import com.knowapp.android.ui.components.kesNumber
 import com.knowapp.android.ui.statements.dateOf
@@ -130,11 +132,14 @@ private fun greeting(): String {
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
     onSeeAll: () -> Unit,
     onToggleTheme: (Boolean) -> Unit,
+    hideBalances: Boolean = false,
+    onToggleHideBalances: () -> Unit = {},
 ) {
     val session by viewModel.session.collectAsState()
     val state by viewModel.state.collectAsState()
@@ -145,6 +150,15 @@ fun HomeScreen(
     var recordKind by remember { mutableStateOf<String?>(null) }
     var showOpening by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<TransactionOut?>(null) }
+    var showSuccess by remember { mutableStateOf(false) }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    LaunchedEffect(showSuccess) {
+        if (showSuccess) {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            kotlinx.coroutines.delay(950)
+            showSuccess = false
+        }
+    }
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -170,6 +184,19 @@ fun HomeScreen(
     val cash = held("cash")
     val mpesa = held("mpesa")
     val bank = held("bank")
+    // Count the total up once when real figures arrive; never show a misleading zero before that
+    val countUp by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (state.loaded) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(800),
+        label = "countUp",
+    )
+    val total = cash + mpesa + bank
+    val animatedTotal = if (countUp >= 0.999f) total else total.multiply(BigDecimal(countUp.toDouble()))
+    fun figure(value: BigDecimal): String = when {
+        hideBalances -> "••••"
+        !state.loaded -> "—"
+        else -> kesNumber(value)
+    }
     val income = monthTotal("income")
     val expense = monthTotal("expense")
 
@@ -177,8 +204,13 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
+        androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+            isRefreshing = state.refreshing,
+            onRefresh = viewModel::pullRefresh,
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp),
         ) {
@@ -202,12 +234,22 @@ fun HomeScreen(
 
             item {
                 HeroCard {
-                    Text("TOTAL YOU HOLD", color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("TOTAL YOU HOLD", color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                        IconButton(onClick = onToggleHideBalances, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                if (hideBalances) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                contentDescription = if (hideBalances) "Show balances" else "Hide balances",
+                                tint = Color.White.copy(alpha = 0.85f),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
                     Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 6.dp, bottom = 18.dp)) {
                         Text("KES", color = Color.White.copy(alpha = 0.8f), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(end = 8.dp, bottom = 6.dp))
                         Text(
-                            kesNumber(cash + mpesa + bank),
-                            color = Color.White,
+                            figure(animatedTotal),
+                            color = if (total.signum() < 0 && !hideBalances && state.loaded) Color(0xFFFFB4AB) else Color.White,
                             fontFamily = DisplayFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 38.sp,
@@ -215,9 +257,9 @@ fun HomeScreen(
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        HeroTile("Cash", Icons.Outlined.Payments, cash, Modifier.weight(1f))
-                        HeroTile("M-Pesa", Icons.Outlined.PhoneAndroid, mpesa, Modifier.weight(1f))
-                        HeroTile("Bank", Icons.Outlined.AccountBalance, bank, Modifier.weight(1f))
+                        HeroTile("Cash", Icons.Outlined.Payments, figure(cash), Modifier.weight(1f))
+                        HeroTile("M-Pesa", Icons.Outlined.PhoneAndroid, figure(mpesa), Modifier.weight(1f))
+                        HeroTile("Bank", Icons.Outlined.AccountBalance, figure(bank), Modifier.weight(1f))
                     }
                     Box(
                         modifier = Modifier
@@ -248,11 +290,20 @@ fun HomeScreen(
                 CardShell {
                     Text("This month", style = MaterialTheme.typography.titleMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 12.dp)) {
-                        MonthTile("Income", income, IncomeGreen, Modifier.weight(1f))
-                        MonthTile("Expense", expense, ExpenseOrange, Modifier.weight(1f))
-                        MonthTile("Net", income - expense, if (income - expense < BigDecimal.ZERO) DangerRed else MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+                        MonthTile("Income", figure(income), IncomeGreen, Modifier.weight(1f))
+                        MonthTile("Expense", figure(expense), ExpenseOrange, Modifier.weight(1f))
+                        MonthTile("Net", figure(income - expense), if (income - expense < BigDecimal.ZERO) DangerRed else MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
                     }
-                    FlowBar(income, expense, modifier = Modifier.padding(top = 14.dp))
+
+                    val weekDays = (6 downTo 0).map { back ->
+                        val day = today.minusDays(back.toLong())
+                        fun sum(type: String) =
+                            state.transactions.filter { it.type == type && dateOf(it.transactionDate) == day }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) } +
+                                live.filter { it.type == type && dateOf(it.createdAt) == day }.fold(BigDecimal.ZERO) { a, t -> a + amountOf(t.amount) }
+                        Triple(day, sum("income"), sum("expense"))
+                    }
+                    Text("LAST 7 DAYS", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 18.dp, bottom = 10.dp))
+                    WeekChart(weekDays, hidden = hideBalances || !state.loaded)
                 }
             }
 
@@ -280,6 +331,7 @@ fun HomeScreen(
             }
             item { Spacer(Modifier.height(8.dp)) }
         }
+        }
     }
 
     recordKind?.let { kind ->
@@ -289,12 +341,14 @@ fun HomeScreen(
             isTeacher = isTeacher,
             saving = state.saving,
             onDismiss = { recordKind = null },
-            onSubmit = { draft, photo -> viewModel.record(draft, photo) { ok -> if (ok) recordKind = null } },
+            onSubmit = { draft, photo -> viewModel.record(draft, photo) { ok -> if (ok) { recordKind = null; showSuccess = true } } },
             onCheckCode = { code -> viewModel.checkReference(code) },
         )
     }
 
     detail?.let { t -> DetailSheet(t) { detail = null } }
+
+    if (showSuccess) SuccessCheck()
 
     if (showOpening) {
         OpeningSheet(
@@ -320,34 +374,58 @@ private fun CardShell(content: @Composable androidx.compose.foundation.layout.Co
 }
 
 @Composable
-private fun HeroTile(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, value: BigDecimal, modifier: Modifier) {
+private fun HeroTile(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, value: String, modifier: Modifier) {
     Column(modifier = modifier.background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(16.dp)).padding(horizontal = 10.dp, vertical = 12.dp)) {
         Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
         Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
-        Text(kesNumber(value), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+        Text(value, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
     }
 }
 
 @Composable
-private fun MonthTile(label: String, value: BigDecimal, color: Color, modifier: Modifier) {
+private fun MonthTile(label: String, value: String, color: Color, modifier: Modifier) {
     Column(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
         Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(kesNumber(value), color = color, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
+        Text(value, color = color, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
 @Composable
-private fun FlowBar(income: BigDecimal, expense: BigDecimal, modifier: Modifier = Modifier) {
-    val total = income + expense
-    Row(modifier = modifier.fillMaxWidth().height(8.dp).clip(PillShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
-        if (total > BigDecimal.ZERO) {
-            val share = income.divide(total, 4, java.math.RoundingMode.HALF_UP).toFloat()
-            Box(modifier = Modifier.weight(share.coerceIn(0.001f, 0.999f)).fillMaxSize().background(IncomeGreen))
-            Box(modifier = Modifier.weight((1f - share).coerceIn(0.001f, 0.999f)).fillMaxSize().background(ExpenseOrange))
+private fun WeekChart(days: List<Triple<LocalDate, BigDecimal, BigDecimal>>, hidden: Boolean) {
+    val peak = days.maxOf { maxOf(it.second, it.third) }
+    val track = MaterialTheme.colorScheme.surfaceVariant
+    Column(modifier = Modifier.fillMaxWidth()) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxWidth().height(88.dp)) {
+            val slot = size.width / days.size
+            val barW = slot * 0.26f
+            val gap = slot * 0.05f
+            days.forEachIndexed { i, (_, inc, exp) ->
+                val left = slot * i + (slot - (barW * 2 + gap)) / 2f
+                // A faint track keeps every day visible, even a day with nothing recorded
+                drawRoundRect(track, androidx.compose.ui.geometry.Offset(left, 0f), androidx.compose.ui.geometry.Size(barW * 2 + gap, size.height), androidx.compose.ui.geometry.CornerRadius(barW / 2))
+                if (!hidden && peak.signum() > 0) {
+                    val incH = (inc.divide(peak, 4, java.math.RoundingMode.HALF_UP).toFloat() * size.height).coerceAtLeast(if (inc.signum() > 0) 6f else 0f)
+                    val expH = (exp.divide(peak, 4, java.math.RoundingMode.HALF_UP).toFloat() * size.height).coerceAtLeast(if (exp.signum() > 0) 6f else 0f)
+                    if (incH > 0f) drawRoundRect(IncomeGreen, androidx.compose.ui.geometry.Offset(left, size.height - incH), androidx.compose.ui.geometry.Size(barW, incH), androidx.compose.ui.geometry.CornerRadius(barW / 2))
+                    if (expH > 0f) drawRoundRect(ExpenseOrange, androidx.compose.ui.geometry.Offset(left + barW + gap, size.height - expH), androidx.compose.ui.geometry.Size(barW, expH), androidx.compose.ui.geometry.CornerRadius(barW / 2))
+                }
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            days.forEach { (day, _, _) ->
+                Text(
+                    day.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.getDefault()),
+                    modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    fontSize = 11.sp,
+                    fontWeight = if (day == LocalDate.now()) FontWeight.Bold else FontWeight.Normal,
+                    color = if (day == LocalDate.now()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -369,10 +447,10 @@ private fun QuickAction(title: String, subtitle: String, icon: androidx.compose.
 }
 
 @Composable
-private fun RowIcon(type: String) {
+private fun RowIcon(type: String, category: String? = null) {
     val color = if (type == "income") IncomeGreen else ExpenseOrange
     Box(modifier = Modifier.size(38.dp).background(color.copy(alpha = 0.15f), CircleShape), contentAlignment = Alignment.Center) {
-        Icon(if (type == "income") Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward, contentDescription = null, tint = color)
+        Icon(categoryIcon(category, type), contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -381,13 +459,13 @@ private fun PendingRow(p: PendingTransaction, onDiscard: (String) -> Unit) {
     val tint = if (p.failed) DangerRed else WarnAmber
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).background(tint.copy(alpha = 0.10f), SmallRadius).padding(12.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            RowIcon(p.type)
+            RowIcon(p.type, p.category)
             Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text(p.category?.takeIf { it.isNotBlank() } ?: "Stock entry", fontWeight = FontWeight.SemiBold)
                 Text(methodLabel(p.method), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(
-                "${if (p.type == "income") "+" else "-"}${kes(p.amount)}",
+                "${if (p.type == "income") "+" else "\u2212"}${kes(p.amount)}",
                 color = if (p.type == "income") IncomeGreen else ExpenseOrange,
                 fontWeight = FontWeight.Bold,
             )
@@ -405,13 +483,13 @@ private fun TransactionRow(t: TransactionOut, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RowIcon(t.type)
+        RowIcon(t.type, t.category)
         Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(t.category, fontWeight = FontWeight.SemiBold)
             Text("${methodLabel(t.method)} · ${dayLabel(t.transactionDate)}${if (t.imagePath != null) " · photo" else ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(
-            "${if (t.type == "income") "+" else "-"}${kes(t.amount)}",
+            "${if (t.type == "income") "+" else "\u2212"}${kes(t.amount)}",
             color = if (t.type == "income") IncomeGreen else ExpenseOrange,
             fontWeight = FontWeight.Bold,
         )
@@ -797,7 +875,7 @@ private fun DetailSheet(t: TransactionOut, onDismiss: () -> Unit) {
                     Text(if (t.type == "income") "Received" else "Paid", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text("${if (t.type == "income") "+" else "-"}${kes(t.amount)}", color = color, fontWeight = FontWeight.Bold, fontSize = 30.sp, fontFamily = DisplayFontFamily)
+            Text("${if (t.type == "income") "+" else "\u2212"}${kes(t.amount)}", color = color, fontWeight = FontWeight.Bold, fontSize = 30.sp, fontFamily = DisplayFontFamily)
             DetailLine("Method", methodLabel(t.method))
             DetailLine("Date", dayLabel(t.transactionDate))
             t.quantity?.let { DetailLine("Quantity", it.toBigDecimalOrNull()?.stripTrailingZeros()?.toPlainString() ?: it) }
@@ -816,5 +894,33 @@ private fun DetailLine(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun SuccessCheck() {
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 380f),
+        label = "successScale",
+    )
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = {},
+        properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+    ) {
+        Column(
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(28.dp))
+                .padding(horizontal = 36.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                Icons.Filled.CheckCircle,
+                contentDescription = null,
+                tint = IncomeGreen,
+                modifier = Modifier.size(64.dp).graphicsLayer(scaleX = scale, scaleY = scale),
+            )
+            Text("Saved", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 12.dp))
+        }
     }
 }

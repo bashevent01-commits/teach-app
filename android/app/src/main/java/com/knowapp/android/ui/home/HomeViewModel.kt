@@ -36,6 +36,8 @@ data class HomeUiState(
     val stock: List<StockItemOut> = emptyList(),
     val institutionName: String? = null,
     val saving: Boolean = false,
+    val loaded: Boolean = false,
+    val refreshing: Boolean = false,
     val message: String? = null,
 )
 
@@ -57,7 +59,13 @@ class HomeViewModel(
     init {
         viewModelScope.launch {
             val cached = transactions.cachedHome()
-            _state.value = _state.value.copy(loading = false, transactions = cached.transactions, pending = cached.pending, opening = cached.opening)
+            _state.value = _state.value.copy(
+                loading = false,
+                loaded = cached.transactions.isNotEmpty() || cached.pending.isNotEmpty() || cached.opening.isSet,
+                transactions = cached.transactions,
+                pending = cached.pending,
+                opening = cached.opening,
+            )
             refresh()
         }
         viewModelScope.launch {
@@ -100,8 +108,16 @@ class HomeViewModel(
         }
         transactions.syncPending()
         val data = transactions.loadHome()
-        _state.value = _state.value.copy(loading = false, transactions = data.transactions, pending = data.pending, opening = data.opening)
+        _state.value = _state.value.copy(loading = false, loaded = true, transactions = data.transactions, pending = data.pending, opening = data.opening)
         loadStock()
+    }
+
+    fun pullRefresh() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(refreshing = true)
+            refresh()
+            _state.value = _state.value.copy(refreshing = false)
+        }
     }
 
     fun record(draft: NewTransaction, photo: Uri?, onFinished: (Boolean) -> Unit) {

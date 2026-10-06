@@ -121,7 +121,7 @@ fun BooksScreen(viewModel: BooksViewModel, onBack: () -> Unit, showBack: Boolean
                             )
                         }
                         Text(
-                            "${if (t.type == "income") "+" else "-"}${kes(t.amount)}",
+                            "${if (t.type == "income") "+" else "\u2212"}${kes(t.amount)}",
                             color = if (t.type == "income") IncomeGreen else ExpenseOrange,
                             fontWeight = FontWeight.Bold,
                         )

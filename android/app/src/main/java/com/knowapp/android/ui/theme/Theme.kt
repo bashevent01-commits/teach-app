@@ -78,6 +78,13 @@ fun KnowTheme(
         colorScheme = colorScheme,
         typography = KnowTypography,
         shapes = KnowShapes,
-        content = content,
+        content = {
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.merge(
+                    androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
+                ),
+                content = content,
+            )
+        },
     )
 }

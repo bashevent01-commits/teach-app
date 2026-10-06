@@ -152,7 +152,7 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
                 }
             }
             when {
-                state.loading && state.posts.isEmpty() -> item { Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(20.dp)) }
+                state.loading && state.posts.isEmpty() -> item { com.knowapp.android.ui.components.SkeletonRows(count = 3, modifier = Modifier.padding(horizontal = 16.dp)) }
                 state.error != null && state.posts.isEmpty() -> item {
                     Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(state.error ?: "", color = DangerRed)

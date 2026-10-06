@@ -135,7 +135,7 @@ fun StockScreen(viewModel: StockViewModel, onBack: () -> Unit, showBack: Boolean
                 }
             }
             when {
-                state.loading && state.items.isEmpty() -> item { Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                state.loading && state.items.isEmpty() -> item { com.knowapp.android.ui.components.SkeletonRows() }
                 state.error != null && state.items.isEmpty() -> item {
                     Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(state.error ?: "", color = DangerRed)
