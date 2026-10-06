@@ -13,6 +13,9 @@ import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.knowapp.android.data.model.resolveMediaUrl
 import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Image as ImageIcon
 import java.io.File
 import androidx.compose.foundation.background
