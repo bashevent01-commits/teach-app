@@ -20,6 +20,15 @@ class ThemeStore(context: Context) {
     private val _hideBalances = MutableStateFlow(prefs.getBoolean("hide_balances", false))
     val hideBalances: StateFlow<Boolean> = _hideBalances
 
+    // The way money was last received or paid, so the next entry starts on it
+    var lastMethod: String
+        get() = prefs.getString("last_method", "cash") ?: "cash"
+        private set(value) { prefs.edit().putString("last_method", value).apply() }
+
+    fun rememberMethod(method: String) {
+        lastMethod = method
+    }
+
     fun setHideBalances(hide: Boolean) {
         prefs.edit().putBoolean("hide_balances", hide).apply()
         _hideBalances.value = hide

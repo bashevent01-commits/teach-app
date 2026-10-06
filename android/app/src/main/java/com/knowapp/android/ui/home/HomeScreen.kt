@@ -14,6 +14,8 @@ import coil.compose.AsyncImage
 import com.knowapp.android.data.model.resolveMediaUrl
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Image as ImageIcon
@@ -74,6 +76,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
@@ -143,6 +146,8 @@ fun HomeScreen(
     onToggleTheme: (Boolean) -> Unit,
     hideBalances: Boolean = false,
     onToggleHideBalances: () -> Unit = {},
+    lastMethod: String = "cash",
+    onMethodChosen: (String) -> Unit = {},
 ) {
     val session by viewModel.session.collectAsState()
     val state by viewModel.state.collectAsState()
@@ -338,11 +343,17 @@ fun HomeScreen(
     }
 
     recordKind?.let { kind ->
+        // Suggestions come from this person's own recent entries of the same kind
+        val sameKind = state.transactions.sortedByDescending { it.createdAt }.filter { it.type == kind }
         RecordSheet(
             kind = kind,
             stock = state.stock,
             isTeacher = isTeacher,
             saving = state.saving,
+            startMethod = lastMethod,
+            recentNotes = sameKind.mapNotNull { it.description?.takeIf { d -> d.isNotBlank() } }.distinct().take(3),
+            recentCategories = sameKind.map { it.category }.filter { it.isNotBlank() }.distinct().take(4),
+            onMethodChosen = onMethodChosen,
             onDismiss = { recordKind = null },
             onSubmit = { draft, photo -> viewModel.record(draft, photo) { ok -> if (ok) { recordKind = null; showSuccess = true } } },
             onCheckCode = { code -> viewModel.checkReference(code) },
@@ -536,6 +547,28 @@ private fun ChoiceCard(label: String, icon: androidx.compose.ui.graphics.vector.
     }
 }
 
+@Composable
+private fun PhotoSection(photoUri: Uri?, label: String, onTake: () -> Unit, onChoose: () -> Unit, onRemove: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (label.isNotBlank()) SectionLabel(label)
+        if (photoUri != null) {
+            AsyncImage(model = photoUri, contentDescription = "Selected photo", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(16.dp)))
+            TextButton(onClick = onRemove) { Text("Remove photo") }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onTake, shape = RoundedCornerShape(16.dp), modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text("Take photo", modifier = Modifier.padding(start = 6.dp))
+                }
+                OutlinedButton(onClick = onChoose, shape = RoundedCornerShape(16.dp), modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.ImageIcon, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text("Choose photo", modifier = Modifier.padding(start = 6.dp))
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun RecordSheet(
@@ -543,6 +576,10 @@ private fun RecordSheet(
     stock: List<StockItemOut>,
     isTeacher: Boolean,
     saving: Boolean,
+    startMethod: String,
+    recentNotes: List<String>,
+    recentCategories: List<String>,
+    onMethodChosen: (String) -> Unit,
     onDismiss: () -> Unit,
     onSubmit: (NewTransaction, Uri?) -> Unit,
     onCheckCode: suspend (String) -> com.knowapp.android.data.model.ReferenceCheckOut?,
@@ -551,43 +588,64 @@ private fun RecordSheet(
     val isIncome = kind == "income"
     val accent = if (isIncome) IncomeGreen else ExpenseOrange
     var amount by remember { mutableStateOf("") }
-    var method by remember { mutableStateOf("cash") }
+    var method by remember { mutableStateOf(if (startMethod in METHOD_VALUES) startMethod else "cash") }
     var useStock by remember { mutableStateOf(false) }
     var category by remember { mutableStateOf("") }
+    var showCategory by remember { mutableStateOf(false) }
     var description by remember { mutableStateOf("") }
     var itemName by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("") }
-    var mpesaCode by remember { mutableStateOf("") }
+    var reference by remember { mutableStateOf("") }
     var payer by remember { mutableStateOf("") }
-    var mpesaMessage by remember { mutableStateOf("") }
+    var pastedMessage by remember { mutableStateOf("") }
     var detected by remember { mutableStateOf<MpesaParser.Parsed?>(null) }
-    val clipboard = LocalClipboardManager.current
     var error by remember { mutableStateOf<String?>(null) }
     var duplicate by remember { mutableStateOf<com.knowapp.android.data.model.ReferenceCheckOut?>(null) }
     var confirmingDuplicate by remember { mutableStateOf(false) }
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
+    var captureUri by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val amountFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val gallery = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) photoUri = uri }
+    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok -> if (ok) photoUri = captureUri }
 
-    // Re-checks half a second after the code stops changing
-    LaunchedEffect(mpesaCode, method) {
-        duplicate = null
-        if (method != "cash" && mpesaCode.trim().length >= 8) {
-            kotlinx.coroutines.delay(500)
-            duplicate = onCheckCode(mpesaCode.trim())
-        }
+    fun startCamera() {
+        val dir = File(context.cacheDir, "photos").apply { mkdirs() }
+        val file = File(dir, "capture_${System.currentTimeMillis()}.jpg")
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        captureUri = uri
+        camera.launch(uri)
     }
 
     fun applyMessage(text: String) {
-        mpesaMessage = text
-        val parsed = MpesaParser.parse(text)
+        pastedMessage = text
+        val parsed = if (method == "bank") MpesaParser.parseBank(text) else MpesaParser.parse(text)
         detected = if (parsed.code != null || parsed.amount != null) parsed else null
-        parsed.code?.let { mpesaCode = it }
+        parsed.code?.let { reference = it }
         parsed.party?.let { payer = it }
         if (parsed.amount != null && amount.isBlank()) amount = parsed.amount
     }
-    var photo by remember { mutableStateOf<Uri?>(null) }
-    val context = LocalContext.current
-    var cameraTarget by remember { mutableStateOf<Uri?>(null) }
-    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) photo = uri }
-    val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok -> if (ok) photo = cameraTarget }
+
+    fun addToAmount(step: Int) {
+        val current = amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
+        amount = (current + BigDecimal(step)).stripTrailingZeros().toPlainString()
+    }
+
+    // Opens straight onto the amount with the number keyboard up
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(350)
+        runCatching { amountFocus.requestFocus() }
+    }
+
+    // Re-checks half a second after the code stops changing
+    LaunchedEffect(reference, method) {
+        duplicate = null
+        if (method != "cash" && reference.trim().length >= 8) {
+            kotlinx.coroutines.delay(500)
+            duplicate = onCheckCode(reference.trim())
+        }
+    }
 
     val item = stock.firstOrNull { it.name == itemName }
     val qty = quantity.toBigDecimalOrNull()
@@ -595,20 +653,21 @@ private fun RecordSheet(
     val shownTotal = amount.toBigDecimalOrNull() ?: computed
 
     fun submitNow(chosenAmount: BigDecimal) {
+        onMethodChosen(method)
         onSubmit(
             NewTransaction(
                 type = kind,
                 method = method,
                 categoryType = if (useStock) "STOCK" else "OTHER",
-                category = if (useStock) item?.name else category.trim(),
+                category = if (useStock) item?.name else category.trim().ifBlank { "Other" },
                 description = description.trim().ifBlank { null },
                 amount = chosenAmount.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString(),
                 stockItemId = if (useStock) item?.id else null,
                 quantity = if (useStock) quantity else null,
-                mpesaCode = if (method != "cash") mpesaCode.trim().ifBlank { null } else null,
-                mpesaPayerName = if (method == "mpesa") payer.trim().ifBlank { null } else null,
+                mpesaCode = if (method != "cash") reference.trim().ifBlank { null } else null,
+                mpesaPayerName = if (method != "cash") payer.trim().ifBlank { null } else null,
             ),
-            photo,
+            photoUri,
         )
     }
 
@@ -627,7 +686,7 @@ private fun RecordSheet(
                 }
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 SectionLabel("Amount")
                 OutlinedTextField(
                     value = amount,
@@ -638,77 +697,22 @@ private fun RecordSheet(
                     textStyle = androidx.compose.ui.text.TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Bold),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(amountFocus),
                 )
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel(if (isIncome) "Received through" else "Paid through")
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ChoiceCard("Cash", Icons.Outlined.Payments, method == "cash", accent, Modifier.weight(1f)) { method = "cash" }
-                    ChoiceCard("M-Pesa", Icons.Outlined.PhoneAndroid, method == "mpesa", accent, Modifier.weight(1f)) { method = "mpesa" }
-                    ChoiceCard("Bank", Icons.Outlined.AccountBalance, method == "bank", accent, Modifier.weight(1f)) { method = "bank" }
-                }
-            }
-
-            if (method == "mpesa") {
-                Column(
-                    modifier = Modifier.fillMaxWidth().background(accent.copy(alpha = 0.08f), RoundedCornerShape(16.dp)).padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    SectionLabel("M-Pesa message")
-                    OutlinedTextField(
-                        value = mpesaMessage,
-                        onValueChange = { applyMessage(it) },
-                        label = { Text("Paste the M-Pesa confirmation message") },
-                        minLines = 3,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = SmallRadius,
-                    )
-                    OutlinedButton(
-                        onClick = { clipboard.getText()?.text?.let { applyMessage(it) } },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Paste from clipboard") }
-                    detected?.let { d ->
-                        Text(
-                            "Found: ${d.code ?: "no code"}${d.amount?.let { " · KES $it" } ?: ""}${d.party?.let { " · $it" } ?: ""}",
-                            color = accent,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp,
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(100, 500, 1000, 5000).forEach { step ->
+                        androidx.compose.material3.AssistChip(
+                            onClick = { addToAmount(step) },
+                            label = { Text("+${java.text.DecimalFormat("#,###").format(step)}") },
                         )
-                        if (d.incoming != null && d.incoming != isIncome) {
-                            Text(
-                                if (d.incoming) "This message looks like money received. Check you chose the right button." else "This message looks like money sent. Check you chose the right button.",
-                                color = WarnAmber,
-                                fontSize = 12.sp,
-                            )
-                        }
                     }
-                    OutlinedTextField(value = mpesaCode, onValueChange = { mpesaCode = it.uppercase() }, label = { Text("Transaction code") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
-                    duplicate?.takeIf { it.exists }?.let { DuplicateWarning(it) }
-                    OutlinedTextField(value = payer, onValueChange = { payer = it }, label = { Text(if (isIncome) "Received from (optional)" else "Paid to (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
-                }
-            }
-
-            if (method == "bank") {
-                Column(
-                    modifier = Modifier.fillMaxWidth().background(accent.copy(alpha = 0.08f), RoundedCornerShape(16.dp)).padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    SectionLabel("Bank details")
-                    OutlinedTextField(value = mpesaCode, onValueChange = { mpesaCode = it.uppercase() }, label = { Text("Bank reference or slip number") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
-                    duplicate?.takeIf { it.exists }?.let { DuplicateWarning(it) }
                 }
             }
 
             if (!isTeacher) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionLabel("What is it for")
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ChoiceCard("General", null, !useStock, accent, Modifier.weight(1f)) { useStock = false }
-                        ChoiceCard("Stock item", null, useStock, accent, Modifier.weight(1f)) { useStock = true }
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ChoiceCard("General", null, !useStock, accent, Modifier.weight(1f)) { useStock = false }
+                    ChoiceCard("Stock item", null, useStock, accent, Modifier.weight(1f)) { useStock = true }
                 }
             }
 
@@ -723,48 +727,103 @@ private fun RecordSheet(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), shape = SmallRadius,
                     )
                 }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SectionLabel("Category")
-                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        (if (isIncome) INCOME_SUGGESTIONS else EXPENSE_SUGGESTIONS).forEach { suggestion ->
-                            FilterChip(
-                                selected = category == suggestion,
-                                onClick = { category = suggestion },
-                                label = { Text(suggestion) },
-                            )
-                        }
-                    }
-                    OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Or type your own") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionLabel(if (isIncome) "Received through" else "Paid through")
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ChoiceCard("Cash", Icons.Outlined.Payments, method == "cash", accent, Modifier.weight(1f)) { method = "cash"; detected = null }
+                    ChoiceCard("M-Pesa", Icons.Outlined.PhoneAndroid, method == "mpesa", accent, Modifier.weight(1f)) { method = "mpesa"; detected = null }
+                    ChoiceCard("Bank", Icons.Outlined.AccountBalance, method == "bank", accent, Modifier.weight(1f)) { method = "bank"; detected = null }
                 }
             }
 
-            OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text(if (method != "mpesa" && !useStock) "Note (add a note or a photo as evidence)" else "Note (optional)") }, minLines = 2, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel(if (method != "mpesa" && !useStock) "Photo evidence" else "Receipt or proof (optional)")
-                if (photo != null) {
-                    Box {
-                        AsyncImage(
-                            model = photo,
-                            contentDescription = "Attached photo",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(16.dp)),
-                        )
-                        TextButton(
-                            onClick = { photo = null },
-                            modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).background(Color.Black.copy(alpha = 0.55f), PillShape),
-                        ) { Text("Remove", color = Color.White) }
-                    }
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ChoiceCard("Take photo", Icons.Outlined.PhotoCamera, false, accent, Modifier.weight(1f)) {
-                            val dir = File(context.cacheDir, "photos").apply { mkdirs() }
-                            val target = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(dir, "capture_${System.currentTimeMillis()}.jpg"))
-                            cameraTarget = target
-                            takePhoto.launch(target)
+            // Each way of paying asks only for the proof that fits it
+            when (method) {
+                "cash" -> Column(
+                    modifier = Modifier.fillMaxWidth().background(accent.copy(alpha = 0.08f), RoundedCornerShape(16.dp)).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SectionLabel("Proof: a note or a photo")
+                    if (recentNotes.isNotEmpty()) {
+                        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            recentNotes.forEach { note -> FilterChip(selected = description == note, onClick = { description = note }, label = { Text(note, maxLines = 1) }) }
                         }
-                        ChoiceCard("Choose photo", Icons.Outlined.ImageIcon, false, accent, Modifier.weight(1f)) { pickPhoto.launch("image/*") }
+                    }
+                    OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Who or what is it for?") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+                    PhotoSection(photoUri, "", { startCamera() }, { gallery.launch("image/*") }, { photoUri = null })
+                }
+                "mpesa" -> Column(
+                    modifier = Modifier.fillMaxWidth().background(accent.copy(alpha = 0.08f), RoundedCornerShape(16.dp)).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SectionLabel("M-Pesa message")
+                    OutlinedTextField(
+                        value = pastedMessage, onValueChange = { applyMessage(it) }, label = { Text("Paste the M-Pesa confirmation message") },
+                        minLines = 3, modifier = Modifier.fillMaxWidth(), shape = SmallRadius,
+                    )
+                    OutlinedButton(onClick = { clipboard.getText()?.text?.let { applyMessage(it) } }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) { Text("Paste from clipboard") }
+                    detected?.let { d ->
+                        Text(
+                            "Found: ${d.code ?: "no code"}${d.amount?.let { " · KES $it" } ?: ""}${d.party?.let { " · $it" } ?: ""}",
+                            color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                        )
+                        if (d.incoming != null && d.incoming != isIncome) {
+                            Text(
+                                if (d.incoming) "This message looks like money received. Check you chose the right button." else "This message looks like money sent. Check you chose the right button.",
+                                color = WarnAmber, fontSize = 12.sp,
+                            )
+                        }
+                    }
+                    OutlinedTextField(value = reference, onValueChange = { reference = it.uppercase() }, label = { Text("Transaction code") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+                    duplicate?.takeIf { it.exists }?.let { DuplicateWarning(it) }
+                    OutlinedTextField(value = payer, onValueChange = { payer = it }, label = { Text(if (isIncome) "Received from (optional)" else "Paid to (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+                }
+                else -> Column(
+                    modifier = Modifier.fillMaxWidth().background(accent.copy(alpha = 0.08f), RoundedCornerShape(16.dp)).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SectionLabel("Bank proof: reference, note or slip photo")
+                    OutlinedTextField(
+                        value = pastedMessage, onValueChange = { applyMessage(it) }, label = { Text("Paste the bank message (optional)") },
+                        minLines = 2, modifier = Modifier.fillMaxWidth(), shape = SmallRadius,
+                    )
+                    OutlinedButton(onClick = { clipboard.getText()?.text?.let { applyMessage(it) } }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) { Text("Paste from clipboard") }
+                    detected?.let { d ->
+                        Text(
+                            "Found: ${d.code ?: "no reference"}${d.amount?.let { " · KES $it" } ?: ""}${d.party?.let { " · $it" } ?: ""}",
+                            color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                        )
+                    }
+                    OutlinedTextField(value = reference, onValueChange = { reference = it.uppercase() }, label = { Text("Bank reference or slip number") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+                    duplicate?.takeIf { it.exists }?.let { DuplicateWarning(it) }
+                    OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Note (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+                    PhotoSection(photoUri, "", { startCamera() }, { gallery.launch("image/*") }, { photoUri = null })
+                }
+            }
+
+            // Optional extras stay out of the way until asked for
+            if (!useStock) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { showCategory = !showCategory }.padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(if (category.isBlank()) "Add a category (optional)" else "Category: $category", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            if (showCategory) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    if (showCategory) {
+                        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ((recentCategories + if (isIncome) INCOME_SUGGESTIONS else EXPENSE_SUGGESTIONS).distinct()).take(8).forEach { suggestion ->
+                                FilterChip(selected = category == suggestion, onClick = { category = suggestion }, label = { Text(suggestion) })
+                            }
+                        }
+                        OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Or type your own") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
                     }
                 }
             }
@@ -779,10 +838,10 @@ private fun RecordSheet(
                     error = when {
                         useStock && item == null -> "Choose a stock item."
                         useStock && (qty == null || qty <= BigDecimal.ZERO) -> "Enter a quantity."
-                        !useStock && category.isBlank() -> "Pick or type a category."
-                        method == "mpesa" && mpesaCode.trim().length < 8 -> "Paste the M-Pesa message, or type its transaction code."
-                        method != "mpesa" && !useStock && description.isBlank() && photo == null && !(method == "bank" && mpesaCode.isNotBlank()) -> "Add a short note or a photo as evidence."
                         chosenAmount == null || chosenAmount <= BigDecimal.ZERO -> "Enter an amount."
+                        method == "mpesa" && reference.trim().length < 8 -> "Paste the M-Pesa message, or type its transaction code."
+                        method == "cash" && !useStock && description.isBlank() && photoUri == null -> "Add who or what it is for, or a photo, as proof."
+                        method == "bank" && !useStock && description.isBlank() && photoUri == null && reference.isBlank() -> "Add the bank reference, a note or a photo."
                         else -> null
                     }
                     if (error == null && duplicate?.exists == true) {
@@ -821,7 +880,6 @@ private fun RecordSheet(
         )
     }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

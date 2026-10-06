@@ -170,6 +170,8 @@ fun KnowNavGraph(container: AppContainer) {
                 viewModel = viewModel,
                 hideBalances = hideBalances,
                 onToggleHideBalances = { container.themeStore.setHideBalances(!hideBalances) },
+                lastMethod = container.themeStore.lastMethod,
+                onMethodChosen = { container.themeStore.rememberMethod(it) },
                 onSeeAll = { goTab(Routes.STATEMENTS) },
                 onToggleTheme = { makeDark -> container.themeStore.set(if (makeDark) ThemeMode.DARK else ThemeMode.LIGHT) },
             )

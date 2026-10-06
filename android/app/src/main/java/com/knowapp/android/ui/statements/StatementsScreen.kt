@@ -26,6 +26,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -35,6 +37,8 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -187,44 +191,37 @@ fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBac
             contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp),
         ) {
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(22.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f), RoundedCornerShape(22.dp))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (state.isAdmin) {
                         val everyone = "All staff (collective)"
-                        SimpleDropdown("Staff member", listOf(everyone) + state.staff.map { it.fullName }, state.staffLabel ?: everyone, { choice ->
-                            viewModel.selectStaff(state.staff.firstOrNull { it.fullName == choice }?.id)
-                        })
+                        FilterPill(
+                            value = state.staffLabel ?: everyone,
+                            options = listOf(everyone) + state.staff.map { it.fullName },
+                            onSelect = { choice -> viewModel.selectStaff(state.staff.firstOrNull { it.fullName == choice }?.id) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
-                    Text("ACCOUNT", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        STATEMENT_METHODS.forEachIndexed { index, (value, label) ->
-                            SegmentedButton(
-                                selected = state.method == value,
-                                onClick = { viewModel.selectMethod(value) },
-                                shape = SegmentedButtonDefaults.itemShape(index, STATEMENT_METHODS.size),
-                                label = { Text(label, maxLines = 1, softWrap = false, fontSize = 13.sp) },
-                            )
-                        }
-                    }
-                    Text("PERIOD", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatementRange.values().forEach { range ->
-                            FilterChip(selected = state.range == range, onClick = { viewModel.selectRange(range) }, label = { Text(range.label) })
-                        }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        FilterPill(
+                            value = state.accountLabel,
+                            options = ACCOUNT_OPTIONS.map { it.second },
+                            onSelect = { label -> ACCOUNT_OPTIONS.firstOrNull { it.second == label }?.let { viewModel.selectMethod(it.first) } },
+                            modifier = Modifier.weight(1f),
+                        )
+                        FilterPill(
+                            value = periodLabel(state.range),
+                            options = StatementRange.values().map { periodLabel(it) },
+                            onSelect = { label -> StatementRange.values().firstOrNull { periodLabel(it) == label }?.let { viewModel.selectRange(it) } },
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                     if (state.range == StatementRange.CUSTOM) {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            OutlinedButton(onClick = { pickingFrom = true }, shape = SmallRadius, modifier = Modifier.weight(1f)) {
+                            OutlinedButton(onClick = { pickingFrom = true }, shape = PillShape, modifier = Modifier.weight(1f)) {
                                 Icon(Icons.Outlined.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Text("From ${state.customFrom}", modifier = Modifier.padding(start = 6.dp), fontSize = 13.sp)
                             }
-                            OutlinedButton(onClick = { pickingTo = true }, shape = SmallRadius, modifier = Modifier.weight(1f)) {
+                            OutlinedButton(onClick = { pickingTo = true }, shape = PillShape, modifier = Modifier.weight(1f)) {
                                 Icon(Icons.Outlined.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Text("To ${state.customTo}", modifier = Modifier.padding(start = 6.dp), fontSize = 13.sp)
                             }
@@ -462,6 +459,41 @@ private fun CategoryBreakdown(rows: List<Pair<String, BigDecimal>>, total: BigDe
                         Box(modifier = Modifier.fillMaxWidth(share).height(6.dp).background(ExpenseOrange, PillShape))
                     }
                 }
+            }
+        }
+    }
+}
+
+private val ACCOUNT_OPTIONS = listOf("all" to "All accounts", "cash" to "Cash", "mpesa" to "M-Pesa", "bank" to "Bank")
+
+private fun periodLabel(range: StatementRange): String = if (range == StatementRange.CUSTOM) "Custom range" else range.label
+
+// One compact menu instead of a row of chips: the current choice is shown, the rest appear on tap
+@Composable
+private fun FilterPill(value: String, options: List<String>, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    var open by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(PillShape)
+                .background(MaterialTheme.colorScheme.surface)
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), PillShape)
+                .clickable { open = true }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(value, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option, fontWeight = if (option == value) FontWeight.Bold else FontWeight.Normal) },
+                    trailingIcon = { if (option == value) Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    onClick = { open = false; onSelect(option) },
+                )
             }
         }
     }
