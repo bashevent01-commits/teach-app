@@ -55,6 +55,10 @@ class User(Base):
     # Track who issued the credentials, for accountability.
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
+    # Shown beside their posts on the news feed
+    bio = Column(String(300), nullable=True)
+    avatar_path = Column(String(500), nullable=True)
+
     institution = relationship("Institution", back_populates="users")
     transactions_recorded = relationship("Transaction", back_populates="recorded_by", foreign_keys="Transaction.recorded_by_id")
     posts = relationship("Post", back_populates="author")

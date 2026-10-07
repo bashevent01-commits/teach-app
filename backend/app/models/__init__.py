@@ -8,6 +8,7 @@ from app.models.audit import Audit, AuditStatus
 from app.models.post import Post
 from app.models.post_report import PostReport, ReportStatus
 from app.models.post_comment import PostComment
+from app.models.source_document import SourceDocument
 from app.models.activity_log import ActivityLog
 from app.models.accounting import Account, AccountType, JournalEntry, JournalLine
 
@@ -28,6 +29,7 @@ __all__ = [
     "Post",
     "PostReport",
     "PostComment",
+    "SourceDocument",
     "ReportStatus",
     "ActivityLog",
     "Account",

@@ -20,3 +20,7 @@ class PostComment(Base):
     @property
     def author_name(self) -> str | None:
         return self.author.full_name if self.author else None
+
+    @property
+    def author_avatar_path(self) -> str | None:
+        return self.author.avatar_path if self.author else None

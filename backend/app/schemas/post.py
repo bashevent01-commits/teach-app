@@ -30,6 +30,9 @@ class PostOut(BaseModel):
     institution_id: int
     author_id: int
     author_name: str | None = None
+    author_avatar_path: str | None = None
+    author_bio: str | None = None
+    author_institution: str | None = None
     comment_count: int = 0
     title: str
     body: str
@@ -84,5 +87,6 @@ class PostCommentOut(BaseModel):
     post_id: int
     author_id: int
     author_name: str | None = None
+    author_avatar_path: str | None = None
     body: str
     created_at: datetime

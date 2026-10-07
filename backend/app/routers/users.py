@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.activity_log import log_activity
 from app.core.database import get_db
-from app.core.deps import require_institution_scope, require_admin_scope
+from app.core.deps import get_current_user, require_institution_scope, require_admin_scope
 from app.core.limiter import limiter
 from app.core.security import hash_password, verify_password
 from app.models.institution import Institution
 from app.models.user import User, UserRole, StaffType
+from app.utils.uploads import delete_storage_object, save_avatar
 from app.schemas.user import UserCreate, UserOut, PasswordReset, UserUpdate, AuditSharingUpdate, SelfPasswordChange
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -46,6 +47,35 @@ def change_my_password(payload: SelfPasswordChange, request: Request, db: Sessio
     db.commit()
     log_activity(db, action="self_password_change", actor=current_user, target_type="user", target_id=current_user.id,
                  detail="Changed own password", request=request)
+
+
+@router.patch("/me/profile", response_model=UserOut)
+@limiter.limit("10/minute")
+def update_my_profile(
+    request: Request,
+    bio: str | None = Form(None),
+    remove_avatar: bool = Form(False),
+    avatar: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """A member's own profile: a short bio and a photo, both shown beside their news posts."""
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if bio is not None:
+        bio = bio.strip()
+        if len(bio) > 300:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Bio can be at most 300 characters")
+        user.bio = bio or None
+    old_avatar = user.avatar_path
+    if avatar is not None and avatar.filename:
+        user.avatar_path = save_avatar(avatar, avatar.file.read())
+        delete_storage_object(old_avatar)
+    elif remove_avatar:
+        user.avatar_path = None
+        delete_storage_object(old_avatar)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.patch("/me/audit-sharing", response_model=UserOut)

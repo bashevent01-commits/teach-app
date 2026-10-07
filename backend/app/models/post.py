@@ -29,3 +29,15 @@ class Post(Base):
     @property
     def comment_count(self) -> int:
         return len(self.comments)
+
+    @property
+    def author_avatar_path(self) -> str | None:
+        return self.author.avatar_path if self.author else None
+
+    @property
+    def author_bio(self) -> str | None:
+        return self.author.bio if self.author else None
+
+    @property
+    def author_institution(self) -> str | None:
+        return self.author.institution.name if self.author and self.author.institution else None

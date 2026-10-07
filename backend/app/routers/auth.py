@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import Header, APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -46,7 +46,13 @@ def _set_session_cookies(response: Response, token: str, csrf_token: str) -> Non
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("10/minute")
-def login(request: Request, response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    request: Request,
+    response: Response,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+    x_client: str | None = Header(None),
+):
     """
     Credential-based login. Accounts are provisioned by a super admin —
     there is no self-service signup.
@@ -95,7 +101,9 @@ def login(request: Request, response: Response, form_data: OAuth2PasswordRequest
 
     log_activity(db, action="login_success", actor=user, request=request)
 
-    token = create_access_token(data={"sub": str(user.id), "role": user.role.value, "tv": user.token_version})
+    # The Android app asks for a long-lived session so people stay signed in; the website keeps its short one
+    lifetime = 60 * 24 * 180 if x_client == "android" else None
+    token = create_access_token(data={"sub": str(user.id), "role": user.role.value, "tv": user.token_version}, expires_minutes=lifetime)
     csrf_token = generate_csrf_token()
     _set_session_cookies(response, token, csrf_token)
 

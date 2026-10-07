@@ -47,6 +47,8 @@ class UserOut(BaseModel):
     role: UserRole
     staff_type: StaffType | None
     is_active: bool
+    bio: str | None = None
+    avatar_path: str | None = None
     institution_id: int | None
     share_audits: bool
     created_at: datetime

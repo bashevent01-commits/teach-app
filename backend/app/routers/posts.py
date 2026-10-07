@@ -56,24 +56,12 @@ def create_post(
 
 @router.get("", response_model=list[PostOut])
 def list_posts(
-    institution_id: int | None = None,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Staff see posts for their own institution only — this is the
-    'other staff can access it' portal feed, scoped per institution.
-    """
-    if current_user.role == UserRole.STAFF:
-        scoped_institution_id = current_user.institution_id
-    elif current_user.role == UserRole.INSTITUTION_ADMIN:
-        # Own institution only — never trust a client-supplied institution_id here.
-        scoped_institution_id = current_user.institution_id
-    else:
-        if institution_id is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="institution_id is required")
-        scoped_institution_id = institution_id
-    return db.query(Post).filter(Post.institution_id == scoped_institution_id).order_by(Post.created_at.desc()).all()
+    """The news feed is shared by every member of every institution, newest first."""
+    return db.query(Post).order_by(Post.created_at.desc()).limit(min(max(limit, 1), 200)).all()
 
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -108,8 +96,8 @@ def report_post(
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    if post.institution_id != current_user.institution_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to report this post")
+    if post.author_id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You can't report your own post")
 
     report = PostReport(
         post_id=post.id,
@@ -126,8 +114,6 @@ def _visible_post(db: Session, post_id: int, current_user: User) -> Post:
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    if current_user.role != UserRole.SUPER_ADMIN and post.institution_id != current_user.institution_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to view this post")
     return post
 
 

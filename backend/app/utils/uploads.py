@@ -123,3 +123,9 @@ def save_post_image(file: UploadFile, contents: bytes) -> str:
     """Optional image attached to a news post."""
     _validate_content_type(file)
     return _process_and_upload(contents, "posts", settings.MAX_POST_IMAGE_SIZE_BYTES, (1600, 1600))
+
+
+def save_avatar(file: UploadFile, contents: bytes) -> str:
+    """A member's profile photo, shown beside their news posts."""
+    _validate_content_type(file)
+    return _process_and_upload(contents, "avatars", settings.MAX_LOGO_SIZE_BYTES, (512, 512))
