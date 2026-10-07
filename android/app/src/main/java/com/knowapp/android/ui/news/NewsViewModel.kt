@@ -7,7 +7,9 @@ import com.knowapp.android.data.SessionStore
 import com.knowapp.android.data.local.PhotoStore
 import com.knowapp.android.data.model.PostCommentOut
 import com.knowapp.android.data.model.PostOut
+import com.knowapp.android.data.model.resolveMediaUrl
 import com.knowapp.android.data.repository.PostsRepository
+import com.knowapp.android.data.repository.ProfileRepository
 import com.knowapp.android.data.repository.PostsResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,12 +27,14 @@ data class NewsUiState(
     val comments: List<PostCommentOut> = emptyList(),
     val commentsLoading: Boolean = false,
     val sendingComment: Boolean = false,
+    val myAvatarUrl: String? = null,
 )
 
 class NewsViewModel(
     private val repository: PostsRepository,
     private val photos: PhotoStore,
     sessionStore: SessionStore,
+    private val profile: ProfileRepository,
 ) : ViewModel() {
     val userId: Int? = sessionStore.session.value?.userId
     val canPost: Boolean = sessionStore.session.value?.role == "staff"
@@ -43,6 +47,9 @@ class NewsViewModel(
 
     init {
         refresh()
+        viewModelScope.launch {
+            profile.me().onSuccess { _state.value = _state.value.copy(myAvatarUrl = resolveMediaUrl(it.avatarPath)) }
+        }
     }
 
     fun refresh() {

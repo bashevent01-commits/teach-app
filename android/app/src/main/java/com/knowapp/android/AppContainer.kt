@@ -12,6 +12,8 @@ import com.knowapp.android.data.local.OfflineStore
 import com.knowapp.android.data.local.PhotoStore
 import com.knowapp.android.data.network.NetworkMonitor
 import com.knowapp.android.data.repository.BooksRepository
+import com.knowapp.android.data.repository.DocumentsRepository
+import com.knowapp.android.data.repository.ProfileRepository
 import com.knowapp.android.data.network.NetworkModule
 import com.knowapp.android.data.repository.AuditRepository
 import com.knowapp.android.data.repository.AuthRepository
@@ -36,6 +38,8 @@ class AppContainer(context: Context) {
     val themeStore = ThemeStore(context)
     val transactionRepository = TransactionRepository(apiService, offlineStore, sessionStore, photoStore) { networkMonitor.online.value }
     val booksRepository = BooksRepository(apiService)
+    val documentsRepository = DocumentsRepository(apiService, photoStore)
+    val profileRepository = ProfileRepository(apiService, photoStore)
     val stockRepository = StockRepository(apiService)
     val postsRepository = PostsRepository(apiService, photoStore)
     val auditRepository = AuditRepository(apiService)

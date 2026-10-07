@@ -29,6 +29,7 @@ class AuthRepository(
                     institutionId = body.institutionId,
                 )
                 sessionStore.save(session)
+                sessionStore.saveCredentials(username, password)
                 LoginResult.Success(session)
             } else {
                 LoginResult.Failure(errorMessageFor(response.code()))

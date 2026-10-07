@@ -109,6 +109,12 @@ fun KnowNavGraph(container: AppContainer) {
     val currentRoute = backStack?.destination?.route
     val showBar = session != null && tabs.any { it.route == currentRoute }
 
+    androidx.compose.runtime.LaunchedEffect(session) {
+        if (session == null && currentRoute != null && currentRoute != Routes.LOGIN) {
+            navController.navigate(Routes.LOGIN) { popUpTo(0) { inclusive = true } }
+        }
+    }
+
     fun goTab(route: String) {
         navController.navigate(route) {
             popUpTo(startFor(session?.role)) { saveState = true }
@@ -180,6 +186,7 @@ fun KnowNavGraph(container: AppContainer) {
             SettingsScreen(
                 updateManager = container.updateManager,
                 themeStore = container.themeStore,
+                profile = viewModel(factory = vmFactory { com.knowapp.android.ui.settings.ProfileViewModel(container.profileRepository, container.photoStore) }),
                 onSignOut = {
                     container.authRepository.logout()
                     navController.navigate(Routes.LOGIN) { popUpTo(0) { inclusive = true } }
@@ -196,10 +203,43 @@ fun KnowNavGraph(container: AppContainer) {
         }
         composable(Routes.STOCK) {
             val viewModel: StockViewModel = viewModel(factory = vmFactory { StockViewModel(container.stockRepository) })
-            StockScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false)
+            StockScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+                showBack = false,
+                onOpenDocuments = { navController.navigate(Routes.DOCUMENTS) },
+                onNewDocument = { type -> navController.navigate(Routes.documentNew(type)) },
+            )
+        }
+        composable(Routes.DOCUMENTS) {
+            val viewModel: com.knowapp.android.ui.documents.DocumentsViewModel = viewModel(
+                factory = vmFactory { com.knowapp.android.ui.documents.DocumentsViewModel(container.documentsRepository, container.sessionStore) },
+            )
+            com.knowapp.android.ui.documents.DocumentsScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+                onNew = { navController.navigate(Routes.documentNew("purchase_invoice")) },
+            )
+        }
+        composable(
+            Routes.DOCUMENT_NEW,
+            arguments = listOf(navArgument("docType") { type = NavType.StringType }),
+        ) { entry ->
+            val docType = entry.arguments?.getString("docType") ?: return@composable
+            val viewModel: com.knowapp.android.ui.documents.NewDocumentViewModel = viewModel(
+                factory = vmFactory {
+                    com.knowapp.android.ui.documents.NewDocumentViewModel(container.documentsRepository, container.photoStore, container.stockRepository, container.transactionRepository)
+                },
+            )
+            com.knowapp.android.ui.documents.NewDocumentScreen(
+                viewModel = viewModel,
+                docType = docType,
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+            )
         }
         composable(Routes.NEWS) {
-            val viewModel: NewsViewModel = viewModel(factory = vmFactory { NewsViewModel(container.postsRepository, container.photoStore, container.sessionStore) })
+            val viewModel: NewsViewModel = viewModel(factory = vmFactory { NewsViewModel(container.postsRepository, container.photoStore, container.sessionStore, container.profileRepository) })
             NewsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false)
         }
         composable(Routes.AUDITS) {

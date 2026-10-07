@@ -37,6 +37,7 @@ data class HomeUiState(
     val institutionName: String? = null,
     val saving: Boolean = false,
     val loaded: Boolean = false,
+    val recordError: String? = null,
     val refreshing: Boolean = false,
     val message: String? = null,
 )
@@ -122,7 +123,7 @@ class HomeViewModel(
 
     fun record(draft: NewTransaction, photo: Uri?, onFinished: (Boolean) -> Unit) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(saving = true)
+            _state.value = _state.value.copy(saving = true, recordError = null)
             val path = photo?.let { withContext(Dispatchers.IO) { photos.import(it) } }
             when (val result = transactions.record(draft.copy(imagePath = path))) {
                 is RecordResult.Saved, is RecordResult.Queued -> {
@@ -131,7 +132,7 @@ class HomeViewModel(
                     onFinished(true)
                 }
                 is RecordResult.Rejected -> {
-                    _state.value = _state.value.copy(saving = false, message = result.message)
+                    _state.value = _state.value.copy(saving = false, recordError = result.message)
                     onFinished(false)
                 }
             }
@@ -157,6 +158,10 @@ class HomeViewModel(
             transactions.discardPending(localId)
             refresh()
         }
+    }
+
+    fun clearRecordError() {
+        _state.value = _state.value.copy(recordError = null)
     }
 
     fun messageShown() {

@@ -24,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.knowapp.android.BuildConfig
 import com.knowapp.android.data.ThemeMode
 import com.knowapp.android.data.ThemeStore
@@ -36,7 +37,9 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(updateManager: UpdateManager, themeStore: ThemeStore, onSignOut: suspend () -> Unit) {
+fun SettingsScreen(updateManager: UpdateManager, themeStore: ThemeStore, profile: ProfileViewModel, onSignOut: suspend () -> Unit) {
+    val profileState by profile.state.collectAsState()
+    val photoPicker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri -> if (uri != null) profile.onPhotoPicked(uri) }
     val themeMode by themeStore.mode.collectAsState()
     val state by updateManager.state.collectAsState()
     val scope = rememberCoroutineScope()
@@ -68,6 +71,42 @@ fun SettingsScreen(updateManager: UpdateManager, themeStore: ThemeStore, onSignO
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            AppCard(modifier = Modifier.fillMaxWidth()) {
+                Text("Your profile", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Your photo and bio show beside your posts on the news feed, which everyone can see.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
+                )
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    com.knowapp.android.ui.components.UserAvatar(
+                        name = profileState.name.ifBlank { "You" },
+                        avatarUrl = if (profileState.removePhoto) null else (profileState.newPhoto ?: profileState.avatarUrl),
+                        size = 76.dp,
+                    )
+                    Column(modifier = Modifier.padding(start = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(profileState.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        androidx.compose.material3.TextButton(onClick = { photoPicker.launch("image/*") }) { Text("Change photo") }
+                        if (profileState.avatarUrl != null || profileState.newPhoto != null) {
+                            androidx.compose.material3.TextButton(onClick = profile::removePhoto) { Text("Remove photo") }
+                        }
+                    }
+                }
+                androidx.compose.material3.OutlinedTextField(
+                    value = profileState.bio,
+                    onValueChange = profile::onBioChange,
+                    label = { Text("Bio") },
+                    supportingText = { Text("${profileState.bio.length}/300") },
+                    minLines = 3,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                )
+                profileState.message?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp)) }
+                Button(onClick = profile::save, enabled = !profileState.saving, shape = PillShape, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
+                    Text(if (profileState.saving) "Saving…" else "Save profile", fontWeight = FontWeight.SemiBold)
+                }
+            }
             AppCard(modifier = Modifier.fillMaxWidth()) {
                 Text("Appearance", style = MaterialTheme.typography.titleMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {

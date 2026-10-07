@@ -51,6 +51,9 @@ data class PostOut(
     @SerializedName("institution_id") val institutionId: Int,
     @SerializedName("author_id") val authorId: Int,
     @SerializedName("author_name") val authorName: String? = null,
+    @SerializedName("author_avatar_path") val authorAvatarPath: String? = null,
+    @SerializedName("author_bio") val authorBio: String? = null,
+    @SerializedName("author_institution") val authorInstitution: String? = null,
     @SerializedName("comment_count") val commentCount: Int = 0,
     val title: String,
     val body: String,
@@ -98,6 +101,8 @@ data class UserOut(
     @SerializedName("institution_id") val institutionId: Int? = null,
     @SerializedName("share_audits") val shareAudits: Boolean,
     @SerializedName("created_at") val createdAt: String,
+    val bio: String? = null,
+    @SerializedName("avatar_path") val avatarPath: String? = null,
 )
 
 data class CategoryInsightOut(
@@ -207,6 +212,7 @@ data class PostCommentOut(
     @SerializedName("post_id") val postId: Int,
     @SerializedName("author_id") val authorId: Int,
     @SerializedName("author_name") val authorName: String? = null,
+    @SerializedName("author_avatar_path") val authorAvatarPath: String? = null,
     val body: String,
     @SerializedName("created_at") val createdAt: String,
 )
@@ -217,4 +223,24 @@ data class ReferenceCheckOut(
     val mine: Boolean = false,
     val date: String? = null,
     val amount: String? = null,
+)
+
+
+data class DocumentOut(
+    val id: Int,
+    @SerializedName("doc_type") val docType: String,
+    @SerializedName("doc_type_name") val docTypeName: String,
+    @SerializedName("reference_no") val referenceNo: String? = null,
+    @SerializedName("document_date") val documentDate: String,
+    @SerializedName("party_name") val partyName: String? = null,
+    @SerializedName("stock_item_id") val stockItemId: Int? = null,
+    @SerializedName("stock_item_name") val stockItemName: String? = null,
+    val quantity: String? = null,
+    val amount: String? = null,
+    val notes: String? = null,
+    @SerializedName("image_path") val imagePath: String? = null,
+    @SerializedName("transaction_id") val transactionId: Int? = null,
+    @SerializedName("recorded_by_id") val recordedById: Int,
+    @SerializedName("recorded_by_name") val recordedByName: String? = null,
+    @SerializedName("created_at") val createdAt: String,
 )

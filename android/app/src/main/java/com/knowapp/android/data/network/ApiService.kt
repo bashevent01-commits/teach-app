@@ -4,6 +4,7 @@ import com.knowapp.android.data.model.AuditOut
 import com.knowapp.android.data.model.CategoryDetailOut
 import com.knowapp.android.data.model.CategoryInsightOut
 import com.knowapp.android.data.model.InstitutionOut
+import com.knowapp.android.data.model.DocumentOut
 import com.knowapp.android.data.model.OpeningBalancesOut
 import com.knowapp.android.data.model.PostCommentOut
 import com.knowapp.android.data.model.ReferenceCheckOut
@@ -93,6 +94,32 @@ interface ApiService {
 
     @GET("/api/transactions/reference-check")
     suspend fun checkReference(@Query("code") code: String): Response<ReferenceCheckOut>
+
+    @Multipart
+    @POST("/api/documents")
+    suspend fun createDocument(
+        @PartMap fields: Map<String, @JvmSuppressWildcards RequestBody>,
+        @Part image: MultipartBody.Part?,
+    ): Response<DocumentOut>
+
+    @GET("/api/documents")
+    suspend fun listDocuments(
+        @Query("group") group: String? = null,
+        @Query("q") q: String? = null,
+    ): Response<List<DocumentOut>>
+
+    @DELETE("/api/documents/{documentId}")
+    suspend fun deleteDocument(@Path("documentId") documentId: Int): Response<Unit>
+
+    @GET("/api/users/me")
+    suspend fun getMe(): Response<UserOut>
+
+    @Multipart
+    @PATCH("/api/users/me/profile")
+    suspend fun updateProfile(
+        @PartMap fields: Map<String, @JvmSuppressWildcards RequestBody>,
+        @Part avatar: MultipartBody.Part?,
+    ): Response<UserOut>
 
     @GET("/api/accounting/opening-balances")
     suspend fun getOpeningBalances(): Response<OpeningBalancesOut>

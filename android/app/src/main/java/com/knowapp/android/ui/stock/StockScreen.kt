@@ -21,12 +21,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -68,7 +70,14 @@ private fun qtyOf(item: StockItemOut) = item.quantity.toBigDecimalOrNull() ?: Bi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StockScreen(viewModel: StockViewModel, onBack: () -> Unit, showBack: Boolean = true) {
+fun StockScreen(
+    viewModel: StockViewModel,
+    onBack: () -> Unit,
+    showBack: Boolean = true,
+    onOpenDocuments: () -> Unit = {},
+    onNewDocument: (String) -> Unit = {},
+) {
+    var menuOpen by remember { mutableStateOf(false) }
     val state by viewModel.state.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     var query by remember { mutableStateOf("") }
@@ -89,6 +98,9 @@ fun StockScreen(viewModel: StockViewModel, onBack: () -> Unit, showBack: Boolean
         topBar = {
             TopAppBar(
                 title = { Text("Stock", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = { menuOpen = true }) { Icon(Icons.Filled.Menu, contentDescription = "Source documents") }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
@@ -155,6 +167,14 @@ fun StockScreen(viewModel: StockViewModel, onBack: () -> Unit, showBack: Boolean
                 else -> items(shown, key = { it.id }) { item -> StockCard(item) { editing = item; showForm = true } }
             }
         }
+    }
+
+    if (menuOpen) {
+        com.knowapp.android.ui.documents.DocumentMenuSheet(
+            onDismiss = { menuOpen = false },
+            onOpenAll = { menuOpen = false; onOpenDocuments() },
+            onPick = { key -> menuOpen = false; onNewDocument(key) },
+        )
     }
 
     if (showForm) {

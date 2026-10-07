@@ -357,6 +357,7 @@ fun HomeScreen(
             onDismiss = { recordKind = null },
             onSubmit = { draft, photo -> viewModel.record(draft, photo) { ok -> if (ok) { recordKind = null; showSuccess = true } } },
             onCheckCode = { code -> viewModel.checkReference(code) },
+            serverError = state.recordError,
         )
     }
 
@@ -583,6 +584,7 @@ private fun RecordSheet(
     onDismiss: () -> Unit,
     onSubmit: (NewTransaction, Uri?) -> Unit,
     onCheckCode: suspend (String) -> com.knowapp.android.data.model.ReferenceCheckOut?,
+    serverError: String? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val isIncome = kind == "income"
@@ -601,7 +603,7 @@ private fun RecordSheet(
     var detected by remember { mutableStateOf<MpesaParser.Parsed?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var duplicate by remember { mutableStateOf<com.knowapp.android.data.model.ReferenceCheckOut?>(null) }
-    var confirmingDuplicate by remember { mutableStateOf(false) }
+    var warningText by remember { mutableStateOf<String?>(null) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var captureUri by remember { mutableStateOf<Uri?>(null) }
     val context = LocalContext.current
@@ -828,7 +830,7 @@ private fun RecordSheet(
                 }
             }
 
-            error?.let {
+            (error ?: serverError)?.let {
                 Text(it, color = DangerRed, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(DangerRed.copy(alpha = 0.12f), SmallRadius).padding(12.dp))
             }
 
@@ -839,15 +841,17 @@ private fun RecordSheet(
                         useStock && item == null -> "Choose a stock item."
                         useStock && (qty == null || qty <= BigDecimal.ZERO) -> "Enter a quantity."
                         chosenAmount == null || chosenAmount <= BigDecimal.ZERO -> "Enter an amount."
-                        method == "mpesa" && reference.trim().length < 8 -> "Paste the M-Pesa message, or type its transaction code."
-                        method == "cash" && !useStock && description.isBlank() && photoUri == null -> "Add who or what it is for, or a photo, as proof."
-                        method == "bank" && !useStock && description.isBlank() && photoUri == null && reference.isBlank() -> "Add the bank reference, a note or a photo."
                         else -> null
                     }
-                    if (error == null && duplicate?.exists == true) {
-                        confirmingDuplicate = true
-                    } else if (error == null) {
-                        submitNow(chosenAmount!!)
+                    // Missing proof or a repeated code is a warning to confirm, never a refusal to save
+                    if (error == null) {
+                        val warnings = buildList {
+                            if (duplicate?.exists == true) add("This code was already recorded. Make sure this is a different payment.")
+                            if (method == "mpesa" && reference.trim().length < 8) add("There is no M-Pesa transaction code on this entry.")
+                            if (method == "cash" && !useStock && description.isBlank() && photoUri == null) add("There is no note or photo on this entry as proof.")
+                            if (method == "bank" && !useStock && description.isBlank() && photoUri == null && reference.isBlank()) add("There is no bank reference, note or photo on this entry.")
+                        }
+                        if (warnings.isNotEmpty()) warningText = warnings.joinToString("\n\n") else submitNow(chosenAmount!!)
                     }
                 },
                 enabled = !saving,
@@ -864,19 +868,19 @@ private fun RecordSheet(
         }
     }
 
-    if (confirmingDuplicate) {
+    warningText?.let { text ->
         androidx.compose.material3.AlertDialog(
-            onDismissRequest = { confirmingDuplicate = false },
-            title = { Text("This code was already recorded") },
-            text = { Text("Check that this is a different payment before you save it again.") },
+            onDismissRequest = { warningText = null },
+            title = { Text("Before you save") },
+            text = { Text(text) },
             confirmButton = {
                 TextButton(onClick = {
-                    confirmingDuplicate = false
+                    warningText = null
                     val finalAmount = amount.toBigDecimalOrNull() ?: computed
                     if (finalAmount != null && finalAmount > BigDecimal.ZERO) submitNow(finalAmount)
                 }) { Text("Save anyway") }
             },
-            dismissButton = { TextButton(onClick = { confirmingDuplicate = false }) { Text("Go back") } },
+            dismissButton = { TextButton(onClick = { warningText = null }) { Text("Go back") } },
         )
     }
 }

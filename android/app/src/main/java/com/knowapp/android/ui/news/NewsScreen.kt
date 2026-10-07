@@ -71,29 +71,16 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.knowapp.android.data.model.PostOut
 import com.knowapp.android.data.model.resolveMediaUrl
+import com.knowapp.android.ui.components.UserAvatar
 import com.knowapp.android.ui.components.relativeDay
 import com.knowapp.android.ui.theme.DangerRed
 import com.knowapp.android.ui.theme.DisplayFontFamily
 import com.knowapp.android.ui.theme.PillShape
 import com.knowapp.android.ui.theme.SmallRadius
 
-private val AvatarColors = listOf(Color(0xFF0F766E), Color(0xFF2563EB), Color(0xFF9333EA), Color(0xFFD97706), Color(0xFFDB2777), Color(0xFF475569))
-
-private fun initialsOf(name: String): String {
-    val parts = name.trim().split(" ").filter { it.isNotBlank() }
-    return when {
-        parts.isEmpty() -> "?"
-        parts.size == 1 -> parts[0].take(1).uppercase()
-        else -> (parts[0].take(1) + parts[1].take(1)).uppercase()
-    }
-}
-
 @Composable
-private fun Avatar(name: String, size: Int = 44) {
-    val color = AvatarColors[(name.hashCode() and 0x7fffffff) % AvatarColors.size]
-    Box(modifier = Modifier.size(size.dp).background(color, CircleShape), contentAlignment = Alignment.Center) {
-        Text(initialsOf(name), color = Color.White, fontWeight = FontWeight.Bold, fontSize = (size * 0.36f).sp)
-    }
+private fun Avatar(name: String, size: Int = 44, url: String? = null) {
+    UserAvatar(name = name, avatarUrl = url, size = size.dp)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,6 +92,7 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
     var reporting by remember { mutableStateOf<PostOut?>(null) }
     var deleting by remember { mutableStateOf<PostOut?>(null) }
     var viewingPhoto by remember { mutableStateOf<String?>(null) }
+    var viewingAuthor by remember { mutableStateOf<PostOut?>(null) }
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -133,7 +121,7 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
                         modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Avatar(viewModel.userName)
+                        Avatar(viewModel.userName, url = state.myAvatarUrl)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -176,6 +164,7 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
                         canAct = viewModel.canPost,
                         onDelete = { deleting = post },
                         onReport = { reporting = post },
+                        onAuthor = { viewingAuthor = post },
                         canComment = viewModel.canComment,
                         onComments = { viewModel.openComments(post) },
                         onViewPhoto = { viewingPhoto = it },
@@ -188,6 +177,7 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
     if (composing) {
         ComposeSheet(
             name = viewModel.userName,
+            avatarUrl = state.myAvatarUrl,
             posting = state.posting,
             onDismiss = { composing = false },
             onPublish = { title, body, photo -> viewModel.publish(title, body, photo) { ok -> if (ok) composing = false } },
@@ -226,6 +216,8 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
         )
     }
 
+    viewingAuthor?.let { post -> AuthorSheet(post) { viewingAuthor = null } }
+
     viewingPhoto?.let { url ->
         Dialog(onDismissRequest = { viewingPhoto = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.94f)).clickable { viewingPhoto = null }, contentAlignment = Alignment.Center) {
@@ -239,7 +231,7 @@ fun NewsScreen(viewModel: NewsViewModel, onBack: () -> Unit, showBack: Boolean =
 }
 
 @Composable
-private fun PostCard(post: PostOut, mine: Boolean, canAct: Boolean, canComment: Boolean, onComments: () -> Unit, onDelete: () -> Unit, onReport: () -> Unit, onViewPhoto: (String) -> Unit) {
+private fun PostCard(post: PostOut, mine: Boolean, canAct: Boolean, canComment: Boolean, onComments: () -> Unit, onDelete: () -> Unit, onReport: () -> Unit, onAuthor: () -> Unit, onViewPhoto: (String) -> Unit) {
     val author = post.authorName ?: "Staff member"
     val photoUrl = resolveMediaUrl(post.imagePath)
     var menuOpen by remember { mutableStateOf(false) }
@@ -248,10 +240,18 @@ private fun PostCard(post: PostOut, mine: Boolean, canAct: Boolean, canComment: 
 
     Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
         Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Avatar(author)
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Text(author, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(relativeDay(post.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(modifier = Modifier.weight(1f).clickable(onClick = onAuthor), verticalAlignment = Alignment.CenterVertically) {
+                Avatar(author, url = resolveMediaUrl(post.authorAvatarPath))
+                Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                    Text(author, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        listOfNotNull(post.authorInstitution, relativeDay(post.createdAt)).joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             if (canAct) {
                 Box {
@@ -330,7 +330,7 @@ private fun PostCard(post: PostOut, mine: Boolean, canAct: Boolean, canComment: 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ComposeSheet(name: String, posting: Boolean, onDismiss: () -> Unit, onPublish: (String, String, Uri?) -> Unit) {
+private fun ComposeSheet(name: String, avatarUrl: String?, posting: Boolean, onDismiss: () -> Unit, onPublish: (String, String, Uri?) -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
@@ -343,10 +343,10 @@ private fun ComposeSheet(name: String, posting: Boolean, onDismiss: () -> Unit, 
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Avatar(name)
+                Avatar(name, url = avatarUrl)
                 Column(modifier = Modifier.padding(start = 12.dp)) {
                     Text(name, fontWeight = FontWeight.Bold)
-                    Text("Posting to your institution", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Posting to everyone on KNOW", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Headline") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
@@ -411,7 +411,7 @@ private fun CommentsSheet(
                     comments.isEmpty() -> Text("No comments yet. Start the conversation.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     else -> comments.forEach { c ->
                         Row(verticalAlignment = Alignment.Top) {
-                            Avatar(c.authorName ?: "Staff member", size = 36)
+                            Avatar(c.authorName ?: "Staff member", size = 36, url = resolveMediaUrl(c.authorAvatarPath))
                             Column(
                                 modifier = Modifier
                                     .weight(1f)
@@ -456,6 +456,29 @@ private fun CommentsSheet(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AuthorSheet(post: PostOut, onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 36.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Avatar(post.authorName ?: "Staff member", size = 96, url = resolveMediaUrl(post.authorAvatarPath))
+            Text(post.authorName ?: "Staff member", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(top = 8.dp))
+            post.authorInstitution?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text(
+                post.authorBio ?: "No bio yet.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (post.authorBio == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 10.dp),
+            )
         }
     }
 }

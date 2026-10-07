@@ -173,6 +173,7 @@ class TransactionRepository(
         if (!isOnline()) return@withContext enqueue(uid, draft)
         try {
             val response = send(draft.toFields(), draft.imagePath)
+            if (response.code() == 401) return@withContext enqueue(uid, draft)
             photos.delete(draft.imagePath)
             if (response.isSuccessful) {
                 RecordResult.Saved
@@ -225,6 +226,9 @@ class TransactionRepository(
                     if (response.isSuccessful) {
                         photos.delete(item.imagePath)
                         synced++
+                    } else if (response.code() == 401) {
+                        remaining += item
+                        stopped = true
                     } else {
                         remaining += item.copy(failed = true, error = errorDetail(response.errorBody()?.string(), response.code()))
                     }

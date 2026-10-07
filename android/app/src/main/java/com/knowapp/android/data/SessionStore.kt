@@ -72,8 +72,21 @@ class SessionStore(context: Context) {
 
     fun currentToken(): String? = _session.value?.accessToken
 
+    // Kept (encrypted) so an expired session can be renewed silently instead of sending the person back to sign in
+    fun saveCredentials(username: String, password: String) {
+        prefs.edit().putString(KEY_USERNAME, username).putString(KEY_PASSWORD, password).apply()
+    }
+
+    fun credentials(): Pair<String, String>? {
+        val username = prefs.getString(KEY_USERNAME, null) ?: return null
+        val password = prefs.getString(KEY_PASSWORD, null) ?: return null
+        return username to password
+    }
+
     private companion object {
         const val KEY_TOKEN = "access_token"
+        const val KEY_USERNAME = "saved_username"
+        const val KEY_PASSWORD = "saved_password"
         const val KEY_USER_ID = "user_id"
         const val KEY_ROLE = "role"
         const val KEY_STAFF_TYPE = "staff_type"
