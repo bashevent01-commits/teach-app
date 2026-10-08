@@ -50,6 +50,8 @@ class UserOut(BaseModel):
     bio: str | None = None
     avatar_path: str | None = None
     institution_id: int | None
+    institution_name: str | None = None
+    last_active_at: datetime | None = None
     share_audits: bool
     created_at: datetime
 

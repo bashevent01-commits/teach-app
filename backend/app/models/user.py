@@ -62,3 +62,7 @@ class User(Base):
     institution = relationship("Institution", back_populates="users")
     transactions_recorded = relationship("Transaction", back_populates="recorded_by", foreign_keys="Transaction.recorded_by_id")
     posts = relationship("Post", back_populates="author")
+
+    @property
+    def institution_name(self) -> str | None:
+        return self.institution.name if self.institution else None

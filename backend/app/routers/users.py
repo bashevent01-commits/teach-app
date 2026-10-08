@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.activity_log import log_activity
@@ -6,7 +7,9 @@ from app.core.database import get_db
 from app.core.deps import get_current_user, require_institution_scope, require_admin_scope
 from app.core.limiter import limiter
 from app.core.security import hash_password, verify_password
+from app.models.activity_log import ActivityLog
 from app.models.institution import Institution
+from app.models.transaction import Transaction
 from app.models.user import User, UserRole, StaffType
 from app.utils.uploads import delete_storage_object, save_avatar
 from app.schemas.user import UserCreate, UserOut, PasswordReset, UserUpdate, AuditSharingUpdate, SelfPasswordChange
@@ -139,7 +142,19 @@ def list_users(db: Session = Depends(get_db), current_user: User = Depends(requi
     query = db.query(User)
     if current_user.role == UserRole.INSTITUTION_ADMIN:
         query = query.filter(User.institution_id == current_user.institution_id)
-    return query.order_by(User.created_at.desc()).all()
+    users = query.order_by(User.created_at.desc()).all()
+    # Last activity = the later of their latest recorded entry and their latest sign-in
+    entries = dict(db.query(Transaction.recorded_by_id, func.max(Transaction.created_at)).group_by(Transaction.recorded_by_id).all())
+    logins = dict(
+        db.query(ActivityLog.actor_id, func.max(ActivityLog.created_at))
+        .filter(ActivityLog.action == "login_success", ActivityLog.actor_id.isnot(None))
+        .group_by(ActivityLog.actor_id)
+        .all()
+    )
+    for u in users:
+        times = [t for t in (entries.get(u.id), logins.get(u.id)) if t is not None]
+        u.last_active_at = max(times) if times else None
+    return users
 
 
 @router.patch("/{user_id}", response_model=UserOut)
