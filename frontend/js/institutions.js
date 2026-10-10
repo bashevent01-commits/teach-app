@@ -10,32 +10,60 @@
   async function loadInstitutions() {
     const body = $("#schoolsBody");
     try {
-      institutions = await Api.institutions.list();
-      body.innerHTML = institutions.length ? institutions.map((s) => `
-        <tr>
-          <td>
-            <div class="seal">
-              ${s.logo_path
-                ? `<img src="${Api.institutions.logoUrl(s)}" alt="${escapeHtml(s.name)} icon">`
-                : `<span class="seal-fallback">${escapeHtml(initials(s.name))}</span>`}
-            </div>
-          </td>
-          <td>${escapeHtml(s.name)}</td>
-          <td><span class="badge">${escapeHtml(s.type)}</span></td>
-          <td>${escapeHtml(s.region || "—")}</td>
-          <td>${escapeHtml(s.address || "—")}</td>
-          <td>${formatDate(s.created_at)}</td>
-          <td><button class="ghost-btn" data-logo-for="${s.id}">Change icon</button></td>
-        </tr>
-      `).join("") : `<tr class="empty-row"><td colspan="7">No institutions yet.</td></tr>`;
-
-      $$("[data-logo-for]", body).forEach((btn) => {
-        btn.addEventListener("click", () => openLogoSheet(parseInt(btn.dataset.logoFor, 10)));
-      });
+      institutions = await Api.admin.institutions();
+      renderInstitutions();
     } catch (err) {
       body.innerHTML = `<tr class="empty-row"><td colspan="7">${escapeHtml(err.message)}</td></tr>`;
     }
   }
+
+  function renderInstitutions() {
+    const body = $("#schoolsBody");
+    const q = $("#instSearch").value.trim().toLowerCase();
+    const sort = $("#instSort").value;
+    let rows = institutions.filter((s) => !q || [s.name, s.type, s.region || ""].some((v) => v.toLowerCase().includes(q)));
+    const byName = (a, b) => a.name.localeCompare(b.name);
+    if (sort === "name") rows.sort(byName);
+    if (sort === "newest") rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    if (sort === "active") rows.sort((a, b) => b.entries_30d - a.entries_30d);
+    if (sort === "quiet") rows.sort((a, b) => daysSinceIso(b.last_activity_at) - daysSinceIso(a.last_activity_at));
+    $("#instCount").textContent = `${rows.length} ${rows.length === 1 ? "institution" : "institutions"}`;
+
+    body.innerHTML = rows.length ? rows.map((s) => {
+      const quiet = daysSinceIso(s.last_activity_at) > 14;
+      return `
+        <tr>
+          <td>
+            <div class="cell-main">
+              <div class="seal">
+                ${s.logo_path
+                  ? `<img src="${Api.institutions.logoUrl(s)}" alt="${escapeHtml(s.name)} icon">`
+                  : `<span class="seal-fallback">${escapeHtml(initials(s.name))}</span>`}
+              </div>
+              <div><strong>${escapeHtml(s.name)}</strong><small>${escapeHtml(s.type)}</small></div>
+            </div>
+          </td>
+          <td>${escapeHtml(s.region || "—")}</td>
+          <td class="num">${s.staff_count}</td>
+          <td class="num">${s.admin_count}</td>
+          <td class="num">${s.entries_30d}</td>
+          <td><span class="status-dot ${quiet ? "quiet" : ""}"></span>${lastSeenLabel(s.last_activity_at)}</td>
+          <td>
+            <div class="row-actions">
+              <a class="ghost-btn" href="accounts.html?institution=${s.id}">People</a>
+              <button class="ghost-btn" data-logo-for="${s.id}">Change icon</button>
+            </div>
+          </td>
+        </tr>`;
+    }).join("") : `<tr class="empty-row"><td colspan="7">No institutions match.</td></tr>`;
+
+    $$("[data-logo-for]", body).forEach((btn) => {
+      btn.addEventListener("click", () => openLogoSheet(parseInt(btn.dataset.logoFor, 10)));
+    });
+  }
+
+  $("#instSearch").addEventListener("input", renderInstitutions);
+  $("#instSort").addEventListener("change", renderInstitutions);
 
   /* ---------------- Add institution sheet ---------------- */
 

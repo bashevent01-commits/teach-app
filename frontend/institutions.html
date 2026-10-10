@@ -51,9 +51,19 @@
               <h2>Institutions</h2>
               <button class="primary-btn" id="newSchoolBtn">+ Add institution</button>
             </div>
+            <div class="toolbar">
+              <div class="search"><input type="search" id="instSearch" placeholder="Search by name, type or county" aria-label="Search institutions" /></div>
+              <select id="instSort" aria-label="Sort institutions">
+                <option value="name">Name A to Z</option>
+                <option value="newest">Newest first</option>
+                <option value="active">Most active</option>
+                <option value="quiet">Quiet first</option>
+              </select>
+              <span class="count" id="instCount"></span>
+            </div>
             <div class="table-scroll">
             <table class="data-table">
-              <thead><tr><th></th><th>Name</th><th>Type</th><th>Region</th><th>Address</th><th>Onboarded</th><th></th></tr></thead>
+              <thead><tr><th>Institution</th><th>Region</th><th class="num">Staff</th><th class="num">Admins</th><th class="num">Entries (30d)</th><th>Last activity</th><th></th></tr></thead>
               <tbody id="schoolsBody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
             </table>
             </div>

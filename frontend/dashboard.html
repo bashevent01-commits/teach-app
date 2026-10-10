@@ -46,45 +46,32 @@
         </header>
 
         <section class="page is-active" data-page="dashboard">
-          <div class="card">
-            <h2>Overview</h2>
-            <div class="kpi-row" id="dashKpis">
-              <div class="kpi"><strong id="kpiSchools">—</strong><span>Institutions</span></div>
-              <div class="kpi"><strong id="kpiTeachers">—</strong><span>Staff accounts</span></div>
-              <div class="kpi"><strong id="kpiActive">—</strong><span>Active accounts</span></div>
-              <div class="kpi"><strong id="kpiReports">—</strong><span>Open reports</span></div>
+          <div class="stat-grid">
+            <a class="stat-card" href="institutions.html"><small>Institutions</small><strong id="kpiSchools">—</strong><span>on the platform</span></a>
+            <a class="stat-card good" href="accounts.html"><small>Accounts</small><strong id="kpiActive">—</strong><span id="kpiAccountsSub">active</span></a>
+            <div class="stat-card"><small>Entries this week</small><strong id="kpiEntries">—</strong><span>recorded across all institutions</span></div>
+            <a class="stat-card" id="reportsCard" href="review.html"><small>Post reports</small><strong id="kpiReports">—</strong><span id="kpiReportsSub">waiting for review</span></a>
+          </div>
+
+          <div class="admin-grid">
+            <div class="card">
+              <div class="card-head"><h2>Needs attention</h2></div>
+              <div id="attention"><p class="muted">Loading…</p></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Recent activity</h2><a class="ghost-btn" href="activity.html">Full log</a></div>
+              <div id="activityList"><p class="muted">Loading…</p></div>
             </div>
           </div>
 
-          <div class="action-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
-            <a class="action-card receive" href="institutions.html">
-              <span class="action-ico"><span class="ico" data-ico="institution"></span></span>
-              <span class="action-copy">
-                <strong>Institutions</strong>
-                <small>Onboard institutions, set portal icons</small>
-              </span>
-            </a>
-            <a class="action-card pay" href="accounts.html">
-              <span class="action-ico"><span class="ico" data-ico="accounts"></span></span>
-              <span class="action-copy">
-                <strong>Accounts</strong>
-                <small>Issue credentials, reset passwords</small>
-              </span>
-            </a>
-            <a class="action-card" href="review.html" style="background: var(--surface); border: 1px solid var(--line);">
-              <span class="action-ico"><span class="ico" data-ico="flag"></span></span>
-              <span class="action-copy">
-                <strong>Review</strong>
-                <small>Posts, images &amp; reports from staff</small>
-              </span>
-            </a>
-            <a class="action-card" href="privacy.html" style="background: var(--surface); border: 1px solid var(--line);">
-              <span class="action-ico"><span class="ico" data-ico="privacy"></span></span>
-              <span class="action-copy">
-                <strong>Data &amp; Privacy</strong>
-                <small>What's legal to collect, and what to avoid</small>
-              </span>
-            </a>
+          <div class="card">
+            <div class="card-head"><h2>Institution health</h2><a class="ghost-btn" href="institutions.html">Manage institutions</a></div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead><tr><th>Institution</th><th class="num">Accounts</th><th class="num">Entries (30 days)</th><th>Last activity</th></tr></thead>
+                <tbody id="healthBody"><tr class="empty-row"><td colspan="4">Loading…</td></tr></tbody>
+              </table>
+            </div>
           </div>
         </section>
       </main>

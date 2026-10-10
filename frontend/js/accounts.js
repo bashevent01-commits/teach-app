@@ -7,13 +7,18 @@
 
   await loadAll();
 
+  ["#userSearch", "#roleFilter", "#statusFilter", "#institutionFilter"].forEach((sel) => {
+    $(sel).addEventListener(sel === "#userSearch" ? "input" : "change", () => renderUsers());
+  });
+
   async function loadAll() {
     const body = $("#usersBody");
     try {
       [institutions, users] = await Promise.all([Api.institutions.list(), Api.users.list()]);
+      setupInstitutionFilter();
       renderUsers();
     } catch (err) {
-      body.innerHTML = `<tr class="empty-row"><td colspan="6">${escapeHtml(err.message)}</td></tr>`;
+      body.innerHTML = `<tr class="empty-row"><td colspan="7">${escapeHtml(err.message)}</td></tr>`;
     }
   }
 
@@ -23,18 +28,42 @@
     return "Staff";
   }
 
+  const params = new URLSearchParams(location.search);
+  if (params.get("status")) $("#statusFilter").value = params.get("status");
+
+  function setupInstitutionFilter() {
+    const select = $("#institutionFilter");
+    if (!isSuperAdmin) return;
+    select.hidden = false;
+    select.innerHTML = `<option value="">All institutions</option>` + institutions.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("");
+    if (params.get("institution")) select.value = params.get("institution");
+  }
+
+  function visibleUsers() {
+    const q = $("#userSearch").value.trim().toLowerCase();
+    const role = $("#roleFilter").value;
+    const status = $("#statusFilter").value;
+    const inst = $("#institutionFilter").value;
+    return users.filter((u) =>
+      (!q || [u.full_name, u.username, u.institution_name || ""].some((v) => v.toLowerCase().includes(q))) &&
+      (!role || (role === "admins" ? u.role !== "staff" : u.role === "staff")) &&
+      (!status || (status === "active" ? u.is_active : !u.is_active)) &&
+      (!inst || String(u.institution_id) === inst)
+    ).sort((a, b) => a.full_name.localeCompare(b.full_name));
+  }
+
   function renderUsers() {
-    const institutionNameById = Object.fromEntries(institutions.map((s) => [s.id, s.name]));
     const body = $("#usersBody");
-    // institution_admin already only ever gets their own institution's
-    // users back from the API, but this filter is harmless either way.
-    body.innerHTML = users.length ? users.map((u) => `
+    const shown = visibleUsers();
+    $("#userCount").textContent = `${shown.length} ${shown.length === 1 ? "account" : "accounts"}`;
+    body.innerHTML = shown.length ? shown.map((u) => `
       <tr>
-        <td>${escapeHtml(u.full_name)}</td>
+        <td><strong>${escapeHtml(u.full_name)}</strong></td>
         <td><code>${escapeHtml(u.username)}</code></td>
         <td><span class="badge badge-${u.role}">${roleLabel(u.role)}${u.role === "staff" && u.staff_type === "teacher" ? " · Teacher" : ""}</span></td>
-        <td>${u.role !== "super_admin" ? escapeHtml(institutionNameById[u.institution_id] || "—") : "—"}</td>
+        <td>${u.role !== "super_admin" ? escapeHtml(u.institution_name || "—") : "—"}</td>
         <td><span class="badge badge-${u.is_active ? "active" : "inactive"}">${u.is_active ? "Active" : "Deactivated"}</span></td>
+        <td class="muted">${lastSeenLabel(u.last_active_at)}</td>
         <td>
           <div class="row-actions">
             <button class="ghost-btn" data-edit="${u.id}">Edit</button>
@@ -45,7 +74,7 @@
           </div>
         </td>
       </tr>
-    `).join("") : `<tr class="empty-row"><td colspan="6">No accounts yet. Issue credentials to get started.</td></tr>`;
+    `).join("") : `<tr class="empty-row"><td colspan="7">No accounts match.</td></tr>`;
 
     $$("[data-deactivate]", body).forEach((btn) => btn.addEventListener("click", async () => {
       if (!confirm("Deactivate this account? They will no longer be able to sign in.")) return;

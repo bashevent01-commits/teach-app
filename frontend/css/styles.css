@@ -560,3 +560,51 @@ textarea:focus, input:focus, select:focus { border-color: var(--brand); box-shad
 .money-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
 .money-row .kpi strong { font-size: 1.05rem; }
 .money-hint { margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+
+/* Admin: stat cards, toolbars and side-by-side panels that use a desktop's width */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.stat-card {
+  display: block; text-decoration: none; color: inherit; padding: 18px 20px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line); transition: border-color 0.15s, transform 0.15s;
+}
+a.stat-card:hover { border-color: var(--brand); transform: translateY(-1px); }
+.stat-card small { display: block; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 700; }
+.stat-card strong { display: block; font-family: var(--display); font-size: 2rem; line-height: 1.15; margin: 4px 0 2px; }
+.stat-card span { font-size: 0.82rem; color: var(--ink-soft); }
+.stat-card.good strong { color: var(--in); }
+.stat-card.bad strong { color: var(--danger); }
+.stat-card.warn strong { color: var(--warn); }
+
+.admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; margin-bottom: 14px; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.toolbar .search { flex: 1 1 240px; min-width: 200px; }
+.toolbar input[type="search"], .toolbar select {
+  width: 100%; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); font: inherit;
+}
+.toolbar select { width: auto; min-width: 150px; }
+.toolbar .count { margin-left: auto; font-size: 0.82rem; color: var(--ink-soft); }
+
+.attention-row, .activity-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.attention-row:last-child, .activity-row:last-child { border-bottom: 0; }
+.attention-row { text-decoration: none; color: inherit; }
+.attention-row .ico-wrap { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(217, 119, 6, 0.14); color: var(--warn); flex: none; }
+.attention-row.bad .ico-wrap { background: rgba(220, 38, 38, 0.12); color: var(--danger); }
+.attention-row strong { display: block; font-size: 0.92rem; }
+.attention-row small, .activity-row small { color: var(--ink-soft); font-size: 0.78rem; }
+.activity-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--in); flex: none; }
+.activity-row.warn .dot { background: var(--danger); }
+.activity-row .when { margin-left: auto; font-size: 0.78rem; color: var(--ink-soft); white-space: nowrap; }
+
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--in); }
+.status-dot.quiet { background: var(--warn); }
+.status-dot.off { background: var(--danger); }
+.cell-main { display: flex; align-items: center; gap: 12px; }
+.cell-main strong { display: block; }
+.cell-main small { color: var(--ink-soft); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-soft); }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover td { background: var(--surface-2); }

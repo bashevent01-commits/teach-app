@@ -209,6 +209,11 @@ const Api = {
     resetPassword: (id, new_password) => apiFetch(`/api/users/${id}/reset-password`, { method: "POST", body: { new_password } }),
   },
 
+  admin: {
+    overview: () => apiFetch("/api/admin/overview"),
+    institutions: () => apiFetch("/api/admin/institutions"),
+  },
+
   stock: {
     list: (params = {}) => apiFetch(`/api/stock?${new URLSearchParams(params)}`),
     get: (id) => apiFetch(`/api/stock/${id}`),

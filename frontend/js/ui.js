@@ -367,3 +367,34 @@ const Sheet = {
 // DOMContentLoaded (pages that don't have a sheet, like News, simply
 // have Sheet.el === null, and every Sheet method no-ops in that case).
 Sheet.init();
+
+// "Today", "Yesterday", "3 Oct": a short way to say when something last happened
+function lastSeenLabel(iso) {
+  if (!iso) return "Never";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
+}
+
+function daysSinceIso(iso) {
+  if (!iso) return Infinity;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+
+function describeActivity(a) {
+  const who = a.actor_username || "Someone";
+  const map = {
+    login_success: `${who} signed in`,
+    login_failed: `Failed sign-in for ${who}`,
+    account_locked: `${who}'s account was locked`,
+    login_blocked_locked: `Blocked: ${who} is locked out`,
+    login_blocked_inactive: `Blocked: ${who} is deactivated`,
+  };
+  if (map[a.action]) return map[a.action];
+  const base = a.action.replace(/_/g, " ");
+  return base.charAt(0).toUpperCase() + base.slice(1) + (a.detail ? `: ${a.detail}` : "");
+}
