@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.Business
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Insights
@@ -72,6 +73,7 @@ private data class Tab(val route: String, val label: String, val icon: ImageVect
 // Every destination on the bar is its own page; what appears depends on who is signed in
 private fun tabsFor(role: String?, staffType: String?): List<Tab> = when (role) {
     "super_admin" -> listOf(
+        Tab(Routes.OVERVIEW, "Overview", Icons.Outlined.Dashboard),
         Tab(Routes.INSTITUTIONS, "Institutions", Icons.Outlined.Business),
         Tab(Routes.ACCOUNTS, "Accounts", Icons.Outlined.Group),
         Tab(Routes.MARKET, "Market", Icons.Outlined.Insights),
@@ -94,7 +96,7 @@ private fun tabsFor(role: String?, staffType: String?): List<Tab> = when (role) 
 }
 
 private fun startFor(role: String?): String = when (role) {
-    "super_admin" -> Routes.INSTITUTIONS
+    "super_admin" -> Routes.OVERVIEW
     "institution_admin" -> Routes.BOOKS
     else -> Routes.HOME
 }
@@ -259,13 +261,30 @@ fun KnowNavGraph(container: AppContainer) {
             val viewModel: AuditDetailViewModel = viewModel(factory = vmFactory { AuditDetailViewModel(container.auditRepository, auditId) })
             AuditDetailScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
         }
+        composable(Routes.OVERVIEW) {
+            val viewModel: com.knowapp.android.ui.admin.AdminOverviewViewModel = viewModel(
+                factory = vmFactory { com.knowapp.android.ui.admin.AdminOverviewViewModel(container.adminRepository) },
+            )
+            com.knowapp.android.ui.admin.AdminOverviewScreen(
+                viewModel = viewModel,
+                onOpenReports = { navController.navigate(Routes.REPORTS) },
+                onOpenInstitutions = { goTab(Routes.INSTITUTIONS) },
+                onOpenAccounts = { goTab(Routes.ACCOUNTS) },
+            )
+        }
+        composable(Routes.REPORTS) {
+            val viewModel: com.knowapp.android.ui.admin.ReportsViewModel = viewModel(
+                factory = vmFactory { com.knowapp.android.ui.admin.ReportsViewModel(container.adminRepository) },
+            )
+            com.knowapp.android.ui.admin.ReportsScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+        }
         composable(Routes.INSTITUTIONS) {
-            val viewModel: InstitutionsViewModel = viewModel(factory = vmFactory { InstitutionsViewModel(container.institutionsRepository) })
+            val viewModel: InstitutionsViewModel = viewModel(factory = vmFactory { InstitutionsViewModel(container.adminRepository, container.institutionsRepository, container.usersRepository) })
             InstitutionsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false)
         }
         composable(Routes.ACCOUNTS) {
             val viewModel: AccountsViewModel = viewModel(
-                factory = vmFactory { AccountsViewModel(container.usersRepository, container.institutionsRepository, container.sessionStore) },
+                factory = vmFactory { AccountsViewModel(container.usersRepository, container.institutionsRepository, container.adminRepository, container.sessionStore) },
             )
             AccountsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false)
         }

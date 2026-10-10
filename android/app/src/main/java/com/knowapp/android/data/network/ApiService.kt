@@ -4,7 +4,10 @@ import com.knowapp.android.data.model.AuditOut
 import com.knowapp.android.data.model.CategoryDetailOut
 import com.knowapp.android.data.model.CategoryInsightOut
 import com.knowapp.android.data.model.InstitutionOut
+import com.knowapp.android.data.model.AdminOverviewOut
 import com.knowapp.android.data.model.DocumentOut
+import com.knowapp.android.data.model.InstitutionStatsOut
+import com.knowapp.android.data.model.ReportOut
 import com.knowapp.android.data.model.OpeningBalancesOut
 import com.knowapp.android.data.model.PostCommentOut
 import com.knowapp.android.data.model.ReferenceCheckOut
@@ -18,6 +21,7 @@ import com.knowapp.android.data.model.TransactionOut
 import com.knowapp.android.data.model.UserOut
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Multipart
 import retrofit2.http.Part
@@ -110,6 +114,24 @@ interface ApiService {
 
     @DELETE("/api/documents/{documentId}")
     suspend fun deleteDocument(@Path("documentId") documentId: Int): Response<Unit>
+
+    @GET("/api/admin/overview")
+    suspend fun adminOverview(): Response<AdminOverviewOut>
+
+    @GET("/api/admin/institutions")
+    suspend fun adminInstitutions(): Response<List<InstitutionStatsOut>>
+
+    @GET("/api/moderation/reports")
+    suspend fun listReports(@Query("status_filter") status: String? = null): Response<List<ReportOut>>
+
+    @POST("/api/moderation/reports/{reportId}/resolve")
+    suspend fun resolveReport(@Path("reportId") reportId: Int, @Query("action") action: String): Response<ResponseBody>
+
+    @POST("/api/users/{userId}/reset-password")
+    suspend fun resetPassword(@Path("userId") userId: Int, @Body body: Map<String, String>): Response<UserOut>
+
+    @PATCH("/api/users/{userId}")
+    suspend fun updateUser(@Path("userId") userId: Int, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<UserOut>
 
     @GET("/api/users/me")
     suspend fun getMe(): Response<UserOut>

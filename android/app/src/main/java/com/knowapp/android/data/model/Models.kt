@@ -99,6 +99,8 @@ data class UserOut(
     @SerializedName("staff_type") val staffType: String? = null,
     @SerializedName("is_active") val isActive: Boolean,
     @SerializedName("institution_id") val institutionId: Int? = null,
+    @SerializedName("institution_name") val institutionName: String? = null,
+    @SerializedName("last_active_at") val lastActiveAt: String? = null,
     @SerializedName("share_audits") val shareAudits: Boolean,
     @SerializedName("created_at") val createdAt: String,
     val bio: String? = null,
@@ -243,4 +245,73 @@ data class DocumentOut(
     @SerializedName("recorded_by_id") val recordedById: Int,
     @SerializedName("recorded_by_name") val recordedByName: String? = null,
     @SerializedName("created_at") val createdAt: String,
+)
+
+
+data class QuietInstitutionOut(
+    val id: Int,
+    val name: String,
+    @SerializedName("last_activity_at") val lastActivityAt: String? = null,
+)
+
+data class ActivityItemOut(
+    val id: Int,
+    val action: String,
+    @SerializedName("actor_username") val actorUsername: String? = null,
+    val detail: String? = null,
+    @SerializedName("target_type") val targetType: String? = null,
+    @SerializedName("created_at") val createdAt: String,
+)
+
+data class AdminOverviewOut(
+    val institutions: Int,
+    @SerializedName("accounts_total") val accountsTotal: Int,
+    @SerializedName("accounts_active") val accountsActive: Int,
+    @SerializedName("accounts_inactive") val accountsInactive: Int,
+    val staff: Int,
+    @SerializedName("institution_admins") val institutionAdmins: Int,
+    @SerializedName("super_admins") val superAdmins: Int,
+    @SerializedName("new_accounts_30d") val newAccounts30d: Int,
+    @SerializedName("open_reports") val openReports: Int,
+    @SerializedName("entries_7d") val entries7d: Int,
+    @SerializedName("quiet_institutions") val quietInstitutions: List<QuietInstitutionOut> = emptyList(),
+    @SerializedName("recent_activity") val recentActivity: List<ActivityItemOut> = emptyList(),
+)
+
+data class InstitutionStatsOut(
+    val id: Int,
+    val name: String,
+    val type: String,
+    val region: String? = null,
+    val address: String? = null,
+    @SerializedName("logo_path") val logoPath: String? = null,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("staff_count") val staffCount: Int = 0,
+    @SerializedName("admin_count") val adminCount: Int = 0,
+    @SerializedName("active_accounts") val activeAccounts: Int = 0,
+    @SerializedName("inactive_accounts") val inactiveAccounts: Int = 0,
+    @SerializedName("entries_30d") val entries30d: Int = 0,
+    @SerializedName("last_activity_at") val lastActivityAt: String? = null,
+)
+
+data class ReportPostOut(
+    val id: Int,
+    @SerializedName("institution_name") val institutionName: String? = null,
+    @SerializedName("author_name") val authorName: String? = null,
+    val title: String,
+    val body: String,
+    @SerializedName("image_path") val imagePath: String? = null,
+    @SerializedName("created_at") val createdAt: String,
+)
+
+data class ReportOut(
+    val id: Int,
+    @SerializedName("post_id") val postId: Int,
+    val post: ReportPostOut? = null,
+    @SerializedName("reporter_name") val reporterName: String? = null,
+    val reason: String? = null,
+    val status: String,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("resolved_at") val resolvedAt: String? = null,
+    val resolution: String? = null,
 )

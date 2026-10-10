@@ -8,12 +8,16 @@ import androidx.lifecycle.viewModelScope
 import com.knowapp.android.data.SessionStore
 import com.knowapp.android.data.model.InstitutionOut
 import com.knowapp.android.data.model.UserOut
+import com.knowapp.android.data.repository.AdminRepository
 import com.knowapp.android.data.repository.InstitutionsRepository
 import com.knowapp.android.data.repository.InstitutionsResult
 import com.knowapp.android.data.repository.UserActionResult
 import com.knowapp.android.data.repository.UsersRepository
 import com.knowapp.android.data.repository.UsersResult
 import kotlinx.coroutines.launch
+
+enum class RoleFilter(val label: String) { ALL("All roles"), ADMINS("Admins"), STAFF("Staff") }
+enum class StatusFilter(val label: String) { ALL("Any status"), ACTIVE("Active"), INACTIVE("Deactivated") }
 
 data class AccountsUiState(
     val isLoading: Boolean = true,
@@ -23,11 +27,37 @@ data class AccountsUiState(
     val errorMessage: String? = null,
     val isSubmitting: Boolean = false,
     val submitError: String? = null,
-)
+    val query: String = "",
+    val roleFilter: RoleFilter = RoleFilter.ALL,
+    val statusFilter: StatusFilter = StatusFilter.ALL,
+    val institutionFilter: Int? = null,
+    val selectedId: Int? = null,
+    val message: String? = null,
+) {
+    val selected: UserOut? get() = users.firstOrNull { it.id == selectedId }
+
+    val visible: List<UserOut>
+        get() = users.filter { u ->
+            val q = query.trim()
+            (q.isEmpty() || u.fullName.contains(q, true) || u.username.contains(q, true) || (u.institutionName ?: "").contains(q, true)) &&
+                when (roleFilter) {
+                    RoleFilter.ALL -> true
+                    RoleFilter.ADMINS -> u.role != "staff"
+                    RoleFilter.STAFF -> u.role == "staff"
+                } &&
+                when (statusFilter) {
+                    StatusFilter.ALL -> true
+                    StatusFilter.ACTIVE -> u.isActive
+                    StatusFilter.INACTIVE -> !u.isActive
+                } &&
+                (institutionFilter == null || u.institutionId == institutionFilter)
+        }.sortedBy { it.fullName.lowercase() }
+}
 
 class AccountsViewModel(
     private val usersRepository: UsersRepository,
     private val institutionsRepository: InstitutionsRepository,
+    private val adminRepository: AdminRepository,
     sessionStore: SessionStore,
 ) : ViewModel() {
     var uiState by mutableStateOf(AccountsUiState(isSuperAdmin = sessionStore.session.value?.role == "super_admin"))
@@ -39,7 +69,7 @@ class AccountsViewModel(
             viewModelScope.launch {
                 when (val result = institutionsRepository.list()) {
                     is InstitutionsResult.Success -> uiState = uiState.copy(institutions = result.institutions)
-                    is InstitutionsResult.Failure -> Unit // institution picker just stays empty
+                    is InstitutionsResult.Failure -> Unit
                 }
             }
         }
@@ -54,6 +84,13 @@ class AccountsViewModel(
             }
         }
     }
+
+    fun setQuery(q: String) { uiState = uiState.copy(query = q) }
+    fun setRoleFilter(f: RoleFilter) { uiState = uiState.copy(roleFilter = f) }
+    fun setStatusFilter(f: StatusFilter) { uiState = uiState.copy(statusFilter = f) }
+    fun setInstitutionFilter(id: Int?) { uiState = uiState.copy(institutionFilter = id) }
+    fun select(id: Int?) { uiState = uiState.copy(selectedId = id) }
+    fun messageShown() { uiState = uiState.copy(message = null) }
 
     fun create(
         username: String,
@@ -80,10 +117,34 @@ class AccountsViewModel(
         }
     }
 
+    fun clearSubmitError() { uiState = uiState.copy(submitError = null) }
+
     fun setActive(userId: Int, active: Boolean) {
         viewModelScope.launch {
-            usersRepository.setActive(userId, active)
+            when (val result = usersRepository.setActive(userId, active)) {
+                is UserActionResult.Success -> uiState = uiState.copy(message = if (active) "Account reactivated." else "Account deactivated.")
+                is UserActionResult.Failure -> uiState = uiState.copy(message = result.message)
+            }
             refresh()
+        }
+    }
+
+    fun resetPassword(userId: Int, password: String, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            adminRepository.resetPassword(userId, password)
+                .onSuccess { onDone(true) }
+                .onFailure {
+                    uiState = uiState.copy(message = it.message ?: "Couldn't reset the password.")
+                    onDone(false)
+                }
+        }
+    }
+
+    fun rename(userId: Int, name: String) {
+        viewModelScope.launch {
+            adminRepository.rename(userId, name)
+                .onSuccess { uiState = uiState.copy(message = "Name updated."); refresh() }
+                .onFailure { uiState = uiState.copy(message = it.message ?: "Couldn't update the name.") }
         }
     }
 }

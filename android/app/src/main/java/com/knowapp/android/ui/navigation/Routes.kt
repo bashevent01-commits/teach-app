@@ -9,6 +9,8 @@ object Routes {
     const val BOOKS = "books"
     const val STATEMENTS = "statements"
     const val DOCUMENTS = "documents"
+    const val OVERVIEW = "overview"
+    const val REPORTS = "reports"
     const val DOCUMENT_NEW = "documents/new/{docType}"
     const val NEWS = "news"
     const val AUDITS = "audits"
