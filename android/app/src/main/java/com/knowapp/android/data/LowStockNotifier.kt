@@ -18,6 +18,16 @@ object LowStockNotifier {
     private const val CHANNEL = "low_stock"
     private const val PREFS = "know_low_stock"
 
+    // Android 13 and later need the person to allow notifications; this asks once, the first time Home opens
+    fun needsAsk(context: Context): Boolean =
+        Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            !context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("asked", false)
+
+    fun markAsked(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("asked", true).apply()
+    }
+
     fun check(context: Context, items: List<StockItemOut>, askPermission: () -> Unit) {
         val low = items.filter {
             val qty = it.quantity.toBigDecimalOrNull() ?: BigDecimal.ZERO

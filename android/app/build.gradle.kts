@@ -106,6 +106,9 @@ dependencies {
 
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
+    // Checks for stock sent to you while the app is closed
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
     // Image loading for post/news photos (Supabase Storage URLs).
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")

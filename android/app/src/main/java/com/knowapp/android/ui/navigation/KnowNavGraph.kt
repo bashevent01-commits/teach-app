@@ -111,6 +111,16 @@ fun KnowNavGraph(container: AppContainer) {
     val navController = rememberNavController()
     val session by container.sessionStore.session.collectAsState()
     val tabs = tabsFor(session?.role, session?.staffType)
+    val alertContext = androidx.compose.ui.platform.LocalContext.current
+    // While the app is open, look for stock sent to this person every 45 seconds
+    androidx.compose.runtime.LaunchedEffect(session?.userId) {
+        val s = session ?: return@LaunchedEffect
+        if (s.role == "super_admin" || s.role == "agent" || s.staffType == "teacher") return@LaunchedEffect
+        while (true) {
+            com.knowapp.android.data.TransferAlerts.check(alertContext, container.exchangeRepository)
+            kotlinx.coroutines.delay(45_000)
+        }
+    }
     val startDestination = if (session == null) Routes.LOGIN else startFor(session?.role)
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route

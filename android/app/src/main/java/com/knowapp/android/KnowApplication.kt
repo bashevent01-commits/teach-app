@@ -12,6 +12,13 @@ class KnowApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "transfer_alerts",
+            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            androidx.work.PeriodicWorkRequestBuilder<com.knowapp.android.data.TransferCheckWorker>(15, java.util.concurrent.TimeUnit.MINUTES)
+                .setConstraints(androidx.work.Constraints.Builder().setRequiredNetworkType(androidx.work.NetworkType.CONNECTED).build())
+                .build(),
+        )
         // A sleeping server needs a moment to start, so nudge it as soon as the app opens
         Thread {
             try {

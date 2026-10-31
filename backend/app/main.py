@@ -133,41 +133,12 @@ def ensure_columns():
     try:
         with engine.begin() as conn:
             conn.exec_driver_sql("ALTER TABLE stock_items ADD COLUMN IF NOT EXISTS low_stock_threshold NUMERIC(12,2)")
+            # Each branch may hold its own item of the same name, which stock exchange relies on
+            conn.exec_driver_sql("ALTER TABLE stock_items DROP CONSTRAINT IF EXISTS stock_items_institution_id_name_key")
+            conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_items_branch_name ON stock_items (institution_id, branch_id, name) WHERE branch_id IS NOT NULL")
+            conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_items_shared_name ON stock_items (institution_id, name) WHERE branch_id IS NULL")
     except Exception as err:
         logging.getLogger("know.startup").warning("Could not add new columns (%s)", type(err).__name__)
-
-
-def purge_uploads_once():
-    """One-time clean-up of every uploaded file; runs only while PURGE_UPLOADS_ONCE=yes is set on the server."""
-    import os
-    import httpx
-    from app.core.config import settings as cfg
-    if os.environ.get("PURGE_UPLOADS_ONCE") != "yes" or not (cfg.SUPABASE_URL and cfg.SUPABASE_SERVICE_ROLE_KEY):
-        return
-    log = logging.getLogger("know.startup")
-    base = f"{cfg.SUPABASE_URL}/storage/v1/object"
-    headers = {"Authorization": f"Bearer {cfg.SUPABASE_SERVICE_ROLE_KEY}", "apikey": cfg.SUPABASE_SERVICE_ROLE_KEY}
-    bucket = cfg.SUPABASE_STORAGE_BUCKET
-
-    def walk(prefix: str) -> list[str]:
-        found: list[str] = []
-        resp = httpx.post(f"{base}/list/{bucket}", headers=headers, json={"prefix": prefix, "limit": 1000, "offset": 0}, timeout=30)
-        resp.raise_for_status()
-        for entry in resp.json():
-            path = f"{prefix}{entry['name']}"
-            if entry.get("id") is None:
-                found += walk(path + "/")
-            else:
-                found.append(path)
-        return found
-
-    try:
-        files = walk("")
-        for i in range(0, len(files), 50):
-            httpx.request("DELETE", f"{base}/{bucket}", headers=headers, json={"prefixes": files[i:i + 50]}, timeout=60).raise_for_status()
-        log.warning("Purged %d uploaded files", len(files))
-    except Exception as err:
-        log.warning("Could not purge uploaded files (%s)", type(err).__name__)
 
 
 @app.on_event("startup")
@@ -176,7 +147,6 @@ def on_startup():
     # for fast local setup; see README for the migration-based path.
     Base.metadata.create_all(bind=engine)
     ensure_columns()
-    purge_uploads_once()
     db = SessionLocal()
     try:
         ensure_super_admin(db)

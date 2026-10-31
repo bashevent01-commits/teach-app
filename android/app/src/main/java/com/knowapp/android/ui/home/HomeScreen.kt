@@ -166,6 +166,12 @@ fun HomeScreen(
     var viewingReceipt by remember { mutableStateOf<com.knowapp.android.ui.receipt.ReceiptData?>(null) }
     val appContext = androidx.compose.ui.platform.LocalContext.current
     val askNotify = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(Unit) {
+        if (com.knowapp.android.data.LowStockNotifier.needsAsk(appContext)) {
+            com.knowapp.android.data.LowStockNotifier.markAsked(appContext)
+            askNotify.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     LaunchedEffect(state.stock) {
         if (state.stock.isEmpty()) return@LaunchedEffect
         com.knowapp.android.data.LowStockNotifier.check(appContext, state.stock) { askNotify.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
