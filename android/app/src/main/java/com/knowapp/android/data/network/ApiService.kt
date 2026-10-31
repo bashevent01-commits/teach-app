@@ -291,4 +291,16 @@ interface ApiService {
 
     @GET("/api/partner/dashboard")
     suspend fun partnerDashboard(@Query("month") month: String?): Response<com.knowapp.android.data.model.PartnerDashboard>
+
+    @GET("/api/admin/partners")
+    suspend fun adminPartners(): Response<List<com.knowapp.android.data.model.PartnerSummaryOut>>
+
+    @POST("/api/admin/partners")
+    suspend fun createPartner(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<com.knowapp.android.data.model.PartnerSummaryOut>
+
+    @PATCH("/api/admin/partners/{partnerId}")
+    suspend fun updatePartner(@Path("partnerId") partnerId: Int, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<com.knowapp.android.data.model.PartnerSummaryOut>
+
+    @POST("/api/admin/partners/{partnerId}/new-code")
+    suspend fun newPartnerCode(@Path("partnerId") partnerId: Int): Response<com.knowapp.android.data.model.PartnerSummaryOut>
 }

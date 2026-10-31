@@ -2,6 +2,7 @@ package com.knowapp.android.ui.market
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -86,16 +87,22 @@ fun MarketAnalysisScreen(
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                 )
-                state.categories.isEmpty() -> Text(
-                    "No category has reached the 5-institution minimum yet.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                state.categories.isEmpty() -> Column(
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                )
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        "No category has reached the 5-institution minimum yet.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = { viewModel.setDemo(true) }) { Text("Show the demo view again") }
+                }
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    if (state.demoOn) item { DemoBanner(onTurnOff = { viewModel.setDemo(false) }) }
                     items(state.categories, key = { it.categoryId }) { category ->
                         CategoryInsightRow(category, onClick = { onOpenCategory(category.categoryId) })
                     }
@@ -195,5 +202,19 @@ private fun ManageCategoriesDialog(
                 Text("Done")
             }
         }
+    }
+}
+
+@Composable
+private fun DemoBanner(onTurnOff: () -> Unit) {
+    AppCard(modifier = Modifier.fillMaxWidth()) {
+        Text("Demo view", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text(
+            "These numbers are made up so you can test how Market works. Only you can see this. Nothing here comes from a real institution.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+        )
+        Button(onClick = onTurnOff, shape = PillShape, modifier = Modifier.fillMaxWidth()) { Text("Turn off demo and use real data") }
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -76,6 +77,7 @@ private fun tabsFor(role: String?, staffType: String?): List<Tab> = when (role) 
         Tab(Routes.OVERVIEW, "Overview", Icons.Outlined.Dashboard),
         Tab(Routes.INSTITUTIONS, "Institutions", Icons.Outlined.Business),
         Tab(Routes.ACCOUNTS, "Accounts", Icons.Outlined.Group),
+        Tab(Routes.PARTNERS, "Partners", Icons.Outlined.Share),
         Tab(Routes.MARKET, "Market", Icons.Outlined.Insights),
         Tab(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
     )
@@ -154,7 +156,7 @@ fun KnowNavGraph(container: AppContainer) {
                             selected = currentRoute == tab.route,
                             onClick = { goTab(tab.route) },
                             icon = { Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label, fontSize = 11.sp, maxLines = 1, softWrap = false) },
+                            label = { Text(tab.label, fontSize = if (tabs.size > 5) 10.sp else 11.sp, maxLines = 1, softWrap = false) },
                         )
                     }
                 }
@@ -348,9 +350,15 @@ fun KnowNavGraph(container: AppContainer) {
             )
             AccountsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false)
         }
+        composable(Routes.PARTNERS) {
+            val viewModel: com.knowapp.android.ui.partners.PartnersViewModel = viewModel(
+                factory = vmFactory { com.knowapp.android.ui.partners.PartnersViewModel(container.partnersAdminRepository) },
+            )
+            com.knowapp.android.ui.partners.PartnersScreen(viewModel = viewModel)
+        }
         composable(Routes.MARKET) {
             val viewModel: MarketAnalysisViewModel = viewModel(
-                factory = vmFactory { MarketAnalysisViewModel(container.marketAnalysisRepository, container.productCategoriesRepository) },
+                factory = vmFactory { MarketAnalysisViewModel(container.marketAnalysisRepository, container.productCategoriesRepository, container.marketDemoStore, session?.userId ?: -1) },
             )
             MarketAnalysisScreen(
                 viewModel = viewModel,

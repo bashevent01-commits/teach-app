@@ -60,19 +60,22 @@ fun CategoryDetailScreen(
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                 )
-                state.detail != null -> CategoryDetailContent(state.detail)
+                state.detail != null -> CategoryDetailContent(state.detail, state.isDemo)
             }
         }
     }
 }
 
 @Composable
-private fun CategoryDetailContent(detail: CategoryDetailOut) {
+private fun CategoryDetailContent(detail: CategoryDetailOut, isDemo: Boolean) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        if (isDemo) item {
+            Text("Demo data: made-up numbers for testing.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+        }
         item {
             AppCard(modifier = Modifier.fillMaxWidth()) {
                 KpiRow(

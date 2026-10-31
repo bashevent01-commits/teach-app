@@ -24,6 +24,7 @@ object Routes {
     const val INSTITUTIONS = "institutions"
     const val ACCOUNTS = "accounts"
     const val MARKET = "market"
+    const val PARTNERS = "partners"
     const val CATEGORY_DETAIL = "category_detail/{categoryId}"
 
     fun documents(itemId: Int? = null) = if (itemId == null) "documents" else "documents?itemId=$itemId"
