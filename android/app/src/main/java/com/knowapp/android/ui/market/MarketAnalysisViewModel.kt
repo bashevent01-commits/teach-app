@@ -60,6 +60,21 @@ class MarketAnalysisViewModel(
         }
     }
 
+    // Builds the report for one category and opens the print dialog
+    fun download(context: android.content.Context, categoryId: Int, onFail: (String) -> Unit) {
+        viewModelScope.launch {
+            if (MarketDemoData.isDemoId(categoryId)) {
+                val demo = MarketDemoData.detail(categoryId)
+                if (demo != null) MarketReportPdf.print(context, demo, true) else onFail("This demo category no longer exists.")
+                return@launch
+            }
+            when (val result = marketRepository.categoryDetail(categoryId)) {
+                is CategoryDetailResult.Success -> MarketReportPdf.print(context, result.detail, false)
+                is CategoryDetailResult.Failure -> onFail(result.message)
+            }
+        }
+    }
+
     fun loadManageableCategories() {
         viewModelScope.launch {
             when (val result = categoriesRepository.list()) {

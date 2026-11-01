@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,14 +38,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import android.widget.Toast
 import com.knowapp.android.data.model.CategoryInsightOut
 import com.knowapp.android.data.model.ProductCategoryOut
 import com.knowapp.android.ui.components.AppCard
-import com.knowapp.android.ui.components.KpiEntry
-import com.knowapp.android.ui.components.KpiRow
+import com.knowapp.android.ui.theme.DisplayFontFamily
 import com.knowapp.android.ui.theme.PillShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +59,7 @@ fun MarketAnalysisScreen(
     onOpenCategory: (Int) -> Unit,
 ) {
     val state = viewModel.uiState
+    val context = LocalContext.current
     var showManageDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -104,7 +109,7 @@ fun MarketAnalysisScreen(
                 ) {
                     if (state.demoOn) item { DemoBanner(onTurnOff = { viewModel.setDemo(false) }) }
                     items(state.categories, key = { it.categoryId }) { category ->
-                        CategoryInsightRow(category, onClick = { onOpenCategory(category.categoryId) })
+                        CategoryInsightRow(category, onClick = { onOpenCategory(category.categoryId) }, onDownload = { viewModel.download(context, category.categoryId) { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() } })
                     }
                 }
             }
@@ -126,21 +131,33 @@ fun MarketAnalysisScreen(
 }
 
 @Composable
-private fun CategoryInsightRow(category: CategoryInsightOut, onClick: () -> Unit) {
-    AppCard(
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(category.categoryName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        KpiRow(
-            entries = listOf(
-                KpiEntry(value = "${category.institutionCount}", label = "Institutions"),
-                KpiEntry(value = "KES ${category.averagePrice}", label = "Avg price"),
-                KpiEntry(value = category.totalQuantitySold, label = "Qty sold"),
-            ),
-            modifier = Modifier.padding(top = 10.dp, bottom = 12.dp),
-        )
-        OutlinedButton(onClick = onClick, shape = PillShape, modifier = Modifier.fillMaxWidth()) {
-            Text("View trend & regions")
+private fun CategoryInsightRow(category: CategoryInsightOut, onClick: () -> Unit, onDownload: () -> Unit) {
+    AppCard(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(category.categoryName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "${category.institutionCount} institutions · ${category.totalQuantitySold} sold",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(kesText(category.averagePrice), fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text(
+                    String.format(java.util.Locale.US, "%,.2f - %,.2f", category.minPrice, category.maxPrice),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onClick, shape = PillShape, modifier = Modifier.weight(1f)) { Text("Trend & regions") }
+            OutlinedButton(onClick = onDownload, shape = PillShape) {
+                Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("PDF", modifier = Modifier.padding(start = 6.dp))
+            }
         }
     }
 }
