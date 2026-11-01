@@ -3,6 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from app.core.constants import valid_location
 from app.models.user import UserRole, StaffType
 
 
@@ -63,6 +64,8 @@ class UserCreate(BaseModel):
     staff_type: StaffType | None = None
     institution_id: int | None = None
     email: str | None = None
+    county: str | None = None
+    constituency: str | None = None
 
     @field_validator("email")
     @classmethod
@@ -87,6 +90,11 @@ class UserCreate(BaseModel):
         check_password(self.password, self.username)
         if self.role == UserRole.STAFF and self.staff_type is None:
             raise ValueError("staff_type is required for a staff account (teacher or general)")
+        # Every branch (a staff account that handles stock) must say where it trades
+        if self.role == UserRole.STAFF and self.staff_type == StaffType.GENERAL and not (self.county and self.constituency):
+            raise ValueError("Choose the county and constituency this branch trades in")
+        if (self.county or self.constituency) and not valid_location(self.county, self.constituency or None):
+            raise ValueError("That constituency is not in the chosen county")
         return self
 
 
@@ -99,6 +107,8 @@ class SignupRequest(BaseModel):
     partner_code: str | None = None
     business_name: str | None = None
     business_type: str | None = None
+    county: str | None = None
+    constituency: str | None = None
 
     @field_validator("email")
     @classmethod
@@ -150,6 +160,11 @@ class SignupRequest(BaseModel):
         check_password(self.password, self.username)
         if self.account_type == "owner" and not self.business_name:
             raise ValueError("Enter your business name")
+        # Owners and sales-and-stock individuals trade somewhere, and the market data needs to know where
+        if self.account_type in ("owner", "staff") and not (self.county and self.constituency):
+            raise ValueError("Choose your county and constituency")
+        if (self.county or self.constituency) and not valid_location(self.county, self.constituency or None):
+            raise ValueError("That constituency is not in the chosen county")
         return self
 
 
@@ -170,6 +185,8 @@ class UserOut(BaseModel):
     last_active_at: datetime | None = None
     share_audits: bool
     created_at: datetime
+    county: str | None = None
+    constituency: str | None = None
 
 
 class AuditSharingUpdate(BaseModel):
@@ -189,6 +206,8 @@ class UserUpdate(BaseModel):
     staff_type: StaffType | None = None
     role: UserRole | None = None
     email: str | None = None
+    county: str | None = None
+    constituency: str | None = None
 
     @field_validator("email")
     @classmethod

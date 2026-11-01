@@ -198,7 +198,7 @@ def signup(
     if is_owner:
         if db.query(Institution).filter(func.lower(Institution.name) == payload.business_name.lower()).first():
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A business with this name already exists")
-        workspace = Institution(name=payload.business_name, type=payload.business_type or "shop", partner_id=partner.id if partner else None)
+        workspace = Institution(name=payload.business_name, type=payload.business_type or "shop", region=payload.county, constituency=payload.constituency, partner_id=partner.id if partner else None)
         role, staff_type = UserRole.INSTITUTION_ADMIN, None
     else:
         # The username is unique, so this workspace name is too
@@ -216,6 +216,8 @@ def signup(
             role=role,
             staff_type=staff_type,
             institution_id=workspace.id,
+            county=payload.county if not is_owner and payload.account_type == "staff" else None,
+            constituency=payload.constituency if not is_owner and payload.account_type == "staff" else None,
         )
         db.add(user)
         db.commit()

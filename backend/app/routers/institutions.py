@@ -25,7 +25,7 @@ def create_institution(payload: InstitutionCreate, request: Request, db: Session
         partner = db.query(Partner).filter(Partner.code == normalize_code(payload.partner_code), Partner.is_active.is_(True)).first()
         if not partner:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unknown partner code")
-    institution = Institution(name=payload.name, type=payload.type, address=payload.address, region=payload.region, partner_id=partner.id if partner else None, monthly_fee=payload.monthly_fee)
+    institution = Institution(name=payload.name, type=payload.type, address=payload.address, region=payload.region, constituency=payload.constituency or None, partner_id=partner.id if partner else None, monthly_fee=payload.monthly_fee)
     db.add(institution)
     db.commit()
     db.refresh(institution)

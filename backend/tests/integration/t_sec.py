@@ -43,7 +43,7 @@ ok("B owner cannot manage A user", c.post(f"/api/users/{sa.id}/reset-password", 
 ok("B owner sees only B users", all(u["institution_id"] == B.id for u in c.get("/api/users", headers=H("ob")).json()))
 ok("staff cannot create accounts", c.post("/api/users", json={"username": "z", "full_name": "z", "password": "Zebra!Quartz#2024"}, headers=H("sa")).status_code == 403)
 ok("owner cannot create super admin", c.post("/api/users", json={"username": "zeta2", "full_name": "z", "password": "Zebra!Quartz#2024", "role": "super_admin"}, headers=H("oa")).status_code == 403)
-r = c.post("/api/users", json={"username": "zeta3", "full_name": "z", "password": "Zebra!Quartz#2024", "role": "staff", "staff_type": "general", "institution_id": B.id}, headers=H("oa"))
+r = c.post("/api/users", json={"username": "zeta3", "full_name": "z", "password": "Zebra!Quartz#2024", "role": "staff", "staff_type": "general", "institution_id": B.id, "county": "Nairobi", "constituency": "Westlands"}, headers=H("oa"))
 ok("owner's institution_id forced to own", r.status_code == 201 and r.json()["institution_id"] == A.id)
 au = Audit(institution_id=A.id, title="private", period_start=txn.transaction_date, period_end=txn.transaction_date, submitted_by_id=oa.id); db.add(au); db.commit()
 ok("staff cannot download an audit PDF they are not allowed to see", c.get(f"/api/reports/audits/{au.id}.pdf", headers=H("sa")).status_code == 403)
@@ -53,7 +53,7 @@ ok("activity log shows no business details", all(("Sugar" not in (r.detail or ""
 ok("staff cannot export vault", c.get("/api/vault/export", headers=H("sa")).status_code == 403)
 ok("staff cannot see storage meter", c.get("/api/admin/storage-usage", headers=H("sa")).status_code == 403)
 for pw, label in (("short", "too short"), ("password", "common"), ("aaaaaaaaaa", "repeated"), ("x1" * 40, "over 72 bytes")):
-    ok(f"weak password rejected: {label}", c.post("/api/users", json={"username": "w" + label[:3], "full_name": "w", "password": pw, "role": "staff", "staff_type": "general"}, headers=H("oa")).status_code == 422)
+    ok(f"weak password rejected: {label}", c.post("/api/users", json={"username": "w" + label[:3], "full_name": "w", "password": pw, "role": "staff", "staff_type": "general", "county": "Nairobi", "constituency": "Westlands"}, headers=H("oa")).status_code == 422)
 big = io.BytesIO(b"\x89PNG" + b"0" * (7 * 1024 * 1024))
 ok("oversized logo -> 413", c.post(f"/api/institutions/{A.id}/logo", files={"file": ("a.png", big, "image/png")}, headers=H("oa")).status_code == 413)
 ok("non-image upload rejected", c.post(f"/api/institutions/{A.id}/logo", files={"file": ("a.png", io.BytesIO(b"<script>alert(1)</script>"), "image/png")}, headers=H("oa")).status_code == 400)

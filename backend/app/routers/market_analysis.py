@@ -42,6 +42,22 @@ def _price_stats(prices: list[Decimal]) -> dict:
     }
 
 
+def _location_breakdown(rows) -> list:
+    """Groups (institution, price, place, county) rows by place; a place is shown only when 5 or more different institutions trade there."""
+    prices = defaultdict(lambda: defaultdict(list))
+    counties = {}
+    for institution_id, price, place, county in rows:
+        prices[place][institution_id].append(price)
+        counties[place] = county
+    entries = [
+        RegionBreakdownEntry(region=place, county=counties[place], institution_count=len(by_inst), **_price_stats([sum(v) / len(v) for v in by_inst.values()]))
+        for place, by_inst in prices.items()
+        if len(by_inst) >= MIN_INSTITUTIONS
+    ]
+    entries.sort(key=lambda e: e.region)
+    return entries
+
+
 def _quantity_sold(db: Session, category_id: int) -> Decimal:
     rows = (
         db.query(Transaction.quantity)
@@ -104,24 +120,21 @@ def get_category_detail(category_id: int, db: Session = Depends(get_db), _: User
     stats = _price_stats(_per_institution((r[0], r[1]) for r in rows))
 
     # Regional breakdown — same threshold applied per region
+    # An item is placed where its branch trades; stock without a branch uses the head office location
     region_rows = (
-        db.query(StockItem.institution_id, StockItem.unit_price, Institution.region)
+        db.query(StockItem.institution_id, StockItem.unit_price, Institution.region, Institution.constituency, User.county, User.constituency)
         .join(Institution, StockItem.institution_id == Institution.id)
-        .filter(StockItem.category_id == category_id, StockItem.unit_price.isnot(None), Institution.region.isnot(None))
+        .outerjoin(User, StockItem.branch_id == User.id)
+        .filter(StockItem.category_id == category_id, StockItem.unit_price.isnot(None))
         .all()
     )
-    by_region_inst: dict[str, dict] = defaultdict(lambda: defaultdict(list))
-    region_institutions: dict[str, set] = defaultdict(set)
-    for institution_id, price, region in region_rows:
-        by_region_inst[region][institution_id].append(price)
-        region_institutions[region].add(institution_id)
-    by_region = {region: [sum(v) / len(v) for v in d.values()] for region, d in by_region_inst.items()}
-    regional_breakdown = [
-        RegionBreakdownEntry(region=region, institution_count=len(region_institutions[region]), **_price_stats(prices))
-        for region, prices in by_region.items()
-        if len(region_institutions[region]) >= MIN_INSTITUTIONS
-    ]
-    regional_breakdown.sort(key=lambda r: r.region)
+    located = []
+    for institution_id, price, inst_county, inst_constituency, branch_county, branch_constituency in region_rows:
+        county, constituency = (branch_county, branch_constituency) if branch_county else (inst_county, inst_constituency)
+        if county:
+            located.append((institution_id, price, county, constituency))
+    regional_breakdown = _location_breakdown((r[0], r[1], r[2], None) for r in located)
+    constituency_breakdown = _location_breakdown((r[0], r[1], r[3], r[2]) for r in located if r[3])
 
     # Price trend, bucketed by month — same threshold applied per month
     history_rows = (
@@ -150,6 +163,7 @@ def get_category_detail(category_id: int, db: Session = Depends(get_db), _: User
         institution_count=len(institution_ids),
         total_quantity_sold=_quantity_sold(db, category_id),
         regional_breakdown=regional_breakdown,
+        constituency_breakdown=constituency_breakdown,
         trend=trend,
         **stats,
     )

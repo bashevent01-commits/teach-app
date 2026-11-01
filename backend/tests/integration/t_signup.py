@@ -17,7 +17,7 @@ S = sessionmaker(bind=eng)
 app.dependency_overrides[get_db] = lambda: (yield S())
 c = TestClient(app)
 ok = lambda l, v: print(("PASS " if v else "FAIL ") + l)
-body = lambda u, t="staff", **k: {"username": u, "full_name": "Amina " + u, "password": "Strong#Pass99", "account_type": t, **k}
+body = lambda u, t="staff", **k: {"username": u, "full_name": "Amina " + u, "password": "Strong#Pass99", "account_type": t, "county": "Nairobi", "constituency": "Westlands", **k}
 r = c.post("/api/auth/signup", json=body("amina1"))
 ok("staff signup 201", r.status_code == 201)
 ok("staff gets general type and own workspace", r.json()["role"] == "staff" and r.json()["staff_type"] == "general" and r.json()["institution_id"])
@@ -55,7 +55,7 @@ ok("owner plan is 500 with 5 included", so["plan"] == "owner" and so["total"] ==
 ok("owner without business name refused", c.post("/api/auth/signup", json=body("owner2", "owner")).status_code == 422)
 ok("duplicate business name refused", c.post("/api/auth/signup", json={**body("owner3", "owner"), "business_name": "mama njeri shop"}).status_code == 409)
 for i in range(7):
-    r_ = c.post("/api/users", json={"username": f"staffer{i}x", "full_name": f"Staff {i}", "password": "Strong#Pass99", "role": "staff", "staff_type": "general"}, headers=ho)
+    r_ = c.post("/api/users", json={"username": f"staffer{i}x", "full_name": f"Staff {i}", "password": "Strong#Pass99", "role": "staff", "staff_type": "general", "county": "Nairobi", "constituency": "Westlands"}, headers=ho)
     assert r_.status_code in (200, 201), r_.text
 so = c.get("/api/billing/status", headers=ho).json()
 ok("7 individual accounts bill 2 extra at 200", so["accounts_used"] == 7 and so["extra_accounts"] == 2 and so["extra_amount"] == 400 and so["total"] == 900)

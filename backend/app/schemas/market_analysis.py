@@ -16,6 +16,7 @@ class CategoryInsightOut(BaseModel):
 
 class RegionBreakdownEntry(BaseModel):
     region: str
+    county: str | None = None
     institution_count: int
     average_price: float
     median_price: float
@@ -39,4 +40,5 @@ class CategoryDetailOut(BaseModel):
     max_price: float
     total_quantity_sold: Decimal
     regional_breakdown: list[RegionBreakdownEntry]
+    constituency_breakdown: list[RegionBreakdownEntry] = []
     trend: list[TrendPointOut]

@@ -10,6 +10,7 @@ from app.core.security import hash_password, verify_password
 from app.models.activity_log import ActivityLog
 from app.models.institution import Institution
 from app.models.transaction import Transaction
+from app.core.constants import valid_location
 from app.models.user import User, UserRole, StaffType
 from app.utils.uploads import delete_storage_object, save_avatar, read_upload
 from app.schemas.user import UserCreate, UserOut, PasswordReset, UserUpdate, AuditSharingUpdate, SelfPasswordChange, EmailChange
@@ -149,6 +150,8 @@ def create_user(payload: UserCreate, request: Request, db: Session = Depends(get
         institution_id=payload.institution_id if needs_institution else None,
         created_by_id=admin.id,
         email=payload.email,
+        county=payload.county or None,
+        constituency=payload.constituency or None,
     )
     if payload.email and db.query(User).filter(func.lower(User.email) == payload.email).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That email address is already used by another account")
@@ -210,6 +213,15 @@ def update_user(user_id: int, payload: UserUpdate, request: Request, db: Session
     if payload.full_name is not None and payload.full_name != user.full_name:
         changes.append(f"full name '{user.full_name}' -> '{payload.full_name}'")
         user.full_name = payload.full_name
+
+    if payload.county is not None or payload.constituency is not None:
+        county = payload.county if payload.county is not None else user.county
+        constituency = payload.constituency if payload.constituency is not None else (user.constituency if payload.county is None else None)
+        if not county or not constituency or not valid_location(county, constituency):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Choose a county and one of its constituencies")
+        if (county, constituency) != (user.county, user.constituency):
+            changes.append("location updated")
+            user.county, user.constituency = county, constituency
 
     if payload.role is not None and payload.role != user.role:
         if payload.role == UserRole.SUPER_ADMIN or user.role == UserRole.SUPER_ADMIN:

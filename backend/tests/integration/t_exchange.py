@@ -18,10 +18,10 @@ app.dependency_overrides[get_db] = lambda: (yield S())
 c = TestClient(app, raise_server_exceptions=False)
 ok = lambda l, v: print(("PASS " if v else "FAIL ") + l)
 pw = "Strong#Pass99"
-ro = c.post("/api/auth/signup", json={"username": "ownerx", "full_name": "Owner X", "password": pw, "account_type": "owner", "business_name": "Shop X", "business_type": "shop"})
+ro = c.post("/api/auth/signup", json={"username": "ownerx", "full_name": "Owner X", "password": pw, "account_type": "owner", "business_name": "Shop X", "business_type": "shop", "county": "Nairobi", "constituency": "Westlands"})
 ho = {"authorization": "Bearer " + ro.json()["access_token"]}
 for u in ("branchA", "branchB"):
-    r = c.post("/api/users", json={"username": u, "full_name": u, "password": pw, "role": "staff", "staff_type": "general"}, headers=ho)
+    r = c.post("/api/users", json={"username": u, "full_name": u, "password": pw, "role": "staff", "staff_type": "general", "county": "Nairobi", "constituency": "Westlands"}, headers=ho)
     assert r.status_code in (200, 201), r.text
 tok = lambda u: {"authorization": "Bearer " + c.post("/api/auth/login", data={"username": u, "password": pw}).json()["access_token"]}
 ha, hb = tok("branchA"), tok("branchB")

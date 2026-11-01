@@ -38,7 +38,7 @@ forgot = lambda ident: c.post("/api/auth/forgot-password", json={"identifier": i
 
 # policy
 Ho = tok("owner_a")
-def create(pw): return c.post("/api/users", json={"username": "newbie_x", "full_name": "N", "password": pw, "role": "staff", "staff_type": "general"}, headers=Ho)
+def create(pw): return c.post("/api/users", json={"username": "newbie_x", "full_name": "N", "password": pw, "role": "staff", "staff_type": "general", "county": "Nairobi", "constituency": "Westlands"}, headers=Ho)
 for pw, why in (("alllowercase1!", "no capital"), ("ALLUPPERCASE1!", "no lowercase"), ("NoNumbersHere!", "no number"), ("NoSymbols12345", "no symbol"), ("Sh0rt!aA", "under 10"), ("Newbie_x1234!", "contains username"), ("Password1!", "common word")):
     ok(f"password rejected: {why}", create(pw).status_code == 422)
 r = create("Tr1cky#Horse-Staple"); print(r.status_code, r.text[:150]); ok("strong password accepted", r.status_code == 201)

@@ -3,7 +3,9 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
-from app.core.constants import KENYA_COUNTIES
+from pydantic import model_validator
+
+from app.core.constants import KENYA_COUNTIES, valid_location
 
 
 class InstitutionCreate(BaseModel):
@@ -11,6 +13,7 @@ class InstitutionCreate(BaseModel):
     type: str
     address: str | None = None
     region: str | None = None
+    constituency: str | None = None
     partner_code: str | None = None
     monthly_fee: Decimal | None = Field(default=None, ge=0, le=Decimal("100000000"))
 
@@ -31,6 +34,14 @@ class InstitutionCreate(BaseModel):
             raise ValueError("region must be one of Kenya's 47 counties")
         return v
 
+    @model_validator(mode="after")
+    def constituency_matches_county(self):
+        if self.constituency and not self.region:
+            raise ValueError("Choose the county before the constituency")
+        if self.region and not valid_location(self.region, self.constituency or None):
+            raise ValueError("That constituency is not in the chosen county")
+        return self
+
 
 class InstitutionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -40,5 +51,6 @@ class InstitutionOut(BaseModel):
     type: str
     address: str | None
     region: str | None
+    constituency: str | None = None
     logo_path: str | None
     created_at: datetime

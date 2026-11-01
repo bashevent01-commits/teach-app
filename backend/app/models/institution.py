@@ -16,6 +16,8 @@ class Institution(Base):
     # One of app.core.constants.KENYA_COUNTIES — nullable for existing rows
     # created before regional market-analysis breakdowns existed.
     region = Column(String(50), nullable=True)
+    # The head office constituency; stock without a branch uses it
+    constituency = Column(String(80), nullable=True)
 
     # Path (relative to UPLOAD_DIR's parent) to the institution's icon/logo.
     logo_path = Column(String(300), nullable=True)

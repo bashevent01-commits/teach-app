@@ -136,6 +136,9 @@
             <option value="teacher" ${user.staff_type === "teacher" ? "selected" : ""}>Personal (finances only — no stock)</option>
           </select>
         </label>
+        <div id="editLocationField" ${user.role === "staff" && user.staff_type === "general" ? "" : "hidden"}>
+          ${locationFieldsHtml("edit", user.county || "", user.constituency || "")}
+        </div>
         ${isSuperAdmin ? `<label class="field"><span>Institution</span><select id="editSchool">${institutionOptions}</select></label>` : ""}
         <div class="form-actions">
           <button type="submit" class="primary-btn" id="editSubmit">Save changes</button>
@@ -143,9 +146,13 @@
       </form>
     `);
 
-    $("#editRole").addEventListener("change", () => {
+    const syncEditLocation = () => {
       $("#editStaffTypeField").hidden = $("#editRole").value !== "staff";
-    });
+      $("#editLocationField").hidden = !($("#editRole").value === "staff" && $("#editStaffType").value === "general");
+    };
+    $("#editRole").addEventListener("change", syncEditLocation);
+    $("#editStaffType").addEventListener("change", syncEditLocation);
+    attachLocation("edit");
 
     $("#editForm").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -163,6 +170,13 @@
           email: $("#editEmail").value.trim(),
         };
         if (role === "staff") payload.staff_type = $("#editStaffType").value;
+        if (role === "staff" && payload.staff_type === "general") {
+          if (!$("#editCounty").value || !$("#editConstituency").value) throw new Error("Choose the county and constituency this branch trades in.");
+          if ($("#editCounty").value !== (user.county || "") || $("#editConstituency").value !== (user.constituency || "")) {
+            payload.county = $("#editCounty").value;
+            payload.constituency = $("#editConstituency").value;
+          }
+        }
         if (isSuperAdmin) payload.institution_id = parseInt($("#editSchool").value, 10);
         await Api.users.update(userId, payload);
         Sheet.close();
@@ -209,6 +223,10 @@
             <option value="teacher">Personal (finances only — no stock)</option>
           </select>
         </label>
+        <div id="userLocationField">
+          <p class="file-hint">Where this branch trades. The market data uses it.</p>
+          ${locationFieldsHtml("user")}
+        </div>
         <label class="field"><span>Full name</span><input type="text" id="userFullname" required /></label>
         <label class="field"><span>Username</span><input type="text" id="userUsername" required /></label>
         <label class="field"><span>Email (optional, used for password reset links)</span><input type="email" id="userEmail" autocomplete="off" /></label>
@@ -230,6 +248,7 @@
       const institutionField = $("#userSchoolField");
 
       staffTypeField.hidden = role !== "staff";
+      $("#userLocationField").hidden = !(role === "staff" && $("#userStaffType").value === "general");
 
       if (role === "super_admin") {
         if (institutionField) institutionField.style.display = "none";
@@ -247,6 +266,8 @@
       }
     }
     $("#userRole").addEventListener("change", applyRoleFieldVisibility);
+    $("#userStaffType").addEventListener("change", applyRoleFieldVisibility);
+    attachLocation("user");
     applyRoleFieldVisibility();
 
     PasswordRules.attach($("#userPassword"), $("#userPwRules"), () => $("#userUsername").value.trim());
@@ -271,6 +292,11 @@
         };
         if ($("#userEmail").value.trim()) payload.email = $("#userEmail").value.trim();
         if (role === "staff") payload.staff_type = $("#userStaffType").value;
+        if (role === "staff" && payload.staff_type === "general") {
+          if (!$("#userCounty").value || !$("#userConstituency").value) throw new Error("Choose the county and constituency this branch trades in.");
+          payload.county = $("#userCounty").value;
+          payload.constituency = $("#userConstituency").value;
+        }
         if (role !== "super_admin" && isSuperAdmin) payload.institution_id = parseInt($("#userSchool").value, 10);
         // institution_admin actors never send institution_id — the backend
         // pins it to their own institution regardless of what's sent.

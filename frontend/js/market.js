@@ -58,6 +58,7 @@
 
       renderTrend(d.trend);
       renderRegions(d.regional_breakdown);
+      renderConstituencies(d.constituency_breakdown || []);
     } catch (err) {
       $("#detailTitle").textContent = "Couldn't load this category";
       toast(err.message || "Couldn't load category detail.");
@@ -97,6 +98,19 @@
         scales: { y: { beginAtZero: false } },
       },
     });
+  }
+
+  function renderConstituencies(rows) {
+    $("#constituencyBody").innerHTML = rows.length ? rows.map((r) => `
+      <tr>
+        <td>${escapeHtml(r.region)}</td>
+        <td>${escapeHtml(r.county || "")}</td>
+        <td>${r.institution_count}</td>
+        <td>${money(r.average_price)}</td>
+        <td>${money(r.min_price)}</td>
+        <td>${money(r.max_price)}</td>
+      </tr>
+    `).join("") : `<tr class="empty-row"><td colspan="6">No constituency has reached the 5-institution minimum for this category yet.</td></tr>`;
   }
 
   function renderRegions(regions) {

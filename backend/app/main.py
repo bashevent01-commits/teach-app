@@ -133,6 +133,9 @@ def ensure_columns():
     try:
         with engine.begin() as conn:
             conn.exec_driver_sql("ALTER TABLE stock_items ADD COLUMN IF NOT EXISTS low_stock_threshold NUMERIC(12,2)")
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS county VARCHAR(50)")
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS constituency VARCHAR(80)")
+            conn.exec_driver_sql("ALTER TABLE institutions ADD COLUMN IF NOT EXISTS constituency VARCHAR(80)")
             # Each branch may hold its own item of the same name, which stock exchange relies on
             conn.exec_driver_sql("ALTER TABLE stock_items DROP CONSTRAINT IF EXISTS stock_items_institution_id_name_key")
             conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_items_branch_name ON stock_items (institution_id, branch_id, name) WHERE branch_id IS NOT NULL")

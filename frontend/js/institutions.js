@@ -86,7 +86,10 @@
         <label class="field"><span>Region (county)</span>
           <select id="schoolRegion">${regionOptions}</select>
         </label>
-        <p class="file-hint">Used for regional breakdowns in Market insights. You can add it later too.</p>
+        <label class="field"><span>Constituency</span>
+          <select id="schoolConstituency">${constituencyOptions("")}</select>
+        </label>
+        <p class="file-hint">Used for county and constituency breakdowns in Market insights. Branch accounts choose their own location.</p>
         <label class="field"><span>Partner code (optional)</span><input type="text" id="schoolPartner" maxlength="14" autocomplete="off" placeholder="AG-XXXXXX" /></label>
         <p class="file-hint">Enter the code of the agent who brought this business, so they earn their share of its monthly fee.</p>
         <label class="field"><span>Monthly fee in KES (optional)</span><input type="number" id="schoolFee" min="0" step="0.01" /></label>
@@ -102,6 +105,7 @@
       </form>
     `);
 
+    $("#schoolRegion").addEventListener("change", () => { $("#schoolConstituency").innerHTML = constituencyOptions($("#schoolRegion").value); });
     $("#schoolType").addEventListener("change", () => {
       $("#schoolTypeOtherField").hidden = $("#schoolType").value !== "other";
     });
@@ -125,6 +129,7 @@
           type: typeValue,
           address: $("#schoolAddress").value.trim() || null,
           region: $("#schoolRegion").value || null,
+          constituency: $("#schoolConstituency").value || null,
           partner_code: $("#schoolPartner").value.trim() || null,
           monthly_fee: $("#schoolFee").value || null,
         });
