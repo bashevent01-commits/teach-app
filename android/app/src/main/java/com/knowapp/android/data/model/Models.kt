@@ -91,6 +91,7 @@ data class InstitutionOut(
     val type: String,
     val address: String? = null,
     val region: String? = null,
+    val constituency: String? = null,
     @SerializedName("logo_path") val logoPath: String? = null,
     @SerializedName("created_at") val createdAt: String,
 )
@@ -110,6 +111,8 @@ data class UserOut(
     val bio: String? = null,
     @SerializedName("avatar_path") val avatarPath: String? = null,
     val email: String? = null,
+    val county: String? = null,
+    val constituency: String? = null,
 )
 
 data class CategoryInsightOut(
@@ -125,6 +128,7 @@ data class CategoryInsightOut(
 
 data class RegionBreakdownEntry(
     val region: String,
+    val county: String? = null,
     @SerializedName("institution_count") val institutionCount: Int,
     @SerializedName("average_price") val averagePrice: Double,
     @SerializedName("median_price") val medianPrice: Double,
@@ -149,6 +153,7 @@ data class CategoryDetailOut(
     @SerializedName("total_quantity_sold") val totalQuantitySold: String,
     @SerializedName("regional_breakdown") val regionalBreakdown: List<RegionBreakdownEntry>,
     val trend: List<TrendPointOut>,
+    @SerializedName("constituency_breakdown") val constituencyBreakdown: List<RegionBreakdownEntry>? = null,
 )
 
 data class ProductCategoryOut(

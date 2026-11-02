@@ -142,7 +142,7 @@ private fun CategoryDetailContent(detail: CategoryDetailOut, isDemo: Boolean, on
         }
         item {
             AppCard(modifier = Modifier.fillMaxWidth()) {
-                Text("Regional breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text("By county", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 if (detail.regionalBreakdown.isEmpty()) {
                     Text(
                         "No region has reached the 5-institution minimum for this category yet.",
@@ -155,6 +155,16 @@ private fun CategoryDetailContent(detail: CategoryDetailOut, isDemo: Boolean, on
                     Column(modifier = Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         detail.regionalBreakdown.forEach { RegionRow(it, top) }
                     }
+                }
+            }
+        }
+        val places = detail.constituencyBreakdown.orEmpty()
+        if (places.isNotEmpty()) item {
+            AppCard(modifier = Modifier.fillMaxWidth()) {
+                Text("By constituency", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                val top = places.maxOf { it.averagePrice }.takeIf { it > 0.0 } ?: 1.0
+                Column(modifier = Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    places.forEach { RegionRow(it, top) }
                 }
             }
         }
@@ -183,7 +193,7 @@ private fun RegionRow(region: RegionBreakdownEntry, top: Double) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text(region.region, fontWeight = FontWeight.SemiBold)
-                Text("${region.institutionCount} institutions", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text((if (region.county != null) "${region.county} · " else "") + "${region.institutionCount} institutions", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(kesText(region.averagePrice), fontWeight = FontWeight.Bold)
         }

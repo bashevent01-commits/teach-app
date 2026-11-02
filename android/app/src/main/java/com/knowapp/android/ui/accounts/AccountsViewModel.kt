@@ -100,11 +100,13 @@ class AccountsViewModel(
         staffType: String?,
         institutionId: Int?,
         email: String,
+        county: String?,
+        constituency: String?,
         onDone: (Boolean) -> Unit,
     ) {
         uiState = uiState.copy(isSubmitting = true, submitError = null)
         viewModelScope.launch {
-            when (val result = usersRepository.create(username, fullName, password, role, staffType, institutionId, email)) {
+            when (val result = usersRepository.create(username, fullName, password, role, staffType, institutionId, email, county, constituency)) {
                 is UserActionResult.Success -> {
                     uiState = uiState.copy(isSubmitting = false)
                     refresh()
@@ -138,6 +140,15 @@ class AccountsViewModel(
                     uiState = uiState.copy(message = it.message ?: "Couldn't reset the password.")
                     onDone(false)
                 }
+        }
+    }
+
+    fun setLocation(userId: Int, county: String, constituency: String) {
+        viewModelScope.launch {
+            when (val result = usersRepository.setLocation(userId, county, constituency)) {
+                is UserActionResult.Success -> { uiState = uiState.copy(message = "Location updated."); refresh() }
+                is UserActionResult.Failure -> uiState = uiState.copy(message = result.message)
+            }
         }
     }
 

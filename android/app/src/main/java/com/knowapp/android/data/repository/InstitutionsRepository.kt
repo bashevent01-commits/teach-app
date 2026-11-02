@@ -26,9 +26,9 @@ class InstitutionsRepository(private val api: ApiService) {
         }
     }
 
-    suspend fun create(name: String, type: String, address: String?, region: String?, partnerCode: String? = null): InstitutionActionResult = withContext(Dispatchers.IO) {
+    suspend fun create(name: String, type: String, address: String?, region: String?, constituency: String?, partnerCode: String? = null): InstitutionActionResult = withContext(Dispatchers.IO) {
         try {
-            val response = api.createInstitution(mapOf("name" to name, "type" to type, "address" to address, "region" to region, "partner_code" to partnerCode))
+            val response = api.createInstitution(mapOf("name" to name, "type" to type, "address" to address, "region" to region, "constituency" to constituency, "partner_code" to partnerCode))
             if (response.isSuccessful && response.body() != null) InstitutionActionResult.Success(response.body()!!)
             else InstitutionActionResult.Failure(
                 if (response.code() == 422) errorDetail(response.errorBody()?.string(), 422) else "Something went wrong (code ${response.code()}).",

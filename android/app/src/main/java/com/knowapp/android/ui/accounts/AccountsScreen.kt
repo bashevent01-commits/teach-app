@@ -61,6 +61,9 @@ import com.knowapp.android.data.model.UserOut
 import com.knowapp.android.data.model.resolveMediaUrl
 import com.knowapp.android.ui.components.FilterPill
 import com.knowapp.android.ui.components.SkeletonRows
+import com.knowapp.android.data.KENYA_CONSTITUENCIES
+import com.knowapp.android.data.KENYA_COUNTIES
+import com.knowapp.android.ui.components.SimpleDropdown
 import com.knowapp.android.ui.components.UserAvatar
 import com.knowapp.android.ui.components.generatePassword
 import com.knowapp.android.ui.components.lastSeen
@@ -201,7 +204,7 @@ fun AccountsScreen(
             submitting = state.isSubmitting,
             error = state.submitError,
             onDismiss = { creating = false },
-            onSubmit = { u, n, p, r, t, i, e, result -> viewModel.create(u, n, p, r, t, i, e, result) },
+            onSubmit = { u, n, p, r, t, i, e, c, k, result -> viewModel.create(u, n, p, r, t, i, e, c, k, result) },
         )
     }
 
@@ -213,6 +216,7 @@ fun AccountsScreen(
             onToggle = { viewModel.setActive(user.id, !user.isActive) },
             onReset = { password, done -> viewModel.resetPassword(user.id, password, done) },
             onRename = { name -> viewModel.rename(user.id, name) },
+            onSetLocation = { county, constituency -> viewModel.setLocation(user.id, county, constituency) },
         )
     }
 }
@@ -247,11 +251,14 @@ private fun AccountSheet(
     onToggle: () -> Unit,
     onReset: (String, (Boolean) -> Unit) -> Unit,
     onRename: (String) -> Unit,
+    onSetLocation: (String, String) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var confirmToggle by remember { mutableStateOf(false) }
     var resetting by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
+    var locating by remember { mutableStateOf(false) }
+    val isBranch = user.role == "staff" && user.staffType == "general"
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
         Column(
@@ -272,12 +279,14 @@ private fun AccountSheet(
                 DetailRow("Role", (ROLE_LABELS[user.role] ?: user.role) + if (user.role == "staff" && user.staffType == "teacher") " · Personal" else "")
                 DetailRow("Institution", user.institutionName ?: "Platform team")
                 DetailRow("Status", if (user.isActive) "Active" else "Deactivated")
+                if (isBranch) DetailRow("Location", listOfNotNull(user.constituency, user.county).joinToString(", ").ifBlank { "Not set" })
                 DetailRow("Last active", lastSeen(user.lastActiveAt).removePrefix("Active "))
                 DetailRow("Created", relativeDay(user.createdAt))
             }
             if (canManage) {
                 Button(onClick = { resetting = true }, shape = PillShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Reset password", fontWeight = FontWeight.Bold) }
                 OutlinedButton(onClick = { renaming = true }, shape = PillShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Edit name", fontWeight = FontWeight.SemiBold) }
+                if (isBranch) OutlinedButton(onClick = { locating = true }, shape = PillShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Change location", fontWeight = FontWeight.SemiBold) }
                 OutlinedButton(
                     onClick = { confirmToggle = true },
                     shape = PillShape,
@@ -294,6 +303,23 @@ private fun AccountSheet(
             text = { Text(if (user.isActive) "They won't be able to sign in until you reactivate them. Their records stay." else "They will be able to sign in again.") },
             confirmButton = { TextButton(onClick = { confirmToggle = false; onToggle(); onDismiss() }) { Text(if (user.isActive) "Deactivate" else "Reactivate", color = if (user.isActive) DangerRed else IncomeGreen) } },
             dismissButton = { TextButton(onClick = { confirmToggle = false }) { Text("Cancel") } },
+        )
+    }
+
+    if (locating) {
+        var county by remember { mutableStateOf(user.county ?: "") }
+        var constituency by remember { mutableStateOf(user.constituency ?: "") }
+        AlertDialog(
+            onDismissRequest = { locating = false },
+            title = { Text("Where does ${user.fullName} trade?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SimpleDropdown("County", KENYA_COUNTIES, county, { county = it; constituency = "" })
+                    if (county.isNotBlank()) SimpleDropdown("Constituency", KENYA_CONSTITUENCIES[county] ?: emptyList(), constituency, { constituency = it })
+                }
+            },
+            confirmButton = { TextButton(enabled = county.isNotBlank() && constituency.isNotBlank(), onClick = { locating = false; onSetLocation(county, constituency) }) { Text("Save") } },
+            dismissButton = { TextButton(onClick = { locating = false }) { Text("Cancel") } },
         )
     }
 

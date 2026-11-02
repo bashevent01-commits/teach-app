@@ -34,6 +34,8 @@ class UsersRepository(private val api: ApiService) {
         staffType: String?,
         institutionId: Int?,
         email: String = "",
+        county: String? = null,
+        constituency: String? = null,
     ): UserActionResult = withContext(Dispatchers.IO) {
         try {
             val response = api.createUser(
@@ -45,8 +47,20 @@ class UsersRepository(private val api: ApiService) {
                     "role" to role,
                     "staff_type" to staffType,
                     "institution_id" to institutionId?.toString(),
+                    "county" to county,
+                    "constituency" to constituency,
                 ),
             )
+            if (response.isSuccessful && response.body() != null) UserActionResult.Success(response.body()!!)
+            else UserActionResult.Failure(errorDetail(response.errorBody()?.string(), response.code()))
+        } catch (e: java.io.IOException) {
+            UserActionResult.Failure("Couldn't reach the server. Check your connection and try again.")
+        }
+    }
+
+    suspend fun setLocation(userId: Int, county: String, constituency: String): UserActionResult = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updateUser(userId, mapOf("county" to county, "constituency" to constituency))
             if (response.isSuccessful && response.body() != null) UserActionResult.Success(response.body()!!)
             else UserActionResult.Failure(errorDetail(response.errorBody()?.string(), response.code()))
         } catch (e: java.io.IOException) {

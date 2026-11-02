@@ -33,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.knowapp.android.data.KENYA_CONSTITUENCIES
+import com.knowapp.android.data.KENYA_COUNTIES
 import com.knowapp.android.ui.components.SimpleDropdown
 import com.knowapp.android.ui.components.generatePassword
 import com.knowapp.android.ui.theme.DangerRed
@@ -56,7 +58,7 @@ fun CreateAccountSheet(
     submitting: Boolean,
     error: String?,
     onDismiss: () -> Unit,
-    onSubmit: (username: String, fullName: String, password: String, role: String, staffType: String?, institutionId: Int?, email: String, onResult: (Boolean) -> Unit) -> Unit,
+    onSubmit: (username: String, fullName: String, password: String, role: String, staffType: String?, institutionId: Int?, email: String, county: String?, constituency: String?, onResult: (Boolean) -> Unit) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val clipboard = LocalClipboardManager.current
@@ -67,11 +69,15 @@ fun CreateAccountSheet(
     var role by remember { mutableStateOf(roleOptions.first()) }
     var staffType by remember { mutableStateOf("general") }
     var institutionName by remember { mutableStateOf(institutions.firstOrNull { it.first == fixedInstitutionId }?.second ?: "") }
+    var county by remember { mutableStateOf("") }
+    var constituency by remember { mutableStateOf("") }
     var created by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     val chosenInstitution = fixedInstitutionId ?: institutions.firstOrNull { it.second == institutionName }?.first
     val needsInstitution = role != "super_admin" && fixedInstitutionId == null && institutions.isNotEmpty()
-    val canSubmit = username.trim().length >= 3 && fullName.isNotBlank() && isStrongPassword(password) && (!needsInstitution || chosenInstitution != null)
+    // A branch (general staff) must say where it trades
+    val needsLocation = role == "staff" && staffType == "general"
+    val canSubmit = username.trim().length >= 3 && fullName.isNotBlank() && isStrongPassword(password) && (!needsInstitution || chosenInstitution != null) && (!needsLocation || (county.isNotBlank() && constituency.isNotBlank()))
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
         Column(
@@ -111,6 +117,11 @@ fun CreateAccountSheet(
                         FilterChip(selected = staffType == "teacher", onClick = { staffType = "teacher" }, label = { Text("Personal") })
                     }
                 }
+                if (needsLocation) {
+                    Text("WHERE THIS BRANCH TRADES", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    SimpleDropdown("County", KENYA_COUNTIES, county, { county = it; constituency = "" })
+                    if (county.isNotBlank()) SimpleDropdown("Constituency", KENYA_CONSTITUENCIES[county] ?: emptyList(), constituency, { constituency = it })
+                }
                 if (needsInstitution) {
                     SimpleDropdown("Institution", institutions.map { it.second }, institutionName, { institutionName = it })
                 }
@@ -131,7 +142,7 @@ fun CreateAccountSheet(
                 }
                 Button(
                     onClick = {
-                        onSubmit(username.trim(), fullName.trim(), password.trim(), role, if (role == "staff") staffType else null, chosenInstitution, email) { ok ->
+                        onSubmit(username.trim(), fullName.trim(), password.trim(), role, if (role == "staff") staffType else null, chosenInstitution, email, county.ifBlank { null }.takeIf { needsLocation }, constituency.ifBlank { null }.takeIf { needsLocation }) { ok ->
                             if (ok) created = username.trim() to password.trim()
                         }
                     },

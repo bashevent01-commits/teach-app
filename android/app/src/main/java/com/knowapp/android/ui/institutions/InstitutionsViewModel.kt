@@ -81,10 +81,10 @@ class InstitutionsViewModel(
     fun clearSubmitError() { uiState = uiState.copy(submitError = null) }
     fun messageShown() { uiState = uiState.copy(message = null) }
 
-    fun create(name: String, type: String, address: String?, region: String?, partnerCode: String?, onDone: (Boolean) -> Unit) {
+    fun create(name: String, type: String, address: String?, region: String?, constituency: String?, partnerCode: String?, onDone: (Boolean) -> Unit) {
         uiState = uiState.copy(isSubmitting = true, submitError = null)
         viewModelScope.launch {
-            when (val result = institutionsRepository.create(name, type, address, region, partnerCode)) {
+            when (val result = institutionsRepository.create(name, type, address, region, constituency, partnerCode)) {
                 is InstitutionActionResult.Success -> {
                     uiState = uiState.copy(isSubmitting = false, message = "${result.institution.name} added.")
                     refresh()
@@ -106,11 +106,13 @@ class InstitutionsViewModel(
         staffType: String?,
         institutionId: Int?,
         email: String,
+        county: String?,
+        constituency: String?,
         onDone: (Boolean) -> Unit,
     ) {
         uiState = uiState.copy(isSubmitting = true, submitError = null)
         viewModelScope.launch {
-            when (val result = usersRepository.create(username, fullName, password, role, staffType, institutionId, email)) {
+            when (val result = usersRepository.create(username, fullName, password, role, staffType, institutionId, email, county, constituency)) {
                 is UserActionResult.Success -> {
                     uiState = uiState.copy(isSubmitting = false)
                     refresh()

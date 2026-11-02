@@ -145,24 +145,40 @@ object MarketReportPdf {
             y += 30f
         } else {
             header(monthCols, setOf(1, 2))
-            trend.takeLast(8).forEachIndexed { i, t ->
+            trend.takeLast(5).forEachIndexed { i, t ->
                 row(i, listOf(t.month to PL + 8f, String.format(Locale.US, "%,.2f", t.averagePrice) to 400f, "${t.institutionCount}" to PR - 8f), setOf(1, 2))
             }
         }
 
         // Regional table
         y += 26f
-        c.drawText("By region", PL, y, paint(12f, ink, bold = true))
+        c.drawText("By county", PL, y, paint(12f, ink, bold = true))
         y += 10f
         if (d.regionalBreakdown.isEmpty()) {
-            c.drawText("No region has 5 or more institutions for this category yet.", PL, y + 18f, paint(9f, muted))
+            c.drawText("No county has 5 or more institutions for this category yet.", PL, y + 18f, paint(9f, muted))
+            y += 30f
         } else {
-            val cols = listOf("Region" to PL + 8f, "Institutions" to 270f, "Average" to 340f, "Median" to 410f, "Lowest" to 480f, "Highest" to PR - 8f)
+            val cols = listOf("County" to PL + 8f, "Institutions" to 270f, "Average" to 340f, "Median" to 410f, "Lowest" to 480f, "Highest" to PR - 8f)
             val right = setOf(1, 2, 3, 4, 5)
             header(cols, right)
-            d.regionalBreakdown.take(8).forEachIndexed { i, r ->
+            d.regionalBreakdown.take(5).forEachIndexed { i, r ->
                 fun n(v: Double) = String.format(Locale.US, "%,.2f", v)
                 row(i, listOf(r.region to PL + 8f, "${r.institutionCount}" to 270f, n(r.averagePrice) to 340f, n(r.medianPrice) to 410f, n(r.minPrice) to 480f, n(r.maxPrice) to PR - 8f), right)
+            }
+        }
+
+        // Constituency table, only when some constituency has enough institutions
+        val places = d.constituencyBreakdown.orEmpty()
+        if (places.isNotEmpty()) {
+            y += 26f
+            c.drawText("By constituency", PL, y, paint(12f, ink, bold = true))
+            y += 10f
+            val cols = listOf("Constituency" to PL + 8f, "County" to 190f, "Institutions" to 300f, "Average" to 380f, "Lowest" to 460f, "Highest" to PR - 8f)
+            val right = setOf(2, 3, 4, 5)
+            header(cols, right)
+            places.take(4).forEachIndexed { i, r ->
+                fun n(v: Double) = String.format(Locale.US, "%,.2f", v)
+                row(i, listOf(r.region to PL + 8f, (r.county ?: "") to 190f, "${r.institutionCount}" to 300f, n(r.averagePrice) to 380f, n(r.minPrice) to 460f, n(r.maxPrice) to PR - 8f), right)
             }
         }
 

@@ -58,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.knowapp.android.data.KENYA_CONSTITUENCIES
 import com.knowapp.android.data.KENYA_COUNTIES
 import com.knowapp.android.data.model.InstitutionStatsOut
 import com.knowapp.android.data.model.UserOut
@@ -165,7 +166,7 @@ fun InstitutionsScreen(
             submitting = state.isSubmitting,
             error = state.submitError,
             onDismiss = { creating = false },
-            onSubmit = { name, type, address, region, partnerCode -> viewModel.create(name, type, address, region, partnerCode) { ok -> if (ok) creating = false } },
+            onSubmit = { name, type, address, region, constituency, partnerCode -> viewModel.create(name, type, address, region, constituency, partnerCode) { ok -> if (ok) creating = false } },
         )
     }
 
@@ -176,7 +177,7 @@ fun InstitutionsScreen(
             submitting = state.isSubmitting,
             error = state.submitError,
             onDismiss = { viewModel.select(null) },
-            onCreateAccount = { u, n, p, r, t, i, e, result -> viewModel.createAccount(u, n, p, r, t, i, e, result) },
+            onCreateAccount = { u, n, p, r, t, i, e, c, k, result -> viewModel.createAccount(u, n, p, r, t, i, e, c, k, result) },
         )
     }
 }
@@ -241,7 +242,7 @@ private fun InstitutionSheet(
     submitting: Boolean,
     error: String?,
     onDismiss: () -> Unit,
-    onCreateAccount: (String, String, String, String, String?, Int?, String, (Boolean) -> Unit) -> Unit,
+    onCreateAccount: (String, String, String, String, String?, Int?, String, String?, String?, (Boolean) -> Unit) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var addingAccount by remember { mutableStateOf(false) }
@@ -314,13 +315,14 @@ private fun CreateInstitutionSheet(
     submitting: Boolean,
     error: String?,
     onDismiss: () -> Unit,
-    onSubmit: (name: String, type: String, address: String?, region: String?, partnerCode: String?) -> Unit,
+    onSubmit: (name: String, type: String, address: String?, region: String?, constituency: String?, partnerCode: String?) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var name by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("School") }
     var customType by remember { mutableStateOf("") }
     var region by remember { mutableStateOf("") }
+    var constituency by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
     var partnerCode by remember { mutableStateOf("") }
     val finalType = if (type == "Other") customType.trim() else type
@@ -339,14 +341,15 @@ private fun CreateInstitutionSheet(
             if (type == "Other") {
                 OutlinedTextField(value = customType, onValueChange = { customType = it }, label = { Text("What kind of institution?") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
             }
-            SimpleDropdown("County (optional)", listOf("Not set") + KENYA_COUNTIES, region.ifBlank { "Not set" }, { region = if (it == "Not set") "" else it })
+            SimpleDropdown("County (optional)", listOf("Not set") + KENYA_COUNTIES, region.ifBlank { "Not set" }, { region = if (it == "Not set") "" else it; constituency = "" })
+            if (region.isNotBlank()) SimpleDropdown("Constituency (optional)", listOf("Not set") + (KENYA_CONSTITUENCIES[region] ?: emptyList()), constituency.ifBlank { "Not set" }, { constituency = if (it == "Not set") "" else it })
             OutlinedTextField(value = address, onValueChange = { address = it }, label = { Text("Address (optional)") }, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
             error?.let {
                 Text(it, color = DangerRed, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(DangerRed.copy(alpha = 0.12f), SmallRadius).padding(12.dp))
             }
             OutlinedTextField(value = partnerCode, onValueChange = { partnerCode = it.uppercase() }, label = { Text("Partner code (optional)") }, supportingText = { Text("The agent who brought this business earns a share of its monthly fee") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
             Button(
-                onClick = { onSubmit(name.trim(), finalType, address.trim().ifBlank { null }, region.ifBlank { null }, partnerCode.trim().ifBlank { null }) },
+                onClick = { onSubmit(name.trim(), finalType, address.trim().ifBlank { null }, region.ifBlank { null }, constituency.ifBlank { null }, partnerCode.trim().ifBlank { null }) },
                 enabled = !submitting && name.isNotBlank() && finalType.isNotBlank(),
                 shape = PillShape,
                 modifier = Modifier.fillMaxWidth().height(54.dp),
