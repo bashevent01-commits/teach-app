@@ -1,22 +1,20 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.core.activity_log import log_activity
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.activity_log import ActivityLog
+from app.core.limiter import limiter
+from app.models.billing import PaymentProof
 from app.models.institution import Institution
 from app.models.user import User, UserRole
+from app.utils import billing as bill
+from app.utils.billing import (EXTRA_ACCOUNT_PRICE, INDIVIDUAL_PRICE, OWNER_INCLUDED_ACCOUNTS, OWNER_PRICE, PAYBILL, PAYBILL_NAME, TRIAL_DAYS)
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
-
-TRIAL_DAYS = 7
-INDIVIDUAL_PRICE = 200
-OWNER_PRICE = 500
-OWNER_INCLUDED_ACCOUNTS = 5
-EXTRA_ACCOUNT_PRICE = 200
 
 
 class BillingStatus(BaseModel):
@@ -35,42 +33,80 @@ class BillingStatus(BaseModel):
     extra_amount: int = 0
     total: int = 0
     note: str = ""
+    # The payment reminder and the closing rule
+    due_date: date | None = None
+    popup_from: datetime | None = None
+    lock_at: datetime | None = None
+    popup_due: bool = False
+    locked: bool = False
+    can_pay: bool = False
+    proof_status: str = "none"
+    proof_note: str | None = None
+    paybill: str = PAYBILL
+    paybill_name: str = PAYBILL_NAME
+    account_ref: str = ""
+    agent_registered: bool = False
+    preview_allowed: bool = False
 
 
-def _self_signup_workspace(db: Session, institution: Institution) -> bool:
-    if institution.type == "individual":
-        return True
-    return db.query(ActivityLog.id).filter(
-        ActivityLog.action == "self_signup", ActivityLog.target_type == "institution", ActivityLog.target_id == institution.id,
-    ).first() is not None
+class ProofIn(BaseModel):
+    message: str = Field(min_length=10, max_length=1000)
+
+
+def _is_payer(user: User, institution: Institution) -> bool:
+    return institution.type == "individual" or user.role == UserRole.INSTITUTION_ADMIN
 
 
 @router.get("/status", response_model=BillingStatus)
 def billing_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Preview only: self-signed-up accounts get a 7-day trial and see their plan price; nothing is charged or locked yet."""
+    """Where this account's workspace stands on its fee; staff of an owner see only whether the workspace is closed."""
     institution = db.get(Institution, current_user.institution_id) if current_user.institution_id else None
-    if not institution or not institution.created_at or not _self_signup_workspace(db, institution):
-        return BillingStatus(applies=False)
-    is_individual = institution.type == "individual"
-    # Only the account that holds the workspace pays; staff added by an owner are covered by the owner's plan
-    if not is_individual and current_user.role != UserRole.INSTITUTION_ADMIN:
-        return BillingStatus(applies=False)
-
-    started = institution.created_at if institution.created_at.tzinfo else institution.created_at.replace(tzinfo=timezone.utc)
-    ends = started + timedelta(days=TRIAL_DAYS)
-    remaining = ends - datetime.now(timezone.utc)
-    days_left = max(0, -(-int(remaining.total_seconds()) // 86400))
-    state = "trial" if remaining.total_seconds() > 0 else "trial_ended"
-    note = "Payments are not switched on yet. Nothing is charged and your account stays open."
-
-    if is_individual:
-        return BillingStatus(applies=True, plan="individual", plan_label="Individual", state=state, trial_ends_at=ends, days_left=days_left,
-                             base_amount=INDIVIDUAL_PRICE, total=INDIVIDUAL_PRICE, note=note)
-
-    used = db.query(User).filter(User.institution_id == institution.id, User.role == UserRole.STAFF, User.is_active.is_(True)).count()
-    extra = max(0, used - OWNER_INCLUDED_ACCOUNTS)
+    preview = current_user.role == UserRole.INSTITUTION_ADMIN and current_user.username.lower() == bill.PREVIEW_USERNAME
+    c = bill.cycle(db, institution)
+    if not c.billed:
+        return BillingStatus(applies=False, preview_allowed=preview)
+    payer = _is_payer(current_user, institution)
+    locked = c.state == "locked"
+    if not payer:
+        return BillingStatus(applies=False, state=c.state, locked=locked, preview_allowed=preview, note="Your owner needs to pay the monthly fee." if locked else "")
+    remaining = c.trial_ends - bill.utcnow()
+    days_left = max(0, -(-int(remaining.total_seconds()) // 86400)) if c.paid_months == 0 else 0
+    note = {
+        "trial": "Your free week is running. Nothing is due yet.",
+        "paid": "Your fee is paid up.",
+        "due": "Your fee is due. The app stays open until 6am tomorrow, then closes until it is paid.",
+        "pending": "Your payment message is waiting to be checked. You can keep using the app.",
+        "locked": "Your fee is overdue. Pay and paste the M-Pesa message to open the app again.",
+    }.get(c.state, "")
     return BillingStatus(
-        applies=True, plan="owner", plan_label="Owner", state=state, trial_ends_at=ends, days_left=days_left,
-        base_amount=OWNER_PRICE, included_accounts=OWNER_INCLUDED_ACCOUNTS, accounts_used=used,
-        extra_accounts=extra, extra_amount=extra * EXTRA_ACCOUNT_PRICE, total=OWNER_PRICE + extra * EXTRA_ACCOUNT_PRICE, note=note,
+        applies=True, plan=c.plan, plan_label=c.plan.capitalize(), state="trial_ended" if c.state in ("due", "pending", "locked") and c.paid_months == 0 else c.state,
+        trial_ends_at=c.trial_ends, days_left=days_left, base_amount=c.base, included_accounts=OWNER_INCLUDED_ACCOUNTS if c.plan == "owner" else 0,
+        accounts_used=c.used, extra_accounts=c.extra, extra_amount=c.extra * EXTRA_ACCOUNT_PRICE, total=c.total, note=note,
+        due_date=c.due_date, popup_from=c.popup_from, lock_at=c.lock_at, popup_due=c.state == "due", locked=locked, can_pay=True,
+        proof_status=c.proof_status, proof_note=c.proof_note, account_ref=current_user.username,
+        agent_registered=institution.partner_id is not None, preview_allowed=preview,
     )
+
+
+@router.post("/proof", status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/hour")
+def submit_proof(payload: ProofIn, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """The paying account pastes its M-Pesa message; a readable one keeps the app open while a super admin confirms it."""
+    institution = db.get(Institution, current_user.institution_id) if current_user.institution_id else None
+    c = bill.cycle(db, institution)
+    if not c.billed or not _is_payer(current_user, institution):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the account that pays the fee can send a payment message")
+    if c.proof_status == "pending":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Your last payment message is still being checked")
+    try:
+        found = bill.check_proof(payload.message, c.total)
+    except ValueError as err:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(err))
+    if db.query(PaymentProof.id).filter(PaymentProof.code == found["code"], PaymentProof.status != "rejected").first():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That M-Pesa message has already been used")
+    proof = PaymentProof(institution_id=institution.id, submitted_by_id=current_user.id, message=" ".join(payload.message.split())[:1000], amount_due=c.total, **found)
+    db.add(proof)
+    db.commit()
+    bill.forget(institution.id)
+    log_activity(db, action="payment_proof_sent", actor=current_user, target_type="institution", target_id=institution.id, detail=f"Sent M-Pesa proof {found['code']}", request=request)
+    return {"status": "pending", "message": "Thank you. Your payment is being checked and the app stays open."}

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = ""
     PASSWORD_RESET_MINUTES: int = 30
     MAX_REQUEST_BYTES: int = 12 * 1024 * 1024
+    # When true, a workspace whose fee is overdue closes at 6am the morning after its first reminder
+    BILLING_ENFORCED: bool = True
 
     BOOTSTRAP_SUPER_ADMIN_USERNAME: str | None = None
     BOOTSTRAP_SUPER_ADMIN_PASSWORD: str | None = None

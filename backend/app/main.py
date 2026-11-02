@@ -10,7 +10,7 @@ from app.core.bootstrap import ensure_super_admin
 from app.core.config import settings
 from app.core.database import Base, engine, SessionLocal
 from app.core.limiter import limiter
-from app.routers import auth, institutions, users, transactions, audits, posts, reports, moderation, activity_log, stock, mpesa, product_categories, market_analysis, accounting, source_documents, admin_overview, message_imports, exchange, vault, storage_usage, profit, partner, partners_admin, billing
+from app.routers import auth, institutions, users, transactions, audits, posts, reports, moderation, activity_log, stock, mpesa, product_categories, market_analysis, accounting, source_documents, admin_overview, message_imports, exchange, vault, storage_usage, profit, partner, partners_admin, billing, payments_admin
 
 app = FastAPI(
     title="KNOW",
@@ -97,6 +97,7 @@ async def csrf_protection(request: Request, call_next):
 
 app.include_router(auth.router)
 app.include_router(billing.router)
+app.include_router(payments_admin.router)
 app.include_router(institutions.router)
 app.include_router(users.router)
 app.include_router(transactions.router)
@@ -134,6 +135,7 @@ def ensure_columns():
         with engine.begin() as conn:
             conn.exec_driver_sql("ALTER TABLE stock_items ADD COLUMN IF NOT EXISTS low_stock_threshold NUMERIC(12,2)")
             conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS county VARCHAR(50)")
+            conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_proofs_code ON payment_proofs (code) WHERE status <> 'rejected'")
             conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS constituency VARCHAR(80)")
             conn.exec_driver_sql("ALTER TABLE institutions ADD COLUMN IF NOT EXISTS constituency VARCHAR(80)")
             # Each branch may hold its own item of the same name, which stock exchange relies on

@@ -1,6 +1,7 @@
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.user import User, UserRole, StaffType
@@ -24,6 +25,8 @@ def _extract_token(request: Request) -> str | None:
 
 # An agent account may only reach these paths; everything else is refused before any route runs
 AGENT_ALLOWED = ("/api/partner", "/api/auth", "/api/users/me")
+# A closed workspace can still reach these, so its owner can pay and anyone can sign out
+CLOSED_ALLOWED = ("/api/billing", "/api/auth", "/api/users/me", "/api/health")
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
@@ -55,6 +58,11 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
 
     if user.role == UserRole.AGENT and not request.url.path.startswith(AGENT_ALLOWED):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account can only use the agent dashboard")
+
+    if settings.BILLING_ENFORCED and user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN) and user.institution_id and not request.url.path.startswith(CLOSED_ALLOWED):
+        from app.utils.billing import workspace_locked
+        if workspace_locked(db, user.institution_id):
+            raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="This workspace's monthly fee is overdue. The owner can pay to open it again.")
 
     return user
 

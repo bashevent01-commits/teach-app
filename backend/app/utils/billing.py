@@ -1,0 +1,151 @@
+import calendar
+import re
+import time
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+from zoneinfo import ZoneInfo
+
+from sqlalchemy.orm import Session
+
+from app.models.activity_log import ActivityLog
+from app.models.billing import PaymentProof
+from app.models.institution import Institution
+from app.models.partner import FeePayment
+from app.models.user import User, UserRole
+from app.utils.mpesa_parser import parse_message
+
+LOCAL = ZoneInfo("Africa/Nairobi")
+TRIAL_DAYS = 7
+INDIVIDUAL_PRICE = 200
+OWNER_PRICE = 500
+OWNER_INCLUDED_ACCOUNTS = 5
+EXTRA_ACCOUNT_PRICE = 200
+# The reminder appears from 4pm Nairobi time; an unpaid workspace closes at 6am the next morning
+POPUP_HOUR = 16
+LOCK_HOUR = 6
+PAYBILL = "4396353"
+PAYBILL_NAME = "Obsidian Labs"
+PREVIEW_USERNAME = "obsidian"
+CACHE_SECONDS = 45
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def add_months(moment: datetime, months: int) -> datetime:
+    index = moment.year * 12 + (moment.month - 1) + months
+    year, month = divmod(index, 12)
+    month += 1
+    return moment.replace(year=year, month=month, day=min(moment.day, calendar.monthrange(year, month)[1]))
+
+
+def _first_popup(moment: datetime) -> datetime:
+    candidate = moment.replace(hour=POPUP_HOUR, minute=0, second=0, microsecond=0)
+    return candidate if candidate >= moment else candidate + timedelta(days=1)
+
+
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def is_billed(db: Session, institution: Institution) -> bool:
+    """Only workspaces that signed themselves up are billed; ones a super admin set up are handled by hand."""
+    if institution.type == "individual":
+        return True
+    return db.query(ActivityLog.id).filter(
+        ActivityLog.action == "self_signup", ActivityLog.target_type == "institution", ActivityLog.target_id == institution.id,
+    ).first() is not None
+
+
+@dataclass
+class Cycle:
+    billed: bool = False
+    individual: bool = False
+    plan: str | None = None
+    base: int = 0
+    used: int = 0
+    extra: int = 0
+    total: int = 0
+    state: str = "none"
+    trial_ends: datetime | None = None
+    popup_from: datetime | None = None
+    lock_at: datetime | None = None
+    due_date: date | None = None
+    paid_months: int = 0
+    proof_status: str = "none"
+    proof_note: str | None = None
+    period: str | None = None
+
+
+def plan_amounts(db: Session, institution: Institution) -> tuple[str, int, int, int, int]:
+    if institution.type == "individual":
+        return "individual", INDIVIDUAL_PRICE, 0, 0, INDIVIDUAL_PRICE
+    used = db.query(User).filter(User.institution_id == institution.id, User.role == UserRole.STAFF, User.is_active.is_(True)).count()
+    extra = max(0, used - OWNER_INCLUDED_ACCOUNTS)
+    return "owner", OWNER_PRICE, used, extra, OWNER_PRICE + extra * EXTRA_ACCOUNT_PRICE
+
+
+def cycle(db: Session, institution: Institution | None, now: datetime | None = None) -> Cycle:
+    """Where a workspace stands: trial, paid, due (reminder showing), pending (proof waiting), or locked."""
+    if not institution or not institution.created_at or not is_billed(db, institution):
+        return Cycle()
+    now = now or utcnow()
+    plan, base, used, extra, total = plan_amounts(db, institution)
+    paid = db.query(FeePayment).filter(FeePayment.institution_id == institution.id, FeePayment.voided_at.is_(None)).count()
+    trial_ends = _aware(institution.created_at) + timedelta(days=TRIAL_DAYS)
+    due_moment = add_months(trial_ends.astimezone(LOCAL), paid)
+    popup_from = _first_popup(due_moment)
+    lock_at = (popup_from + timedelta(days=1)).replace(hour=LOCK_HOUR, minute=0, second=0, microsecond=0)
+    out = Cycle(billed=True, individual=plan == "individual", plan=plan, base=base, used=used, extra=extra, total=total,
+                trial_ends=trial_ends, popup_from=popup_from, lock_at=lock_at, due_date=popup_from.date(), paid_months=paid,
+                period=add_months(trial_ends.astimezone(LOCAL), paid).strftime("%Y-%m"))
+    latest = db.query(PaymentProof).filter(PaymentProof.institution_id == institution.id).order_by(PaymentProof.id.desc()).first()
+    pending = latest is not None and latest.status == "pending"
+    if latest is not None and latest.status == "rejected":
+        out.proof_status, out.proof_note = "rejected", latest.review_note
+    if pending:
+        out.proof_status = "pending"
+    if now < popup_from.astimezone(timezone.utc):
+        out.state = "trial" if paid == 0 else "paid"
+    elif pending:
+        out.state = "pending"
+    elif now >= lock_at.astimezone(timezone.utc):
+        out.state = "locked"
+    else:
+        out.state = "due"
+    return out
+
+
+_CACHE: dict[int, tuple[float, bool]] = {}
+
+
+def forget(institution_id: int | None) -> None:
+    _CACHE.pop(institution_id, None)
+
+
+def workspace_locked(db: Session, institution_id: int) -> bool:
+    hit = _CACHE.get(institution_id)
+    if hit and hit[0] > time.monotonic():
+        return hit[1]
+    locked = cycle(db, db.get(Institution, institution_id)).state == "locked"
+    _CACHE[institution_id] = (time.monotonic() + CACHE_SECONDS, locked)
+    return locked
+
+
+def check_proof(message: str, total_due: int, now: datetime | None = None) -> dict:
+    """Reads a pasted M-Pesa message and refuses one that does not look like this payment; never trusts it as final."""
+    now = now or utcnow()
+    parsed = parse_message(message)
+    if not parsed["matched"] or parsed["amount"] is None or parsed["when"] is None or parsed["direction"] != "out":
+        raise ValueError("We couldn't read that message. Paste the whole M-Pesa confirmation exactly as it arrived.")
+    recipient = parsed["counterparty"] or ""
+    if "OBSIDIAN" not in re.sub(r"[^A-Z]", "", recipient.upper()):
+        raise ValueError(f"That payment went to {recipient or 'someone else'}, not {PAYBILL_NAME}. Pay paybill {PAYBILL} and paste that message.")
+    if parsed["amount"] < Decimal(total_due):
+        raise ValueError(f"That message shows KES {parsed['amount']:,.2f} but KES {total_due:,} is due.")
+    when = parsed["when"].replace(tzinfo=LOCAL)
+    if when > now.astimezone(LOCAL) + timedelta(hours=1) or when < now.astimezone(LOCAL) - timedelta(days=14):
+        raise ValueError("That payment is more than 2 weeks old. Paste the message from your latest payment.")
+    return {"code": parsed["code"], "amount": parsed["amount"], "paid_at": when, "recipient": recipient[:120], "account_ref": (parsed["account_ref"] or "")[:80] or None}
