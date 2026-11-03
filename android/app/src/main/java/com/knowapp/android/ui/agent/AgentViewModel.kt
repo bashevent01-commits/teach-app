@@ -39,5 +39,17 @@ class AgentViewModel(private val repository: PartnerRepository) : ViewModel() {
 
     fun thisMonth() = load(null)
 
+    // Asks for the commission of one confirmed payment, or everything not yet asked for when no notice is given
+    fun requestPayout(noticeId: Int?) {
+        viewModelScope.launch {
+            repository.requestPayout(noticeId)
+                .onSuccess { amount ->
+                    _state.value = _state.value.copy(message = "Payout of KES $amount requested. You will be paid soon.")
+                    load(_state.value.data?.month)
+                }
+                .onFailure { _state.value = _state.value.copy(message = it.message) }
+        }
+    }
+
     fun clearMessage() { _state.value = _state.value.copy(message = null) }
 }

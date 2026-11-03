@@ -17,4 +17,15 @@ class BillingRepository(private val api: ApiService) {
             Result.failure(Exception("Couldn't reach the server. Check your connection and try again."))
         }
     }
+
+    suspend fun sendProof(message: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.sendBillingProof(mapOf("message" to message))
+            val body = response.body()
+            if (response.isSuccessful && body != null) Result.success(body["message"] ?: "Thank you.")
+            else Result.failure(Exception(errorDetail(response.errorBody()?.string(), response.code())))
+        } catch (e: IOException) {
+            Result.failure(Exception("Couldn't reach the server. Check your connection and try again."))
+        }
+    }
 }

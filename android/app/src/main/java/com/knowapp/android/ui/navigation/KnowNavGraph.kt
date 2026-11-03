@@ -220,7 +220,13 @@ fun KnowNavGraph(container: AppContainer) {
             val viewModel: com.knowapp.android.ui.billing.SubscriptionViewModel = viewModel(
                 factory = vmFactory { com.knowapp.android.ui.billing.SubscriptionViewModel(container.billingRepository) },
             )
-            com.knowapp.android.ui.billing.SubscriptionScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+            val gateState by container.billingGate.state.collectAsState()
+            com.knowapp.android.ui.billing.SubscriptionScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+                onPay = { container.billingGate.openPay() },
+                onPreview = if (gateState.status?.previewAllowed == true) ({ container.billingGate.startPreview() }) else null,
+            )
         }
         composable(Routes.PROFIT) {
             val viewModel: com.knowapp.android.ui.profit.ProfitViewModel = viewModel(
@@ -354,7 +360,13 @@ fun KnowNavGraph(container: AppContainer) {
             val viewModel: com.knowapp.android.ui.partners.PartnersViewModel = viewModel(
                 factory = vmFactory { com.knowapp.android.ui.partners.PartnersViewModel(container.partnersAdminRepository) },
             )
-            com.knowapp.android.ui.partners.PartnersScreen(viewModel = viewModel)
+            com.knowapp.android.ui.partners.PartnersScreen(viewModel = viewModel, onOpenPayments = { navController.navigate(Routes.PAYMENTS) })
+        }
+        composable(Routes.PAYMENTS) {
+            val viewModel: com.knowapp.android.ui.payments.PaymentsViewModel = viewModel(
+                factory = vmFactory { com.knowapp.android.ui.payments.PaymentsViewModel(container.paymentsAdminRepository) },
+            )
+            com.knowapp.android.ui.payments.PaymentsScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
         }
         composable(Routes.MARKET) {
             val viewModel: MarketAnalysisViewModel = viewModel(

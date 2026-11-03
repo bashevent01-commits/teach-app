@@ -157,6 +157,7 @@ object NetworkModule {
             .writeTimeout(45, TimeUnit.SECONDS)
             .addInterceptor(ClientHeaderInterceptor())
             .addInterceptor(AuthInterceptor(sessionStore))
+            .addInterceptor { chain -> chain.proceed(chain.request()).also { if (it.code == 402) com.knowapp.android.data.BillingSignal.fire() } }
             .addInterceptor(StaleIfSlowInterceptor(cacheDir, sessionStore))
             .authenticator(SilentLoginAuthenticator(sessionStore))
             .addInterceptor(logging)

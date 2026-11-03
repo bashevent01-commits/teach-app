@@ -303,4 +303,28 @@ interface ApiService {
 
     @POST("/api/admin/partners/{partnerId}/new-code")
     suspend fun newPartnerCode(@Path("partnerId") partnerId: Int): Response<com.knowapp.android.data.model.PartnerSummaryOut>
+
+    @POST("/api/billing/proof")
+    suspend fun sendBillingProof(@Body body: Map<String, String>): Response<Map<String, String>>
+
+    @POST("/api/partner/payout-requests")
+    suspend fun requestPayout(@Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Map<String, String>>
+
+    @GET("/api/admin/payment-proofs")
+    suspend fun paymentProofs(@Query("state") state: String): Response<List<com.knowapp.android.data.model.PaymentProofRow>>
+
+    @POST("/api/admin/payment-proofs/{id}/approve")
+    suspend fun approveProof(@Path("id") id: Int, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<com.knowapp.android.data.model.PaymentProofRow>
+
+    @POST("/api/admin/payment-proofs/{id}/reject")
+    suspend fun rejectProof(@Path("id") id: Int, @Body body: Map<String, String?>): Response<com.knowapp.android.data.model.PaymentProofRow>
+
+    @GET("/api/admin/payout-requests")
+    suspend fun payoutRequests(@Query("state") state: String): Response<List<com.knowapp.android.data.model.PayoutRequestRow>>
+
+    @POST("/api/admin/payout-requests/{id}/pay")
+    suspend fun payPayoutRequest(@Path("id") id: Int, @Body body: Map<String, String?>): Response<com.knowapp.android.data.model.PayoutRequestRow>
+
+    @POST("/api/admin/payout-requests/{id}/reject")
+    suspend fun rejectPayoutRequest(@Path("id") id: Int, @Body body: Map<String, String?>): Response<com.knowapp.android.data.model.PayoutRequestRow>
 }

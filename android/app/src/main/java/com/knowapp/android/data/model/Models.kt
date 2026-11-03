@@ -462,6 +462,8 @@ data class PartnerTotals(
     @SerializedName("earned_total") val earnedTotal: String = "0",
     @SerializedName("paid_out") val paidOut: String = "0",
     @SerializedName("balance_due") val balanceDue: String = "0",
+    val requested: String = "0",
+    val requestable: String = "0",
 )
 
 data class PartnerBusiness(
@@ -492,6 +494,8 @@ data class PartnerDashboard(
     @SerializedName("recent_commissions") val recentCommissions: List<PartnerCommission> = emptyList(),
     val payouts: List<PartnerPayoutRow> = emptyList(),
     val series: List<PartnerSeries> = emptyList(),
+    val notices: List<PartnerNoticeRow> = emptyList(),
+    @SerializedName("payout_requests") val payoutRequests: List<PartnerRequestRow> = emptyList(),
 )
 
 
@@ -511,4 +515,51 @@ data class BillingStatusOut(
     @SerializedName("extra_amount") val extraAmount: Int = 0,
     val total: Int = 0,
     val note: String = "",
+    @SerializedName("due_date") val dueDate: String? = null,
+    @SerializedName("popup_from") val popupFrom: String? = null,
+    @SerializedName("lock_at") val lockAt: String? = null,
+    @SerializedName("popup_due") val popupDue: Boolean = false,
+    val locked: Boolean = false,
+    @SerializedName("can_pay") val canPay: Boolean = false,
+    @SerializedName("proof_status") val proofStatus: String = "none",
+    @SerializedName("proof_note") val proofNote: String? = null,
+    val paybill: String = "4396353",
+    @SerializedName("paybill_name") val paybillName: String = "Obsidian Labs",
+    @SerializedName("account_ref") val accountRef: String = "",
+    @SerializedName("agent_registered") val agentRegistered: Boolean = false,
+    @SerializedName("preview_allowed") val previewAllowed: Boolean = false,
+)
+
+data class PartnerNoticeRow(val id: Int, val text: String, val business: String? = null, val amount: String = "0")
+
+data class PartnerRequestRow(val id: Int, val amount: String, val status: String)
+
+data class PaymentProofRow(
+    val id: Int,
+    val business: String,
+    val sender: String? = null,
+    @SerializedName("sender_username") val senderUsername: String? = null,
+    val message: String,
+    val code: String,
+    val amount: String,
+    @SerializedName("amount_due") val amountDue: String,
+    @SerializedName("paid_at") val paidAt: String? = null,
+    val recipient: String? = null,
+    @SerializedName("account_ref") val accountRef: String? = null,
+    val status: String,
+    val note: String? = null,
+    val agent: String? = null,
+    val months: Int = 1,
+)
+
+data class PayoutRequestRow(
+    val id: Int,
+    @SerializedName("partner_id") val partnerId: Int,
+    val agent: String,
+    val code: String,
+    val phone: String? = null,
+    val amount: String,
+    val status: String,
+    @SerializedName("balance_due") val balanceDue: String,
+    @SerializedName("requested_at") val requestedAt: String? = null,
 )

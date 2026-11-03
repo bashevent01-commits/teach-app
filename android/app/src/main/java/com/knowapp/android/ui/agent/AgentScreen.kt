@@ -97,6 +97,31 @@ fun AgentScreen(viewModel: AgentViewModel) {
                     }
                 }
             }
+            items(data.notices, key = { "notice-${it.id}" }) { notice ->
+                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFE7F6F2)), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("A business of yours paid", fontWeight = FontWeight.Bold, color = Color(0xFF0B3D38))
+                        Text(notice.text, color = Color(0xFF0B3D38), fontSize = 14.sp)
+                        Button(onClick = { viewModel.requestPayout(notice.id) }, modifier = Modifier.fillMaxWidth()) { Text("Ask for payout of ${kes(notice.amount)}") }
+                    }
+                }
+            }
+            if (data.payoutRequests.isNotEmpty()) item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Your payout requests", fontWeight = FontWeight.Bold)
+                        data.payoutRequests.forEach { r ->
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(kes(r.amount))
+                                Text(when (r.status) { "paid" -> "Paid"; "rejected" -> "Declined"; else -> "Waiting" }, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        if ((data.totals.requestable.toDoubleOrNull() ?: 0.0) > 0.0) {
+                            OutlinedButton(onClick = { viewModel.requestPayout(null) }, modifier = Modifier.fillMaxWidth()) { Text("Ask for the rest, ${kes(data.totals.requestable)}") }
+                        }
+                    }
+                }
+            }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { viewModel.shift(-1) }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month") }

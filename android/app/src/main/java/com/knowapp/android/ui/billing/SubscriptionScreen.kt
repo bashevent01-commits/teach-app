@@ -62,7 +62,7 @@ private fun niceDate(iso: String?, plusDays: Long = 0): String = runCatching {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SubscriptionScreen(viewModel: SubscriptionViewModel, onBack: () -> Unit) {
+fun SubscriptionScreen(viewModel: SubscriptionViewModel, onBack: () -> Unit, onPay: () -> Unit = {}, onPreview: (() -> Unit)? = null) {
     val state by viewModel.state.collectAsState()
     Scaffold(
         topBar = {
@@ -94,7 +94,7 @@ fun SubscriptionScreen(viewModel: SubscriptionViewModel, onBack: () -> Unit) {
                     Timeline(status)
                     PlanCard(status)
                     if (status.plan == "owner") AccountsCard(status)
-                    PayCard(status)
+                    PayCard(status, onPay, onPreview)
                 }
             }
             Box(modifier = Modifier.height(12.dp))
@@ -105,12 +105,13 @@ fun SubscriptionScreen(viewModel: SubscriptionViewModel, onBack: () -> Unit) {
 @Composable
 private fun TrialHero(status: BillingStatusOut) {
     val trial = status.state == "trial"
+    val paid = status.state == "paid"
     val progress = if (trial) status.daysLeft.coerceIn(0, status.trialDays).toFloat() / status.trialDays else 0f
     Box(
         modifier = Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(HeroTop, HeroBottom)), RoundedCornerShape(28.dp)).padding(24.dp),
     ) {
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(if (trial) "FREE TRIAL" else "TRIAL ENDED", color = Mint, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Text(if (trial) "FREE TRIAL" else if (paid) "PAID UP" else "FEE DUE", color = Mint, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
             Box(modifier = Modifier.padding(vertical = 18.dp).size(168.dp), contentAlignment = Alignment.Center) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val stroke = 14.dp.toPx()
@@ -125,12 +126,12 @@ private fun TrialHero(status: BillingStatusOut) {
                 }
             }
             Text(
-                if (trial) "Enjoy everything free for ${status.trialDays} days" else "Payments are not switched on yet, so you can keep using KNOW for now.",
+                if (trial) "Enjoy everything free for ${status.trialDays} days" else status.note.ifBlank { "Your fee is due." },
                 color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
             )
             Box(modifier = Modifier.padding(top = 14.dp).background(Color.White.copy(alpha = 0.14f), CircleShape).padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Text(
-                    if (trial) "Billing begins on ${niceDate(status.trialEndsAt)}" else "Trial ended on ${niceDate(status.trialEndsAt)}",
+                    if (trial) "Billing begins on ${niceDate(status.trialEndsAt)}" else if (paid) "Next payment ${niceDate(status.dueDate)}" else "Fee due since ${niceDate(status.dueDate)}",
                     color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium,
                 )
             }
@@ -242,13 +243,18 @@ private fun AccountsCard(status: BillingStatusOut) {
 }
 
 @Composable
-private fun PayCard(status: BillingStatusOut) {
+private fun PayCard(status: BillingStatusOut, onPay: () -> Unit, onPreview: (() -> Unit)?) {
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
         Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Pay with", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            MethodTile("M-Pesa", "Pay straight from your phone")
-            MethodTile("Card", "Visa or Mastercard")
+            MethodTile("M-Pesa paybill ${status.paybill}", "Account name ${status.paybillName}")
             Text(status.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+            if (status.canPay && status.state != "trial" && status.proofStatus != "pending") {
+                androidx.compose.material3.Button(onClick = onPay, shape = CircleShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Pay now", fontWeight = FontWeight.Bold) }
+            }
+            if (onPreview != null) {
+                androidx.compose.material3.OutlinedButton(onClick = onPreview, shape = CircleShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Preview the payment reminder") }
+            }
         }
     }
 }

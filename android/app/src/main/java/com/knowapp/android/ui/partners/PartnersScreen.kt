@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -66,7 +67,7 @@ import com.knowapp.android.ui.theme.SmallRadius
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PartnersScreen(viewModel: PartnersViewModel) {
+fun PartnersScreen(viewModel: PartnersViewModel, onOpenPayments: () -> Unit = {}) {
     val state by viewModel.state.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     var adding by remember { mutableStateOf(false) }
@@ -81,7 +82,10 @@ fun PartnersScreen(viewModel: PartnersViewModel) {
         topBar = {
             TopAppBar(
                 title = { Text("Partners", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
-                actions = { IconButton(onClick = { adding = true }) { Icon(Icons.Filled.Add, contentDescription = "Add partner") } },
+                actions = {
+                    IconButton(onClick = onOpenPayments) { Icon(Icons.Outlined.Receipt, contentDescription = "Payments to check") }
+                    IconButton(onClick = { adding = true }) { Icon(Icons.Filled.Add, contentDescription = "Add partner") }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },

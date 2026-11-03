@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         KnowNavGraph(container = container)
+                        com.knowapp.android.ui.billing.BillingOverlay(container = container)
                         AnimatedVisibility(visible = showSplash, exit = fadeOut(tween(400))) { SplashScreen() }
                     }
                 }
