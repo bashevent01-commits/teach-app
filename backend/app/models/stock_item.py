@@ -24,6 +24,8 @@ class StockItem(Base):
     description = Column(Text, nullable=True)
     unit_price = Column(Numeric(12, 2), nullable=True)
     quantity = Column(Numeric(12, 2), nullable=False, default=0)
+    # What the quantity is counted in: pieces, kg, litres and so on
+    unit = Column(String(20), nullable=False, default="pieces", server_default="pieces")
     # Alert level: at or below this many units the item counts as low; null uses the app default
     low_stock_threshold = Column(Numeric(12, 2), nullable=True)
     # Running average cost of one unit, built from restocks and transfers; null until a cost is known

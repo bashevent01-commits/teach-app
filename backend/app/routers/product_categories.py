@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.activity_log import log_activity
@@ -8,9 +9,18 @@ from app.core.limiter import limiter
 from app.models.product_category import ProductCategory
 from app.models.stock_item import StockItem
 from app.models.user import User
+from app.utils.names import find_similar
 from app.schemas.product_category import ProductCategoryCreate, ProductCategoryUpdate, ProductCategoryOut
 
 router = APIRouter(prefix="/api/product-categories", tags=["product-categories"])
+
+
+def _already_there(existing: ProductCategory) -> JSONResponse:
+    """Categories are shared by everyone, so a new one that means the same as an old one is turned back with the old one named."""
+    return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={
+        "detail": f'"{existing.name}" is already in the list. Please use it instead.',
+        "existing": {"id": existing.id, "name": existing.name},
+    })
 
 
 @router.get("", response_model=list[ProductCategoryOut])
@@ -29,9 +39,9 @@ def create_category(payload: ProductCategoryCreate, request: Request, db: Sessio
     stay super_admin-only since those affect the shared taxonomy more
     broadly. Case-insensitive dedup check to keep near-duplicates
     ("Pencils" vs "pencils") from piling up now that anyone can add one."""
-    existing = db.query(ProductCategory).filter(ProductCategory.name.ilike(payload.name)).first()
+    existing = find_similar(payload.name, db.query(ProductCategory).all(), lambda c: c.name)
     if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f'"{existing.name}" already exists — pick it from the list instead')
+        return _already_there(existing)
     category = ProductCategory(name=payload.name)
     db.add(category)
     db.commit()
@@ -48,9 +58,9 @@ def update_category(category_id: int, payload: ProductCategoryUpdate, request: R
     if not category:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
     if payload.name != category.name:
-        existing = db.query(ProductCategory).filter(ProductCategory.name.ilike(payload.name), ProductCategory.id != category_id).first()
+        existing = find_similar(payload.name, db.query(ProductCategory).filter(ProductCategory.id != category_id).all(), lambda c: c.name)
         if existing:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f'"{existing.name}" already exists')
+            return _already_there(existing)
     category.name = payload.name
     db.commit()
     db.refresh(category)

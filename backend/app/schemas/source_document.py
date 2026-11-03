@@ -16,6 +16,7 @@ class SourceDocumentOut(BaseModel):
     stock_item_id: int | None = None
     stock_item_name: str | None = None
     quantity: Decimal | None = None
+    unit: str | None = None
     amount: Decimal | None = None
     notes: str | None = None
     image_path: str | None = None

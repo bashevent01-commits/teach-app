@@ -58,18 +58,33 @@ def _location_breakdown(rows) -> list:
     return entries
 
 
-def _quantity_sold(db: Session, category_id: int) -> Decimal:
-    rows = (
-        db.query(Transaction.quantity)
+def _dominant_unit(db: Session, category_id: int) -> str:
+    """The unit most businesses count this category in; prices in other units are not compared with it."""
+    rows = db.query(StockItem.unit, StockItem.institution_id).filter(StockItem.category_id == category_id, StockItem.unit_price.isnot(None)).all()
+    by_unit = defaultdict(set)
+    for unit, institution_id in rows:
+        by_unit[unit].add(institution_id)
+    if not by_unit:
+        return "pieces"
+    return sorted(by_unit.items(), key=lambda kv: (-len(kv[1]), kv[0]))[0][0]
+
+
+def _quantity_sold(db: Session, category_id: int, unit: str | None = None) -> tuple[Decimal, str]:
+    """The quantity sold in the main unit, and a line listing every unit, such as '1,200 kg, 300 pieces'."""
+    q = (
+        db.query(StockItem.unit, Transaction.quantity)
         .join(StockItem, Transaction.stock_item_id == StockItem.id)
         .filter(
             StockItem.category_id == category_id,
             Transaction.category_type == TransactionCategoryType.STOCK,
             Transaction.type == TransactionType.INCOME,
         )
-        .all()
     )
-    return sum((r[0] or Decimal("0")) for r in rows)
+    totals = defaultdict(lambda: Decimal("0"))
+    for row_unit, quantity in q.all():
+        totals[row_unit] += quantity or Decimal("0")
+    text = ", ".join(f"{v.normalize():,f} {u}" for u, v in sorted(totals.items(), key=lambda kv: -kv[1]) if v > 0) or "0"
+    return (totals[unit] if unit else sum(totals.values(), Decimal("0"))), text
 
 
 @router.get("/categories", response_model=list[CategoryInsightOut])
@@ -80,20 +95,24 @@ def list_category_insights(db: Session = Depends(get_db), _: User = Depends(requ
     categories = db.query(ProductCategory).order_by(ProductCategory.name).all()
     results = []
     for cat in categories:
+        unit = _dominant_unit(db, cat.id)
         rows = (
             db.query(StockItem.institution_id, StockItem.unit_price)
-            .filter(StockItem.category_id == cat.id, StockItem.unit_price.isnot(None))
+            .filter(StockItem.category_id == cat.id, StockItem.unit_price.isnot(None), StockItem.unit == unit)
             .all()
         )
         institution_ids = {r[0] for r in rows}
         if len(institution_ids) < MIN_INSTITUTIONS:
             continue
         stats = _price_stats(_per_institution((r[0], r[1]) for r in rows))
+        sold, sold_text = _quantity_sold(db, cat.id, unit)
         results.append(CategoryInsightOut(
             category_id=cat.id,
             category_name=cat.name,
             institution_count=len(institution_ids),
-            total_quantity_sold=_quantity_sold(db, cat.id),
+            total_quantity_sold=sold,
+            unit=unit,
+            quantity_sold_text=sold_text,
             **stats,
         ))
     return results
@@ -105,10 +124,11 @@ def get_category_detail(category_id: int, db: Session = Depends(get_db), _: User
     if not cat:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
 
-    # Current snapshot
+    # Current snapshot, comparing only prices counted in the same unit
+    unit = _dominant_unit(db, category_id)
     rows = (
         db.query(StockItem.institution_id, StockItem.unit_price)
-        .filter(StockItem.category_id == category_id, StockItem.unit_price.isnot(None))
+        .filter(StockItem.category_id == category_id, StockItem.unit_price.isnot(None), StockItem.unit == unit)
         .all()
     )
     institution_ids = {r[0] for r in rows}
@@ -125,7 +145,7 @@ def get_category_detail(category_id: int, db: Session = Depends(get_db), _: User
         db.query(StockItem.institution_id, StockItem.unit_price, Institution.region, Institution.constituency, User.county, User.constituency)
         .join(Institution, StockItem.institution_id == Institution.id)
         .outerjoin(User, StockItem.branch_id == User.id)
-        .filter(StockItem.category_id == category_id, StockItem.unit_price.isnot(None))
+        .filter(StockItem.category_id == category_id, StockItem.unit_price.isnot(None), StockItem.unit == unit)
         .all()
     )
     located = []
@@ -140,7 +160,7 @@ def get_category_detail(category_id: int, db: Session = Depends(get_db), _: User
     history_rows = (
         db.query(StockPriceHistory.recorded_at, StockPriceHistory.price, StockItem.institution_id)
         .join(StockItem, StockPriceHistory.stock_item_id == StockItem.id)
-        .filter(StockItem.category_id == category_id)
+        .filter(StockItem.category_id == category_id, StockItem.unit == unit)
         .all()
     )
     by_month_inst: dict[str, dict] = defaultdict(lambda: defaultdict(list))
@@ -157,11 +177,14 @@ def get_category_detail(category_id: int, db: Session = Depends(get_db), _: User
     ]
     trend.sort(key=lambda t: t.month)
 
+    sold, sold_text = _quantity_sold(db, category_id, unit)
     return CategoryDetailOut(
         category_id=cat.id,
         category_name=cat.name,
         institution_count=len(institution_ids),
-        total_quantity_sold=_quantity_sold(db, category_id),
+        total_quantity_sold=sold,
+        unit=unit,
+        quantity_sold_text=sold_text,
         regional_breakdown=regional_breakdown,
         constituency_breakdown=constituency_breakdown,
         trend=trend,

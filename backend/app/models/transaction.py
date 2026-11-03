@@ -78,3 +78,7 @@ class Transaction(Base):
     recorded_by = relationship("User", back_populates="transactions_recorded", foreign_keys=[recorded_by_id])
     stock_item = relationship("StockItem", back_populates="transactions")
     journal_entry = relationship("JournalEntry", back_populates="transaction", uselist=False, cascade="all, delete-orphan")
+
+    @property
+    def unit(self) -> str | None:
+        return self.stock_item.unit if self.stock_item else None

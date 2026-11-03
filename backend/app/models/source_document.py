@@ -36,5 +36,9 @@ class SourceDocument(Base):
         return self.stock_item.name if self.stock_item else None
 
     @property
+    def unit(self) -> str | None:
+        return self.stock_item.unit if self.stock_item else None
+
+    @property
     def recorded_by_name(self) -> str | None:
         return self.recorded_by.full_name if self.recorded_by else None

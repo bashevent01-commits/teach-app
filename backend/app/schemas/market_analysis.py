@@ -12,6 +12,8 @@ class CategoryInsightOut(BaseModel):
     min_price: float
     max_price: float
     total_quantity_sold: Decimal
+    unit: str = "pieces"
+    quantity_sold_text: str = "0"
 
 
 class RegionBreakdownEntry(BaseModel):
@@ -39,6 +41,8 @@ class CategoryDetailOut(BaseModel):
     min_price: float
     max_price: float
     total_quantity_sold: Decimal
+    unit: str = "pieces"
+    quantity_sold_text: str = "0"
     regional_breakdown: list[RegionBreakdownEntry]
     constituency_breakdown: list[RegionBreakdownEntry] = []
     trend: list[TrendPointOut]

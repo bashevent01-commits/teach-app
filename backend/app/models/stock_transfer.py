@@ -18,6 +18,7 @@ class StockTransfer(Base):
     unit_price = Column(Numeric(12, 2), nullable=True)
     unit_cost = Column(Numeric(12, 4), nullable=True)
     quantity = Column(Numeric(12, 2), nullable=False)
+    unit = Column(String(20), nullable=False, default="pieces", server_default="pieces")
     status = Column(String(12), nullable=False, default="pending", index=True)
     note = Column(String(200), nullable=True)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)

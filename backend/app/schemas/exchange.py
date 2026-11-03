@@ -21,6 +21,7 @@ class TransferOut(BaseModel):
     id: int
     item_name: str
     quantity: Decimal
+    unit: str = "pieces"
     from_branch_id: int
     from_branch_name: str
     to_branch_id: int

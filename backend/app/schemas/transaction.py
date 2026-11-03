@@ -19,6 +19,7 @@ class TransactionOut(BaseModel):
     amount: Decimal
     stock_item_id: int | None
     quantity: Decimal | None
+    unit: str | None = None
     mpesa_code: str | None
     mpesa_payer_name: str | None
     transaction_date: datetime

@@ -28,7 +28,7 @@ def _is_owner(user: User) -> bool:
 
 def _out(t: StockTransfer, names: dict, viewer: User) -> TransferOut:
     direction = "incoming" if t.to_branch_id == viewer.id else "outgoing" if t.from_branch_id == viewer.id else "other"
-    return TransferOut(id=t.id, item_name=t.item_name, quantity=t.quantity, from_branch_id=t.from_branch_id, from_branch_name=names.get(t.from_branch_id, "—"),
+    return TransferOut(id=t.id, item_name=t.item_name, quantity=t.quantity, unit=t.unit, from_branch_id=t.from_branch_id, from_branch_name=names.get(t.from_branch_id, "—"),
                        to_branch_id=t.to_branch_id, to_branch_name=names.get(t.to_branch_id, "—"), status=t.status, note=t.note, direction=direction,
                        created_at=t.created_at, resolved_at=t.resolved_at)
 
@@ -94,7 +94,7 @@ def create_transfer(payload: TransferCreate, request: Request, db: Session = Dep
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Not enough stock: only {source.quantity} of '{source.name}' available")
     source.quantity = source.quantity - payload.quantity
     t = StockTransfer(institution_id=current_user.institution_id, from_branch_id=from_id, to_branch_id=payload.to_branch_id, source_item_id=source.id, item_name=source.name,
-                      category_id=source.category_id, unit_price=source.unit_price, unit_cost=source.avg_cost, quantity=payload.quantity, status="pending",
+                      category_id=source.category_id, unit_price=source.unit_price, unit_cost=source.avg_cost, quantity=payload.quantity, unit=source.unit, status="pending",
                       note=(payload.note or "").strip() or None, created_by_id=current_user.id)
     db.add(t)
     db.commit()
@@ -124,7 +124,7 @@ def receive_transfer(transfer_id: int, request: Request, db: Session = Depends(g
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the receiving branch can confirm this")
     dest = db.query(StockItem).filter(StockItem.institution_id == t.institution_id, StockItem.branch_id == t.to_branch_id, func.lower(StockItem.name) == t.item_name.lower()).with_for_update().first()
     if not dest:
-        dest = StockItem(institution_id=t.institution_id, branch_id=t.to_branch_id, category_id=t.category_id, name=t.item_name, unit_price=t.unit_price, quantity=0)
+        dest = StockItem(institution_id=t.institution_id, branch_id=t.to_branch_id, category_id=t.category_id, name=t.item_name, unit_price=t.unit_price, quantity=0, unit=t.unit)
         db.add(dest)
         db.flush()
         if dest.unit_price is not None:

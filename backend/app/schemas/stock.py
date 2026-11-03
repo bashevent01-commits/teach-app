@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from app.core.units import normalize_unit
+
 
 class StockItemCreate(BaseModel):
     name: str
@@ -10,8 +12,14 @@ class StockItemCreate(BaseModel):
     description: str | None = None
     unit_price: Decimal | None = None
     quantity: Decimal = Decimal("0")
+    unit: str = "pieces"
     branch_id: int | None = None
     low_stock_threshold: Decimal | None = None
+
+    @field_validator("unit")
+    @classmethod
+    def unit_tidy(cls, v: str) -> str:
+        return normalize_unit(v)
 
     @field_validator("name")
     @classmethod
@@ -44,8 +52,14 @@ class StockItemUpdate(BaseModel):
     category_id: int | None = None
     description: str | None = None
     unit_price: Decimal | None = None
+    unit: str | None = None
     branch_id: int | None = None
     low_stock_threshold: Decimal | None = None
+
+    @field_validator("unit")
+    @classmethod
+    def unit_tidy(cls, v: str | None) -> str | None:
+        return normalize_unit(v) if v is not None else None
 
     @field_validator("low_stock_threshold")
     @classmethod
@@ -75,6 +89,7 @@ class StockItemOut(BaseModel):
     description: str | None
     unit_price: Decimal | None
     quantity: Decimal
+    unit: str = "pieces"
     low_stock_threshold: Decimal | None = None
     created_at: datetime
 

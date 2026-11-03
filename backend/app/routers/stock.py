@@ -60,6 +60,7 @@ def create_stock_item(payload: StockItemCreate, request: Request, db: Session = 
         description=payload.description,
         unit_price=payload.unit_price,
         quantity=payload.quantity,
+        unit=payload.unit,
         low_stock_threshold=payload.low_stock_threshold,
     )
     db.add(item)
@@ -135,6 +136,8 @@ def update_stock_item(item_id: int, payload: StockItemUpdate, request: Request, 
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the owner can assign shared stock to a branch")
         _branch_or_400(db, item.institution_id, payload.branch_id)
         item.branch_id = payload.branch_id
+    if payload.unit is not None and payload.unit != item.unit:
+        item.unit = payload.unit
     if payload.description is not None:
         item.description = payload.description
     # Sending the field as null puts the item back on the app default alert level

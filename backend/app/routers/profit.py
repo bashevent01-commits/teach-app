@@ -80,14 +80,14 @@ def daily_profit(request: Request, day: date | None = None, branch_id: int | Non
     branches: dict = {}
     for who, item_id, units, revenue, cost, costed_revenue, unknown_units in raw:
         item = items.get(item_id)
-        row = {"item_id": item_id, "name": item.name if item else "Removed item", "units": Decimal(str(units or 0)), "revenue": Decimal(str(revenue or 0)), "cost": Decimal(str(cost or 0)),
+        row = {"item_id": item_id, "name": item.name if item else "Removed item", "unit": item.unit if item else "pieces", "units": Decimal(str(units or 0)), "revenue": Decimal(str(revenue or 0)), "cost": Decimal(str(cost or 0)),
                "costed_revenue": Decimal(str(costed_revenue or 0)), "unknown_units": Decimal(str(unknown_units or 0))}
         branches.setdefault(who, []).append(row)
     out = []
     for who, rows in branches.items():
         rows.sort(key=lambda r: r["costed_revenue"] - r["cost"], reverse=True)
         out.append({"branch_id": who, "branch_name": people.get(who, "Removed account"), "totals": _bucket(rows),
-                    "items": [{"item_id": r["item_id"], "name": r["name"], **_bucket([r])} for r in rows]})
+                    "items": [{"item_id": r["item_id"], "name": r["name"], "unit": r["unit"], **_bucket([r])} for r in rows]})
     out.sort(key=lambda b: Decimal(b["totals"]["profit"]), reverse=True)
     every = [r for rows in branches.values() for r in rows]
     return {"day": chosen.isoformat(), "timezone": "Africa/Nairobi", "totals": _bucket(every), "branches": out}
@@ -99,7 +99,7 @@ def list_costs(db: Session = Depends(get_db), owner: User = Depends(_owner)):
     people = {u.id: u.full_name for u in db.query(User).filter(User.institution_id == owner.institution_id, User.role == UserRole.STAFF)}
     items = db.query(StockItem).filter(StockItem.institution_id == owner.institution_id).order_by(StockItem.name).all()
     return [{"item_id": i.id, "name": i.name, "branch_id": i.branch_id, "branch_name": people.get(i.branch_id), "unit_price": str(i.unit_price) if i.unit_price is not None else None,
-             "avg_cost": str(i.avg_cost.quantize(CENT)) if i.avg_cost is not None else None, "quantity": str(i.quantity)} for i in items]
+             "avg_cost": str(i.avg_cost.quantize(CENT)) if i.avg_cost is not None else None, "quantity": str(i.quantity), "unit": i.unit} for i in items]
 
 
 class CostUpdate(BaseModel):
