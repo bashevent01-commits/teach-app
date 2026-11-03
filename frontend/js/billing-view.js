@@ -8,13 +8,14 @@ const BillingView = (() => {
 
   function hero(s, headline) {
     const trial = s.state === "trial";
+    const paid = s.state === "paid";
     const pct = trial ? Math.round((s.days_left / s.trial_days) * 100) : 0;
     return `<div class="sub-hero">
-      <p class="sub-eyebrow">${trial ? "FREE TRIAL" : "TRIAL ENDED"}</p>
+      <p class="sub-eyebrow">${trial ? "FREE TRIAL" : paid ? "PAID UP" : "FEE DUE"}</p>
       ${headline ? `<h2 class="sub-headline">${headline}</h2>` : ""}
       <div class="sub-ring" style="--p:${pct}"><div class="sub-ring-in"><strong>${trial ? s.days_left : 0}</strong><span>${s.days_left === 1 ? "day left" : "days left"}</span></div></div>
-      <p class="sub-lead">${trial ? `Enjoy everything free for ${s.trial_days} days` : "Payments are not switched on yet, so you can keep using KNOW for now."}</p>
-      <span class="sub-pill">${trial ? "Billing begins on " : "Trial ended on "}${fmt(s.trial_ends_at)}</span>
+      <p class="sub-lead">${trial ? `Enjoy everything free for ${s.trial_days} days` : s.note || "Your fee is due."}</p>
+      <span class="sub-pill">${trial ? "Billing begins on " + fmt(s.trial_ends_at) : paid ? "Next payment " + fmt(s.due_date) : "Fee due since " + fmt(s.due_date)}</span>
     </div>`;
   }
 
@@ -50,9 +51,10 @@ const BillingView = (() => {
 
   function pay(s) {
     return `<div class="sub-panel"><h3>Pay with</h3>
-      <div class="sub-method"><div><strong>M-Pesa</strong><small>Pay straight from your phone</small></div><em>Soon</em></div>
-      <div class="sub-method"><div><strong>Card</strong><small>Visa or Mastercard</small></div><em>Soon</em></div>
-      <p class="hint">${s.note}</p></div>`;
+      <div class="sub-method"><div><strong>M-Pesa paybill ${s.paybill}</strong><small>Account name ${s.paybill_name}</small></div></div>
+      <p class="hint">${s.note}</p>
+      ${s.can_pay && s.state !== "trial" && s.proof_status !== "pending" ? `<button class="primary-btn" id="payNowBtn">Pay now</button>` : ""}
+      ${s.preview_allowed ? `<button class="ghost-btn" id="previewPayBtn">Preview the payment reminder</button>` : ""}</div>`;
   }
 
   return { render: (s, headline) => hero(s, headline) + timeline(s) + plan(s) + accounts(s) + pay(s), hero, timeline, plan, fmt, kes };

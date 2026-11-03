@@ -1,4 +1,4 @@
-const CACHE = "know-v37";
+const CACHE = "know-v38";
 const IMG_CACHE = "know-img-v1";
 const IMG_MAX = 150;
 const ASSETS = [
@@ -18,6 +18,7 @@ const ASSETS = [
   "./welcome.html",
   "./js/welcome.js",
   "./js/billing-view.js",
+  "./js/payflow.js",
   "./js/signup.js",
   "./forgot-password.html",
   "./reset-password.html",

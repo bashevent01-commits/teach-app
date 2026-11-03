@@ -128,6 +128,8 @@ async function rawFetch(path, { method = "GET", body, isForm = false } = {}) {
     throw new ApiError("Session expired — please log in again.", 401);
   }
 
+  if (res.status === 402) window.dispatchEvent(new Event("know-closed"));
+
   if (res.status === 204) return null;
 
   const contentType = res.headers.get("content-type") || "";

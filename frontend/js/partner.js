@@ -40,6 +40,19 @@
         <span class="bar-lbl">${new Date(s.period + "-01T12:00:00").toLocaleDateString(undefined, { month: "short" })}</span>
       </div>`).join("");
 
+    $("#ptNotices").innerHTML = (data.notices || []).map((n) => `
+      <div class="card pt-notice"><strong>A business of yours paid</strong><p>${escapeHtml(n.text)}</p>
+        <button type="button" class="primary-btn" data-notice="${n.id}">Ask for payout of ${money(n.amount)}</button></div>`).join("") + ((data.payout_requests || []).length ? `
+      <div class="card"><div class="card-head"><h2>Your payout requests</h2></div>${data.payout_requests.map((r) => `<div class="ex-row"><div><strong>${money(r.amount)}</strong></div><div>${{ paid: "Paid", rejected: "Declined" }[r.status] || "Waiting"}</div></div>`).join("")}
+        ${Number(t.requestable) > 0 ? `<button type="button" class="ghost-btn" data-notice="">Ask for the rest, ${money(t.requestable)}</button>` : ""}</div>` : "");
+    $("#ptNotices").querySelectorAll("[data-notice]").forEach((b) => b.addEventListener("click", async () => {
+      b.disabled = true;
+      try {
+        const r = await apiFetch("/api/partner/payout-requests", { method: "POST", body: { notice_id: b.dataset.notice ? Number(b.dataset.notice) : null } });
+        toast(`Payout of ${money(r.amount)} requested. You will be paid soon.`);
+        await load();
+      } catch (err) { toast(err.message || "Could not ask for the payout."); b.disabled = false; }
+    }));
     drawBusinesses();
     $("#ptHistory").innerHTML = data.recent_commissions.length ? data.recent_commissions.map((c) => `
       <div class="ex-row"><div><strong>${escapeHtml(c.business)}</strong><small>Fee for ${label(c.period)} · paid ${formatDate(c.paid_on)} · ${money(c.fee)} at ${Number(c.rate)}%</small></div><div><strong class="pos">+ ${money(c.commission)}</strong></div></div>`).join("") : `<p class="subtle">Your commissions will appear here once a business you registered pays its monthly fee.</p>`;

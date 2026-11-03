@@ -755,3 +755,25 @@ a.stat-card:hover { border-color: var(--brand); transform: translateY(-1px); }
 .rc-saved { text-align: center; padding: 6px 0 14px; }
 .rc-check { width: 56px; height: 56px; margin: 0 auto 8px; border-radius: 50%; background: #16a34a; color: #fff; font-size: 30px; display: grid; place-items: center; }
 .rc-actions { flex-direction: column; gap: 8px; } .rc-actions button { width: 100%; }
+
+/* Fee reminder, closed screen and pay steps */
+body.payflow-open { overflow: hidden; }
+.payflow-backdrop { position: fixed; inset: 0; z-index: 9000; background: rgba(8, 20, 18, .66); display: flex; align-items: center; justify-content: center; padding: 14px; }
+.payflow-backdrop.is-locked { background: var(--bg, #0b1513); }
+.payflow-card { width: 100%; max-width: 440px; max-height: 92vh; overflow-y: auto; background: var(--surface, #fff); color: var(--text, #10201d); border-radius: 26px; padding: 24px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+.payflow-card h2 { margin: 0; font-size: 1.5rem; }
+.payflow-card p { margin: 0; opacity: .8; }
+.payflow-card .pf-amount { font-size: 1.9rem; font-weight: 800; opacity: 1; color: var(--brand); }
+.payflow-card .pf-tag { align-self: flex-start; font-size: .72rem; font-weight: 700; letter-spacing: .08em; color: var(--brand); background: var(--brand-soft); border-radius: 999px; padding: 5px 12px; opacity: 1; }
+.payflow-card .pf-error { color: #dc2626; background: rgba(220,38,38,.12); border-radius: 12px; padding: 10px 12px; opacity: 1; }
+.payflow-card .pf-ok { color: #16a34a; font-weight: 600; opacity: 1; }
+.payflow-card .pf-card { background: linear-gradient(135deg, #0f766e, #134e4a); color: #fff; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.payflow-card .pf-card div { display: grid; grid-template-columns: 1fr auto; align-items: center; }
+.payflow-card .pf-card small { grid-column: 1 / -1; color: #5eead4; font-weight: 700; letter-spacing: .12em; font-size: .62rem; }
+.payflow-card .pf-card strong { font-size: 1.35rem; font-weight: 800; }
+.payflow-card .pf-copy { background: transparent; border: 0; color: #5eead4; font-weight: 700; cursor: pointer; }
+.payflow-card .pf-toggle { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.payflow-card .pf-agent { background: var(--brand-soft); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.payflow-card textarea { width: 100%; border-radius: 14px; padding: 12px; border: 1px solid rgba(128,128,128,.4); background: transparent; color: inherit; font: inherit; }
+.pt-notice { background: var(--brand-soft); }
+.pt-notice p { margin: 6px 0 12px; }

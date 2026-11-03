@@ -419,6 +419,12 @@ async function initShell(page, allowedRoles) {
   if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
   Splash.hide();
+  if (session && (session.role === "staff" || session.role === "institution_admin")) {
+    const loader = document.createElement("script");
+    loader.src = "./js/payflow.js";
+    loader.onload = () => PayFlow.start(session);
+    document.head.appendChild(loader);
+  }
   return session;
 }
 
