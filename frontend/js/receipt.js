@@ -13,7 +13,7 @@ const Receipt = (() => {
     const first = rows[0];
     const lines = rows.map((t) => {
       const qty = t.quantity ? Number(t.quantity) : null;
-      return { name: t.category, quantity: qty, unit: qty ? Number(t.amount) / qty : null, amount: Number(t.amount) };
+      return { name: t.category, quantity: qty, unit: qty ? Number(t.amount) / qty : null, unitName: t.unit, amount: Number(t.amount) };
     });
     return {
       isIncome: first.type === "income",
@@ -31,7 +31,7 @@ const Receipt = (() => {
 
   /* A sale kept on this device while offline: shown as pending until it syncs. */
   function fromFields(lines, common, business, servedBy, number) {
-    const mapped = lines.map((l) => ({ name: l.category, quantity: l.quantity ?? null, unit: l.quantity ? Number(l.amount) / l.quantity : null, amount: Number(l.amount) }));
+    const mapped = lines.map((l) => ({ name: l.category, quantity: l.quantity ?? null, unit: l.quantity ? Number(l.amount) / l.quantity : null, unitName: l.unit, amount: Number(l.amount) }));
     return {
       isIncome: common.type === "income", number, when: when(new Date().toISOString()), business, servedBy, lines: mapped,
       total: mapped.reduce((a, l) => a + l.amount, 0), method: methodName(common.method),
@@ -42,7 +42,7 @@ const Receipt = (() => {
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
   function paper(d) {
-    const lines = d.lines.map((l) => `<div class="rc-line"><div><b>${esc(l.name)}</b>${l.quantity ? `<small>${l.quantity}${l.unit ? " x " + plain(l.unit) : ""}</small>` : ""}</div><b>${plain(l.amount)}</b></div>`).join("");
+    const lines = d.lines.map((l) => `<div class="rc-line"><div><b>${esc(l.name)}</b>${l.quantity ? `<small>${l.unitName ? qtyText(l.quantity, l.unitName) : l.quantity}${l.unit ? " x " + plain(l.unit) : ""}</small>` : ""}</div><b>${plain(l.amount)}</b></div>`).join("");
     const pay = (label, value, mono) => (value ? `<div class="rc-row"><span>${label}</span><span class="${mono ? "rc-mono" : ""}">${esc(value)}</span></div>` : "");
     return `<div class="rc-paper">
       <h3>${esc(d.business)}</h3>

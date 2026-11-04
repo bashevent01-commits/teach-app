@@ -66,6 +66,13 @@
         input.value = "";
         toast(`Category "${created.name}" added.`);
       } catch (err) {
+        if (err.data && err.data.existing) {
+          // The shared list already has one that means the same, so switch to it
+          await loadCategories();
+          select.innerHTML = categoryOptions(err.data.existing.id);
+          $(`#${blockId}`).hidden = true;
+          input.value = "";
+        }
         toast(err.message || "Could not add category.");
       } finally {
         btn.disabled = false;
@@ -110,7 +117,7 @@
           <td>${s.category_name ? `<span class="badge">${escapeHtml(s.category_name)}</span>` : "—"}</td>
           <td>${escapeHtml(s.description || "—")}</td>
           <td>${s.unit_price != null ? money(s.unit_price) : "—"}</td>
-          <td>${s.quantity}${isOut(s) ? ' <span class="stock-flag out">Out</span>' : isLow(s) ? ' <span class="stock-flag low">Low</span>' : ""}</td>
+          <td>${qtyText(s.quantity, s.unit)}${isOut(s) ? ' <span class="stock-flag out">Out</span>' : isLow(s) ? ' <span class="stock-flag low">Low</span>' : ""}</td>
           <td>
             <div class="row-actions">
               <button class="ghost-btn" data-edit="${s.id}">Edit</button>
@@ -154,7 +161,8 @@
         </div>
         <p class="file-hint">Categorizes this item for cross-institution market insights. Pick the closest match, or add a new one if nothing fits.</p>
         <label class="field"><span>Description (optional)</span><input type="text" id="stockDescription" /></label>
-        <label class="field"><span>Unit price (optional, KES)</span><input type="number" id="stockPrice" min="0" step="0.01" /></label>
+        ${unitFieldHtml("stock")}
+        <label class="field"><span>Price for one unit (optional, KES)</span><input type="number" id="stockPrice" min="0" step="0.01" /></label>
         <label class="field"><span>Starting quantity</span><input type="number" id="stockQuantity" min="0" step="0.01" value="0" /></label>
         <label class="field"><span>Warn me when stock is at or below (empty uses 5)</span><input type="number" id="stockLow" min="0" step="0.01" /></label>
         <p class="file-hint">After this, quantity only moves through Receiving (sale) and Paying (restock) entries on Home.</p>
@@ -165,6 +173,7 @@
     `);
 
     wireCategoryPicker("stockCategory", "stockCategoryNew", "stockCategoryNewName", "stockCategoryNewAdd");
+    attachUnitField("stock");
 
     $("#stockForm").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -182,6 +191,7 @@
           description: $("#stockDescription").value.trim() || null,
           unit_price: $("#stockPrice").value ? parseFloat($("#stockPrice").value) : null,
           quantity: parseFloat($("#stockQuantity").value || 0),
+          unit: readUnit("stock"),
           low_stock_threshold: $("#stockLow").value ? parseFloat($("#stockLow").value) : null,
           branch_id: isOwner && $("#stockBranch").value ? parseInt($("#stockBranch").value, 10) : undefined,
         });
@@ -216,9 +226,10 @@
           <button type="button" class="ghost-btn" id="editStockCategoryNewAdd">Add</button>
         </div>
         <label class="field"><span>Description (optional)</span><input type="text" id="editStockDescription" value="${escapeHtml(item.description || "")}" /></label>
-        <label class="field"><span>Unit price (optional, KES)</span><input type="number" id="editStockPrice" min="0" step="0.01" value="${item.unit_price ?? ""}" /></label>
+        ${unitFieldHtml("editStock", item.unit)}
+        <label class="field"><span>Price for one unit (optional, KES)</span><input type="number" id="editStockPrice" min="0" step="0.01" value="${item.unit_price ?? ""}" /></label>
         <label class="field"><span>Warn me when stock is at or below (empty uses 5)</span><input type="number" id="editStockLow" min="0" step="0.01" value="${item.low_stock_threshold ?? ""}" /></label>
-        <p class="file-hint">Current quantity: ${item.quantity} — edit this via a Receiving/Paying entry on Home, not here.</p>
+        <p class="file-hint">Current quantity: ${qtyText(item.quantity, item.unit)} — edit this via a Receiving/Paying entry on Home, not here.</p>
         <div class="form-actions">
           <button type="submit" class="primary-btn" id="editStockSubmit">Save changes</button>
         </div>
@@ -226,6 +237,7 @@
     `);
 
     wireCategoryPicker("editStockCategory", "editStockCategoryNew", "editStockCategoryNewName", "editStockCategoryNewAdd");
+    attachUnitField("editStock");
 
     $("#editStockForm").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -242,6 +254,7 @@
           category_id: categoryId ? parseInt(categoryId, 10) : undefined,
           description: $("#editStockDescription").value.trim() || null,
           unit_price: $("#editStockPrice").value ? parseFloat($("#editStockPrice").value) : null,
+          unit: readUnit("editStock"),
           low_stock_threshold: $("#editStockLow").value ? parseFloat($("#editStockLow").value) : null,
           branch_id: $("#editStockBranch") && $("#editStockBranch").value ? parseInt($("#editStockBranch").value, 10) : undefined,
         });
@@ -312,13 +325,13 @@
       if (!item || !to) { sum.textContent = "Choose what to send and who receives it."; return; }
       if (!(qty > 0)) { sum.innerHTML = `Sending <strong>${escapeHtml(item.name)}</strong> from ${escapeHtml(fromName)} to <strong>${escapeHtml(to.name)}</strong>. Enter a quantity.`; return; }
       const left = Number(item.quantity) - qty;
-      sum.innerHTML = `Sending <strong>${qty} × ${escapeHtml(item.name)}</strong> from ${escapeHtml(fromName)} to <strong>${escapeHtml(to.name)}</strong>. ` + (left < 0 ? `<span class="neg">Only ${Number(item.quantity)} available.</span>` : `${left} will be left.`);
+      sum.innerHTML = `Sending <strong>${qtyText(qty, item.unit)} of ${escapeHtml(item.name)}</strong> from ${escapeHtml(fromName)} to <strong>${escapeHtml(to.name)}</strong>. ` + (left < 0 ? `<span class="neg">Only ${qtyText(item.quantity, item.unit)} available.</span>` : `${qtyText(left, item.unit)} will be left.`);
     }
 
     function fillOptions() {
       const mine = all.filter((s) => (isOwner ? (poolPicked() ? s.branch_id == null : s.branch_id === fromId()) : s.branch_id === meId || s.branch_id == null));
       itemEl.innerHTML = mine.length
-        ? mine.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}${s.branch_id == null ? " (shared)" : ""} — ${Number(s.quantity)} in stock</option>`).join("")
+        ? mine.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}${s.branch_id == null ? " (shared)" : ""} — ${qtyText(s.quantity, s.unit)} in stock</option>`).join("")
         : `<option value="">Nothing to send</option>`;
       toEl.innerHTML = branches.filter((b) => b.id !== fromId()).map(opt).join("");
       updateSummary();
@@ -343,7 +356,7 @@
             mayReceive && `<button type="button" class="ghost-btn" data-ex="reject" data-id="${t.id}">Reject</button>`,
             maySend && `<button type="button" class="ghost-btn" data-ex="cancel" data-id="${t.id}">Cancel</button>`,
           ].filter(Boolean).join(" ");
-          return `<div class="ex-row"><div><strong>${Number(t.quantity)} × ${escapeHtml(t.item_name)}</strong><small>From ${escapeHtml(t.from_branch_name)} → to ${escapeHtml(t.to_branch_name)} · ${formatDate(t.created_at)}${t.note ? " · " + escapeHtml(t.note) : ""}</small>${waiting}</div><div>${acts}</div></div>`;
+          return `<div class="ex-row"><div><strong>${qtyText(t.quantity, t.unit)} of ${escapeHtml(t.item_name)}</strong><small>From ${escapeHtml(t.from_branch_name)} → to ${escapeHtml(t.to_branch_name)} · ${formatDate(t.created_at)}${t.note ? " · " + escapeHtml(t.note) : ""}</small>${waiting}</div><div>${acts}</div></div>`;
         }).join("") : `<p class="subtle">No transfers yet.</p>`;
       } catch (err) {
         box.innerHTML = `<p class="subtle">${escapeHtml(err.message || "Could not load transfers.")}</p>`;

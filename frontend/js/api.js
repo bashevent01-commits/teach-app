@@ -138,7 +138,9 @@ async function rawFetch(path, { method = "GET", body, isForm = false } = {}) {
   if (!res.ok) {
     const detail = typeof data === "object" && data?.detail ? data.detail : "Something went wrong.";
     const readable = Array.isArray(detail) ? detail.map((d) => String(d.msg || d).replace(/^Value error,\s*/, "")).join(". ") : detail;
-    throw new ApiError(typeof readable === "string" ? readable : JSON.stringify(readable), res.status);
+    const apiError = new ApiError(typeof readable === "string" ? readable : JSON.stringify(readable), res.status);
+    apiError.data = typeof data === "object" ? data : null;
+    throw apiError;
   }
 
   return data;

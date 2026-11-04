@@ -27,7 +27,7 @@
       const items = await Api.stock.list();
       const low = items.filter((s) => Number(s.quantity) <= (s.low_stock_threshold != null ? Number(s.low_stock_threshold) : 5)).sort((a, b) => Number(a.quantity) - Number(b.quantity));
       card.hidden = !low.length;
-      $("#lowStockList").innerHTML = low.slice(0, 4).map((s) => `<li><span>${escapeHtml(s.name)}</span><strong class="${Number(s.quantity) <= 0 ? "neg" : "warn"}">${Number(s.quantity) <= 0 ? "Out" : Number(s.quantity) + " left"}</strong></li>`).join("")
+      $("#lowStockList").innerHTML = low.slice(0, 4).map((s) => `<li><span>${escapeHtml(s.name)}</span><strong class="${Number(s.quantity) <= 0 ? "neg" : "warn"}">${Number(s.quantity) <= 0 ? "Out" : qtyText(s.quantity, s.unit) + " left"}</strong></li>`).join("")
         + (low.length > 4 ? `<li class="subtle">and ${low.length - 4} more in Stock</li>` : "");
     } catch { card.hidden = true; }
   }
@@ -167,7 +167,7 @@
       const t = g[0];
       const total = g.reduce((a, x) => a + Number(x.amount), 0);
       const title = g.length === 1
-        ? `${escapeHtml(t.category)}${t.category_type === "STOCK" && t.quantity ? ` &times; ${t.quantity}` : ""}`
+        ? `${escapeHtml(t.category)}${t.category_type === "STOCK" && t.quantity ? ` &times; ${qtyText(t.quantity, t.unit)}` : ""}`
         : `${g.slice(0, 2).map((x) => escapeHtml(x.category)).join(", ")}${g.length > 2 ? ` +${g.length - 2}` : ""}`;
       const sub = g.length === 1 ? escapeHtml(t.description || formatDate(t.transaction_date, true)) : `${g.length} items &middot; ${formatDate(t.transaction_date, true)}`;
       return `
@@ -219,7 +219,7 @@
       <p class="subtle">The date stays the same. Totals and stock update when you save.</p>
       <form id="editForm">
         <label class="field"><span>Amount (KES)</span><input type="number" id="editAmount" min="0.01" step="0.01" required value="${t.amount}" /></label>
-        ${isStock && t.quantity ? `<label class="field"><span>Quantity</span><input type="number" id="editQty" min="0.01" step="0.01" value="${t.quantity}" /></label>` : ""}
+        ${isStock && t.quantity ? `<label class="field"><span>Quantity (${escapeHtml(t.unit || "pieces")})</span><input type="number" id="editQty" min="0.01" step="0.01" value="${t.quantity}" /></label>` : ""}
         ${isStock ? "" : `<label class="field"><span>Category</span><input type="text" id="editCategory" required value="${escapeHtml(t.category)}" /></label>`}
         <label class="field"><span>Method</span><select id="editMethod">${opt("cash", "Cash")}${opt("mpesa", "M-Pesa")}${opt("bank", "Bank")}</select></label>
         <label class="field"><span>Reference (M-Pesa or bank code)</span><input type="text" id="editRef" value="${escapeHtml(t.mpesa_code || "")}" /></label>
@@ -277,7 +277,7 @@
     }
 
     const stockOptions = stockItems.map((s) =>
-      `<option value="${s.id}" data-price="${s.unit_price || 0}" data-qty="${s.quantity}">${escapeHtml(s.name)} (${s.quantity} in stock)</option>`
+      `<option value="${s.id}" data-price="${s.unit_price || 0}" data-qty="${s.quantity}" data-unit="${escapeHtml(s.unit || "pieces")}">${escapeHtml(s.name)} (${qtyText(s.quantity, s.unit)} in stock)</option>`
     ).join("");
 
     Sheet.open(title, `
@@ -312,7 +312,7 @@
           ${stockItems.length ? `
             <label class="field"><span>Item</span><select id="txnStockItem">${stockOptions}</select></label>
             <p class="file-hint" id="stockTypeHint">${stockVerb}</p>
-            <label class="field"><span>Quantity</span><input type="number" id="txnQuantity" min="0.01" step="0.01" value="1" /></label>
+            <label class="field"><span id="txnQtyLabel">Quantity</span><input type="number" id="txnQuantity" min="0.01" step="0.01" value="1" /></label>
           ` : `<p class="file-hint">No stock items yet — add one on the Stock page first, or use "Other" for this entry.</p>`}
         </div>
 
@@ -353,6 +353,7 @@
       const opt = select.selectedOptions[0];
       const price = parseFloat(opt?.dataset.price || 0);
       const qty = parseFloat($("#txnQuantity").value || 1);
+      $("#txnQtyLabel").textContent = "Quantity (" + (opt?.dataset.unit || "pieces") + ")";
       if (price > 0) $("#txnAmount").value = (price * qty).toFixed(2);
     }
     if ($("#txnStockItem")) {
@@ -417,7 +418,7 @@
         const item = stockItems.find((s) => String(s.id) === $("#txnStockItem").value);
         const quantity = parseFloat($("#txnQuantity").value);
         if (!(quantity > 0)) { showFormMessage(msg, "Enter a quantity."); return null; }
-        return { category_type: "STOCK", category: item.name, stock_item_id: item.id, quantity, amount };
+        return { category_type: "STOCK", category: item.name, stock_item_id: item.id, quantity, amount, unit: item.unit };
       }
       return { category_type: "OTHER", category: $("#txnCategory").value.trim(), amount };
     }
@@ -426,7 +427,7 @@
       const sum = cart.reduce((a, l) => a + l.amount, 0) + (touched() ? (parseFloat($("#txnAmount").value) || 0) : 0);
       $("#cartBox").hidden = !cart.length;
       $("#cartTitle").textContent = `Items in this ${flow === "income" ? "sale" : "payment"} (${cart.length})`;
-      $("#cartList").innerHTML = cart.map((l, i) => `<li><span><b>${escapeHtml(l.category)}</b>${l.quantity ? ` <small>x ${l.quantity}</small>` : ""}</span><span>${money(l.amount)} <button type="button" class="cart-x" data-i="${i}" aria-label="Remove ${escapeHtml(l.category)}">&times;</button></span></li>`).join("");
+      $("#cartList").innerHTML = cart.map((l, i) => `<li><span><b>${escapeHtml(l.category)}</b>${l.quantity ? ` <small>x ${qtyText(l.quantity, l.unit)}</small>` : ""}</span><span>${money(l.amount)} <button type="button" class="cart-x" data-i="${i}" aria-label="Remove ${escapeHtml(l.category)}">&times;</button></span></li>`).join("");
       $("#cartTotal").hidden = !cart.length;
       $("#cartTotalLabel").textContent = `Total (${cart.length + (touched() ? 1 : 0)} items)`;
       $("#cartTotalValue").textContent = money(sum);
@@ -533,7 +534,7 @@
           await Offline.queueTransaction({ ...rest, imageBlob: image, imageName: image?.name });
           Sheet.close();
           await loadData();
-          const line = { category: fields.category || (stockItems.find((x) => x.id === fields.stock_item_id) || {}).name || "Item", quantity: fields.quantity, amount: fields.amount };
+          const line = { category: fields.category || (stockItems.find((x) => x.id === fields.stock_item_id) || {}).name || "Item", quantity: fields.quantity, amount: fields.amount, unit: (stockItems.find((x) => x.id === fields.stock_item_id) || {}).unit };
           Receipt.saved(Receipt.fromFields([line], fields, business || session.full_name || "KNOW", session.full_name || "", "PENDING"));
         } else {
           showFormMessage(msg, err.message || "Could not save the transaction.");

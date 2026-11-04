@@ -204,6 +204,44 @@ const KENYA_CONSTITUENCIES = {
   "Nairobi": ["Dagoretti North", "Dagoretti South", "Embakasi Central", "Embakasi East", "Embakasi North", "Embakasi South", "Embakasi West", "Kamukunji", "Kasarani", "Kibra", "Langata", "Makadara", "Mathare", "Roysambu", "Ruaraka", "Starehe", "Westlands"],
 };
 
+// Units a business can count stock in; the key is what the server stores
+const STOCK_UNITS = [
+  ["pieces", "Pieces"], ["kg", "Kilograms (kg)"], ["g", "Grams (g)"], ["litres", "Litres (L)"], ["ml", "Millilitres (ml)"],
+  ["dozen", "Dozen"], ["packets", "Packets"], ["bottles", "Bottles"], ["cartons", "Cartons"], ["boxes", "Boxes"],
+  ["bags", "Bags"], ["sacks", "Sacks"], ["crates", "Crates"], ["trays", "Trays"], ["bundles", "Bundles"],
+  ["pairs", "Pairs"], ["metres", "Metres (m)"], ["rolls", "Rolls"], ["tins", "Tins"], ["sachets", "Sachets"],
+  ["plates", "Plates"], ["cups", "Cups"], ["loaves", "Loaves"], ["bales", "Bales"], ["gallons", "Gallons"], ["tonnes", "Tonnes"],
+];
+const UNIT_SINGULAR = { pieces: "piece", litres: "litre", packets: "packet", bottles: "bottle", cartons: "carton", boxes: "box", bags: "bag", sacks: "sack", crates: "crate", trays: "tray", bundles: "bundle", pairs: "pair", metres: "metre", rolls: "roll", tins: "tin", sachets: "sachet", plates: "plate", cups: "cup", loaves: "loaf", bales: "bale", gallons: "gallon", tonnes: "tonne" };
+
+// "12.5 kg", "1 piece", "30 pieces"
+function qtyText(qty, unit) {
+  const n = Number(qty);
+  const u = unit || "pieces";
+  return `${Number.isFinite(n) ? n : qty} ${n === 1 ? UNIT_SINGULAR[u] || u : u}`;
+}
+
+function unitWord(unit) {
+  return qtyText(1, unit).replace(/^1 /, "");
+}
+
+function unitFieldHtml(prefix, unit = "pieces") {
+  const known = STOCK_UNITS.some(([k]) => k === unit);
+  const options = STOCK_UNITS.map(([k, label]) => `<option value="${k}" ${k === unit ? "selected" : ""}>${label}</option>`).join("") + `<option value="__other__" ${known ? "" : "selected"}>Other (type your own)</option>`;
+  return `<label class="field"><span>Counted in</span><select id="${prefix}Unit">${options}</select></label>
+    <label class="field" id="${prefix}UnitOtherBox" ${known ? "hidden" : ""}><span>Your unit, such as debe or tray of 30</span><input type="text" id="${prefix}UnitOther" maxlength="20" value="${known ? "" : unit}" /></label>`;
+}
+
+function attachUnitField(prefix) {
+  const select = document.getElementById(prefix + "Unit");
+  select.addEventListener("change", () => { document.getElementById(prefix + "UnitOtherBox").hidden = select.value !== "__other__"; });
+}
+
+function readUnit(prefix) {
+  const select = document.getElementById(prefix + "Unit");
+  return select.value === "__other__" ? (document.getElementById(prefix + "UnitOther").value.trim() || "pieces") : select.value;
+}
+
 // County and constituency pickers; the constituency list follows the chosen county
 function constituencyOptions(county, selected = "") {
   const list = KENYA_CONSTITUENCIES[county] || [];

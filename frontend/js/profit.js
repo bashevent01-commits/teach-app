@@ -31,7 +31,7 @@
 
   function itemRow(i) {
     const flag = Number(i.unknown_units) > 0 ? `<span class="pill warn">${escapeHtml(i.unknown_units)} without cost</span>` : "";
-    return `<li class="pf-row"><div><strong>${escapeHtml(i.name)}</strong><small>${escapeHtml(i.units)} sold · sales ${money(i.revenue)} · cost ${money(i.cost)} ${flag}</small></div><div class="pf-right"><strong class="${tone(i.profit)}">${money(i.profit)}</strong><small>${pct(i.margin)}</small></div></li>`;
+    return `<li class="pf-row"><div><strong>${escapeHtml(i.name)}</strong><small>${escapeHtml(qtyText(i.units, i.unit))} sold · sales ${money(i.revenue)} · cost ${money(i.cost)} ${flag}</small></div><div class="pf-right"><strong class="${tone(i.profit)}">${money(i.profit)}</strong><small>${pct(i.margin)}</small></div></li>`;
   }
 
   async function load() {
@@ -66,7 +66,7 @@
     try { costs = await apiFetch("/api/profit/costs"); } catch { costs = []; }
     const missing = costs.filter((c) => c.avg_cost == null).length;
     $("#pfCosts").innerHTML = costs.length ? costs.map((c) => `
-      <li class="pf-row"><div><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.branch_name || "Unassigned")} · price ${c.unit_price != null ? money(c.unit_price) : "—"} · ${escapeHtml(c.quantity)} in stock</small></div>
+      <li class="pf-row"><div><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.branch_name || "Unassigned")} · price ${c.unit_price != null ? money(c.unit_price) : "—"} · ${escapeHtml(qtyText(c.quantity, c.unit))} in stock</small></div>
         <div class="pf-right">${c.avg_cost == null ? `<span class="pill warn">No cost</span>` : `<strong>${money(c.avg_cost)}</strong>`}<button type="button" class="ghost-btn" data-cost="${c.item_id}">${c.avg_cost == null ? "Set cost" : "Edit"}</button></div></li>`).join("") : `<li class="subtle">No stock items yet.</li>`;
     $("#pfCostCard .card-head .subtle").textContent = missing ? `${missing} without a cost` : "What one unit costs you";
   }

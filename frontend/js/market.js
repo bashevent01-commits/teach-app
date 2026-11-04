@@ -16,11 +16,11 @@
         <tr>
           <td><strong>${escapeHtml(c.category_name)}</strong></td>
           <td>${c.institution_count}</td>
-          <td>${money(c.average_price)}</td>
+          <td>${money(c.average_price)} <small>per ${unitWord(c.unit)}</small></td>
           <td>${money(c.median_price)}</td>
           <td>${money(c.min_price)}</td>
           <td>${money(c.max_price)}</td>
-          <td>${c.total_quantity_sold}</td>
+          <td>${escapeHtml(c.quantity_sold_text || String(c.total_quantity_sold))}</td>
           <td><button class="ghost-btn" data-view="${c.category_id}">View trend</button></td>
         </tr>
       `).join("") : `<tr class="empty-row"><td colspan="8">No category has reached the 5-institution minimum yet — insights will appear here as more institutions add priced stock items.</td></tr>`;
@@ -52,9 +52,9 @@
       const d = await Api.marketAnalysis.categoryDetail(categoryId);
       $("#detailTitle").textContent = d.category_name;
       $("#kpiInstitutions").textContent = d.institution_count;
-      $("#kpiAvg").textContent = money(d.average_price);
+      $("#kpiAvg").textContent = money(d.average_price) + " per " + unitWord(d.unit);
       $("#kpiMinMax").textContent = `${money(d.min_price)} / ${money(d.max_price)}`;
-      $("#kpiQty").textContent = d.total_quantity_sold;
+      $("#kpiQty").textContent = d.quantity_sold_text || d.total_quantity_sold;
 
       renderTrend(d.trend);
       renderRegions(d.regional_breakdown);
