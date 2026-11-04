@@ -12,6 +12,8 @@ import com.knowapp.android.data.MpesaParser
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.knowapp.android.data.qtyText
+import com.knowapp.android.data.convertQty
+import com.knowapp.android.data.compatibleUnits
 import com.knowapp.android.data.model.resolveMediaUrl
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.filled.CheckCircle
@@ -34,6 +36,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -683,6 +686,7 @@ private fun RecordSheet(
     var description by remember { mutableStateOf("") }
     var itemName by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("") }
+    var saleUnit by remember { mutableStateOf("") }
     var reference by remember { mutableStateOf("") }
     var payer by remember { mutableStateOf("") }
     var pastedMessage by remember { mutableStateOf("") }
@@ -737,7 +741,14 @@ private fun RecordSheet(
     }
 
     val item = stock.firstOrNull { it.name == itemName }
-    val qty = quantity.toBigDecimalOrNull()
+    // The sale can be entered in any measure that converts to the item's own unit; stock always moves in the item's unit
+    val itemUnit = item?.unit ?: "pieces"
+    val unitOptions = if (item != null) compatibleUnits(itemUnit) else listOf("pieces")
+    val activeUnit = if (saleUnit in unitOptions) saleUnit else itemUnit
+    val entered = quantity.toBigDecimalOrNull()
+    val qty = if (useStock && item != null) entered?.let { convertQty(it, activeUnit, itemUnit) } else entered
+    val tooSmall = useStock && entered != null && entered > BigDecimal.ZERO && qty != null && qty < BigDecimal("0.01")
+    val sendQuantity = qty?.stripTrailingZeros()?.toPlainString()
     val computed = if (useStock && item?.unitPrice != null && qty != null) item.unitPrice.toBigDecimalOrNull()?.multiply(qty) else null
     val shownTotal = amount.toBigDecimalOrNull() ?: computed
 
@@ -750,6 +761,7 @@ private fun RecordSheet(
         val chosen = amount.toBigDecimalOrNull() ?: computed
         val problem = when {
             useStock && item == null -> "Choose a stock item."
+            useStock && tooSmall -> "That is too small to record. The smallest amount is 0.01 $itemUnit."
             useStock && (qty == null || qty <= BigDecimal.ZERO) -> "Enter a quantity."
             !useStock && category.isBlank() -> "Type what this item is, for example Sugar or Delivery."
             chosen == null || chosen <= BigDecimal.ZERO -> "Enter an amount."
@@ -757,7 +769,7 @@ private fun RecordSheet(
         }
         error = problem
         if (problem != null) return null
-        return CartLine(useStock, if (useStock) item!!.name else category.trim(), if (useStock) item!!.id else null, if (useStock) quantity else null, chosen!!, if (useStock) item!!.unit else null)
+        return CartLine(useStock, if (useStock) item!!.name else category.trim(), if (useStock) item!!.id else null, if (useStock) sendQuantity else null, chosen!!, if (useStock) item!!.unit else null)
     }
 
     fun addToCart() {
@@ -765,6 +777,7 @@ private fun RecordSheet(
         cart.add(line)
         amount = ""
         quantity = ""
+        saleUnit = ""
         itemName = ""
         category = ""
         error = null
@@ -800,7 +813,7 @@ private fun RecordSheet(
                 description = description.trim().ifBlank { null },
                 amount = chosenAmount.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString(),
                 stockItemId = if (useStock) item?.id else null,
-                quantity = if (useStock) quantity else null,
+                quantity = if (useStock) sendQuantity else null,
                 mpesaCode = if (method != "cash") reference.trim().ifBlank { null } else null,
                 mpesaPayerName = if (method != "cash") payer.trim().ifBlank { null } else null,
             ),
@@ -880,10 +893,20 @@ private fun RecordSheet(
                     if (item?.unitPrice != null) {
                         Text("Price ${kes(item.unitPrice)} per ${qtyText("1", item.unit).removePrefix("1 ")} · ${qtyText(item.quantity, item.unit)} in stock", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    OutlinedTextField(
-                        value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity" + (item?.let { " (${it.unit})" } ?: "")) }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), shape = SmallRadius,
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                        OutlinedTextField(
+                            value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity") }, singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f), shape = SmallRadius,
+                        )
+                        SimpleDropdown("Measure", unitOptions, activeUnit, { saleUnit = it }, modifier = Modifier.width(132.dp))
+                    }
+                    if (item != null && activeUnit != itemUnit && qty != null) {
+                        Text(
+                            if (tooSmall) "Too small to record. The smallest amount is 0.01 $itemUnit." else "That takes ${qtyText(sendQuantity, itemUnit)} out of stock.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (tooSmall) DangerRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
@@ -1007,6 +1030,7 @@ private fun RecordSheet(
                     val chosenAmount = amount.toBigDecimalOrNull() ?: computed
                     error = when {
                         useStock && item == null -> "Choose a stock item."
+                        useStock && tooSmall -> "That is too small to record. The smallest amount is 0.01 $itemUnit."
                         useStock && (qty == null || qty <= BigDecimal.ZERO) -> "Enter a quantity."
                         chosenAmount == null || chosenAmount <= BigDecimal.ZERO -> "Enter an amount."
                         else -> null

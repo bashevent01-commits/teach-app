@@ -206,7 +206,7 @@ const KENYA_CONSTITUENCIES = {
 
 // Units a business can count stock in; the key is what the server stores
 const STOCK_UNITS = [
-  ["pieces", "Pieces"], ["kg", "Kilograms (kg)"], ["g", "Grams (g)"], ["litres", "Litres (L)"], ["ml", "Millilitres (ml)"],
+  ["pieces", "Pieces"], ["kg", "Kilograms (kg)"], ["g", "Grams (g)"], ["mg", "Milligrams (mg)"], ["litres", "Litres (L)"], ["ml", "Millilitres (ml)"],
   ["dozen", "Dozen"], ["packets", "Packets"], ["bottles", "Bottles"], ["cartons", "Cartons"], ["boxes", "Boxes"],
   ["bags", "Bags"], ["sacks", "Sacks"], ["crates", "Crates"], ["trays", "Trays"], ["bundles", "Bundles"],
   ["pairs", "Pairs"], ["metres", "Metres (m)"], ["rolls", "Rolls"], ["tins", "Tins"], ["sachets", "Sachets"],
@@ -219,6 +219,28 @@ function qtyText(qty, unit) {
   const n = Number(qty);
   const u = unit || "pieces";
   return `${Number.isFinite(n) ? n : qty} ${n === 1 ? UNIT_SINGULAR[u] || u : u}`;
+}
+
+// Measures that can be swapped for each other, each with its size in the family's base unit
+const UNIT_FAMILIES = {
+  mg: ["weight", 0.001], g: ["weight", 1], kg: ["weight", 1000], tonnes: ["weight", 1000000],
+  ml: ["volume", 1], litres: ["volume", 1000], gallons: ["volume", 3785.41],
+  pieces: ["count", 1], dozen: ["count", 12], pairs: ["count", 2],
+};
+
+function compatibleUnits(unit) {
+  const family = UNIT_FAMILIES[unit];
+  if (!family) return [unit];
+  return STOCK_UNITS.map(([k]) => k).filter((k) => UNIT_FAMILIES[k] && UNIT_FAMILIES[k][0] === family[0]);
+}
+
+// The quantity expressed in the item's own unit, to two decimals, or NaN when the measures do not convert
+function convertQty(qty, from, to) {
+  if (from === to) return Math.round(qty * 100) / 100;
+  const f = UNIT_FAMILIES[from];
+  const t = UNIT_FAMILIES[to];
+  if (!f || !t || f[0] !== t[0]) return NaN;
+  return Math.round(((qty * f[1]) / t[1]) * 100) / 100;
 }
 
 function unitWord(unit) {

@@ -4,7 +4,7 @@ from app.utils.names import key_of
 
 # Units of measure shops commonly use; a business can also type its own
 UNITS = [
-    ("pieces", "Pieces"), ("kg", "Kilograms (kg)"), ("g", "Grams (g)"), ("litres", "Litres (L)"), ("ml", "Millilitres (ml)"),
+    ("pieces", "Pieces"), ("kg", "Kilograms (kg)"), ("g", "Grams (g)"), ("mg", "Milligrams (mg)"), ("litres", "Litres (L)"), ("ml", "Millilitres (ml)"),
     ("dozen", "Dozen"), ("packets", "Packets"), ("bottles", "Bottles"), ("cartons", "Cartons"), ("boxes", "Boxes"),
     ("bags", "Bags"), ("sacks", "Sacks"), ("crates", "Crates"), ("trays", "Trays"), ("bundles", "Bundles"),
     ("pairs", "Pairs"), ("metres", "Metres (m)"), ("rolls", "Rolls"), ("tins", "Tins"), ("sachets", "Sachets"),
@@ -16,6 +16,7 @@ _ALIASES = {
     "pieces": ["piece", "pc", "pcs", "unit", "each", "item", "no", "nos", "number"],
     "kg": ["kilo", "kilogram", "kgs", "kilograms", "kilos"],
     "g": ["gram", "gm", "gms", "grams"],
+    "mg": ["milligram", "milligrams", "mgs"],
     "litres": ["litre", "liter", "liters", "ltr", "ltrs", "lt", "l"],
     "ml": ["millilitre", "milliliter", "mls", "millilitres", "milliliters"],
     "dozen": ["doz", "dozens"],

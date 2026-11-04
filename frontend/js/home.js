@@ -312,7 +312,7 @@
           ${stockItems.length ? `
             <label class="field"><span>Item</span><select id="txnStockItem">${stockOptions}</select></label>
             <p class="file-hint" id="stockTypeHint">${stockVerb}</p>
-            <label class="field"><span id="txnQtyLabel">Quantity</span><input type="number" id="txnQuantity" min="0.01" step="0.01" value="1" /></label>
+            <div class="qty-row"><label class="field"><span>Quantity</span><input type="number" id="txnQuantity" min="0.001" step="any" value="1" /></label><label class="field"><span>Measure</span><select id="txnUnit"></select></label></div><p class="file-hint" id="txnQtyHint" hidden></p>
           ` : `<p class="file-hint">No stock items yet — add one on the Stock page first, or use "Other" for this entry.</p>`}
         </div>
 
@@ -347,16 +347,34 @@
       });
     });
 
+    // What the cashier typed, converted into the item's own unit; stock always moves in that unit
+    function stockQty() {
+      const opt = $("#txnStockItem")?.selectedOptions[0];
+      const entered = parseFloat($("#txnQuantity").value || 1);
+      if (!(entered > 0)) return NaN;
+      return convertQty(entered, $("#txnUnit").value || opt?.dataset.unit || "pieces", opt?.dataset.unit || "pieces");
+    }
+
     function applyStockPricing() {
       const select = $("#txnStockItem");
       if (!select) return;
       const opt = select.selectedOptions[0];
       const price = parseFloat(opt?.dataset.price || 0);
-      const qty = parseFloat($("#txnQuantity").value || 1);
-      $("#txnQtyLabel").textContent = "Quantity (" + (opt?.dataset.unit || "pieces") + ")";
-      if (price > 0) $("#txnAmount").value = (price * qty).toFixed(2);
+      const itemUnit = opt?.dataset.unit || "pieces";
+      const unitSelect = $("#txnUnit");
+      if (unitSelect.dataset.for !== itemUnit) {
+        unitSelect.innerHTML = compatibleUnits(itemUnit).map((u) => `<option value="${u}" ${u === itemUnit ? "selected" : ""}>${u}</option>`).join("");
+        unitSelect.dataset.for = itemUnit;
+      }
+      const qty = stockQty();
+      const hint = $("#txnQtyHint");
+      const shown = unitSelect.value !== itemUnit && qty > 0;
+      hint.hidden = !shown && !(qty === 0);
+      hint.textContent = qty === 0 ? `Too small to record. The smallest amount is 0.01 ${itemUnit}.` : `That takes ${qtyText(qty, itemUnit)} out of stock.`;
+      if (price > 0 && qty > 0) $("#txnAmount").value = (price * qty).toFixed(2);
     }
     if ($("#txnStockItem")) {
+      $("#txnUnit").addEventListener("change", applyStockPricing);
       $("#txnStockItem").addEventListener("change", applyStockPricing);
       $("#txnQuantity").addEventListener("input", applyStockPricing);
     }
@@ -416,8 +434,8 @@
       if (!(amount > 0)) { showFormMessage(msg, "Enter an amount."); return null; }
       if (categoryType === "STOCK") {
         const item = stockItems.find((s) => String(s.id) === $("#txnStockItem").value);
-        const quantity = parseFloat($("#txnQuantity").value);
-        if (!(quantity > 0)) { showFormMessage(msg, "Enter a quantity."); return null; }
+        const quantity = stockQty();
+        if (!(quantity > 0)) { showFormMessage(msg, quantity === 0 ? `That is too small to record. The smallest amount is 0.01 ${item.unit}.` : "Enter a quantity."); return null; }
         return { category_type: "STOCK", category: item.name, stock_item_id: item.id, quantity, amount, unit: item.unit };
       }
       return { category_type: "OTHER", category: $("#txnCategory").value.trim(), amount };
@@ -513,7 +531,7 @@
         category_type: categoryType,
         category: categoryType === "OTHER" ? $("#txnCategory").value.trim() : undefined,
         stock_item_id: categoryType === "STOCK" ? parseInt($("#txnStockItem").value, 10) : undefined,
-        quantity: categoryType === "STOCK" ? parseFloat($("#txnQuantity").value) : undefined,
+        quantity: categoryType === "STOCK" ? stockQty() : undefined,
         amount: parseFloat($("#txnAmount").value),
         description: $("#txnDescription").value.trim() || null,
         mpesa_code: mpesaCode,

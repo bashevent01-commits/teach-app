@@ -27,6 +27,7 @@ ok("word order and small typos", same_thing("Oil cooking", "cooking oil") and sa
 ok("sizes stay different", not same_thing("Bread (400g)", "Bread (800g)") and not same_thing("Milk 500ml", "Milk 1l"))
 ok("different things stay different", not same_thing("Soap", "Soup") and not same_thing("Pen", "Pencil") and not same_thing("Rice", "Rich"))
 ok("units normalise", normalize_unit("Kgs") == "kg" and normalize_unit("KILO") == "kg" and normalize_unit("pcs") == "pieces" and normalize_unit("Liters") == "litres" and normalize_unit("") == "pieces")
+ok("milligrams normalise", normalize_unit("Milligrams") == "mg" and normalize_unit("MG") == "mg")
 ok("custom unit is tidied", normalize_unit("  Debe  ") == "debe" and normalize_unit("gunia") == "sacks")
 db = S(); db.add(User(username="boss", full_name="Boss", hashed_password=hash_password(pw), role=UserRole.SUPER_ADMIN)); db.commit(); db.close()
 login = lambda u: {"authorization": "Bearer " + c.post("/api/auth/login", data={"username": u, "password": pw}).json()["access_token"]}
