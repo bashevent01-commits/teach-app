@@ -154,7 +154,7 @@ fun ProfitScreen(viewModel: ProfitViewModel, onBack: () -> Unit) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(c.name, fontWeight = FontWeight.SemiBold)
-                        Text("${c.branchName ?: "Unassigned"} \u00B7 price ${kes(c.unitPrice)} \u00B7 ${c.quantity} in stock", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${c.branchName ?: "Unassigned"} \u00B7 price ${kes(c.unitPrice)} \u00B7 ${com.knowapp.android.data.qtyText(c.quantity, c.unit)} in stock", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     TextButton(onClick = { costText = c.avgCost ?: ""; editing = c }) { Text(if (c.avgCost == null) "Set cost" else kes(c.avgCost), color = if (c.avgCost == null) WarnAmber else MaterialTheme.colorScheme.primary) }
                 }
@@ -193,7 +193,7 @@ private fun ItemRow(i: ProfitItemOut) {
         Column(modifier = Modifier.weight(1f)) {
             Text(i.name, fontWeight = FontWeight.SemiBold)
             val flag = if ((i.unknownUnits.toBigDecimalOrNull()?.signum() ?: 0) > 0) " \u00B7 ${i.unknownUnits} without cost" else ""
-            Text("${i.units} sold \u00B7 sales ${kes(i.revenue)} \u00B7 cost ${kes(i.cost)}$flag", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${com.knowapp.android.data.qtyText(i.units, i.unit)} sold \u00B7 sales ${kes(i.revenue)} \u00B7 cost ${kes(i.cost)}$flag", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
             Text(kes(i.profit), color = toneOf(i.profit), fontWeight = FontWeight.Bold)

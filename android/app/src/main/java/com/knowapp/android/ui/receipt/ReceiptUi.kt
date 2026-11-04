@@ -64,7 +64,7 @@ fun ReceiptPaper(d: ReceiptData, modifier: Modifier = Modifier) {
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(l.name, color = PaperInk, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    if (l.quantity != null) Text("${l.quantity}${l.unitPrice?.let { " x " + receiptMoney(it) } ?: ""}", color = PaperMuted, fontSize = 12.sp)
+                    if (l.quantity != null) Text("${com.knowapp.android.data.qtyText(l.quantity, l.unit)}${l.unitPrice?.let { " x " + receiptMoney(it) } ?: ""}", color = PaperMuted, fontSize = 12.sp)
                 }
                 Text(receiptMoney(l.amount), color = PaperInk, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }

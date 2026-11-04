@@ -11,15 +11,15 @@ object MarketDemoData {
 
     fun isDemoId(categoryId: Int) = categoryId >= FIRST_ID
 
-    private class Seed(val id: Int, val name: String, val institutions: Int, val price: Double, val qty: String, val drift: Double)
+    private class Seed(val id: Int, val name: String, val institutions: Int, val price: Double, val qty: String, val drift: Double, val unit: String = "pieces")
 
     private val seeds = listOf(
-        Seed(9001, "Maize flour (2 kg)", 14, 168.0, "18,420", 0.012),
-        Seed(9002, "Cooking oil (1 L)", 12, 285.0, "9,310", 0.018),
-        Seed(9003, "Sugar (1 kg)", 11, 192.0, "12,775", -0.006),
-        Seed(9004, "Exercise books (48 pg)", 9, 42.0, "26,040", 0.009),
-        Seed(9005, "Bar soap", 8, 118.0, "7,260", 0.004),
-        Seed(9006, "Bottled water (500 ml)", 7, 38.0, "31,500", 0.002),
+        Seed(9001, "Maize flour", 14, 84.0, "36,840", 0.012, "kg"),
+        Seed(9002, "Cooking oil", 12, 285.0, "9,310", 0.018, "litres"),
+        Seed(9003, "Sugar", 11, 192.0, "12,775", -0.006, "kg"),
+        Seed(9004, "Exercise books", 9, 42.0, "26,040", 0.009, "pieces"),
+        Seed(9005, "Bar soap", 8, 118.0, "7,260", 0.004, "pieces"),
+        Seed(9006, "Bottled water", 7, 38.0, "31,500", 0.002, "bottles"),
     )
 
     private val regions = listOf(
@@ -36,7 +36,7 @@ object MarketDemoData {
     private fun r(v: Double) = Math.round(v * 100.0) / 100.0
 
     fun categories(): List<CategoryInsightOut> = seeds.map {
-        CategoryInsightOut(it.id, it.name, it.institutions, r(it.price), r(it.price * 0.99), r(it.price * 0.82), r(it.price * 1.21), it.qty)
+        CategoryInsightOut(it.id, it.name, it.institutions, r(it.price), r(it.price * 0.99), r(it.price * 0.82), r(it.price * 1.21), it.qty, unit = it.unit, quantitySoldText = "${it.qty} ${it.unit}")
     }
 
     fun detail(categoryId: Int): CategoryDetailOut? {
@@ -53,6 +53,6 @@ object MarketDemoData {
             val avg = s.price * factor
             RegionBreakdownEntry(name, county, maxOf(5, s.institutions / 3 - i / 3), r(avg), r(avg * 0.99), r(avg * 0.88), r(avg * 1.14))
         }
-        return CategoryDetailOut(s.id, s.name, s.institutions, r(s.price), r(s.price * 0.99), r(s.price * 0.82), r(s.price * 1.21), s.qty, breakdown, trend, constituencies)
+        return CategoryDetailOut(s.id, s.name, s.institutions, r(s.price), r(s.price * 0.99), r(s.price * 0.82), r(s.price * 1.21), s.qty, breakdown, trend, constituencies, unit = s.unit, quantitySoldText = "${s.qty} ${s.unit}")
     }
 }

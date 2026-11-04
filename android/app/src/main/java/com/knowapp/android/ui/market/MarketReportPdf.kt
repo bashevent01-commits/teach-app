@@ -72,10 +72,10 @@ object MarketReportPdf {
 
         // Four figure tiles
         val tiles = listOf(
-            "AVERAGE PRICE" to kesText(d.averagePrice),
+            "AVERAGE PRICE PER " + com.knowapp.android.data.qtyText("1", d.unit).removePrefix("1 ").uppercase() to kesText(d.averagePrice),
             "MEDIAN PRICE" to kesText(d.medianPrice),
             "LOWEST - HIGHEST" to String.format(Locale.US, "%,.2f - %,.2f", d.minPrice, d.maxPrice),
-            "QUANTITY SOLD" to d.totalQuantitySold,
+            "QUANTITY SOLD" to (d.quantitySoldText ?: d.totalQuantitySold),
         )
         val tw = (PR - PL - 24f) / 4f
         tiles.forEachIndexed { i, (name, value) ->

@@ -98,7 +98,7 @@ private fun CategoryDetailContent(detail: CategoryDetailOut, isDemo: Boolean, on
         item {
             AppCard(modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("AVERAGE PRICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                    Text("AVERAGE PRICE PER " + com.knowapp.android.data.qtyText("1", detail.unit).removePrefix("1 ").uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                     if (isDemo) Text("DEMO", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Brand, modifier = Modifier.background(BrandSoft, PillShape).padding(horizontal = 8.dp, vertical = 2.dp))
                 }
                 Text(kesText(detail.averagePrice), fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 34.sp, modifier = Modifier.padding(top = 4.dp))
@@ -115,7 +115,7 @@ private fun CategoryDetailContent(detail: CategoryDetailOut, isDemo: Boolean, on
                 Column(modifier = Modifier.padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Tile("Institutions", "${detail.institutionCount}", Modifier.weight(1f))
-                        Tile("Quantity sold", detail.totalQuantitySold, Modifier.weight(1f))
+                        Tile("Quantity sold", detail.quantitySoldText ?: detail.totalQuantitySold, Modifier.weight(1f))
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Tile("Lowest", kesText(detail.minPrice), Modifier.weight(1f))

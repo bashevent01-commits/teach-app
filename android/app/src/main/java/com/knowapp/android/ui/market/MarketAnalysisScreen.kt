@@ -137,14 +137,14 @@ private fun CategoryInsightRow(category: CategoryInsightOut, onClick: () -> Unit
             Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                 Text(category.categoryName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "${category.institutionCount} institutions · ${category.totalQuantitySold} sold",
+                    "${category.institutionCount} institutions · ${category.quantitySoldText ?: category.totalQuantitySold} sold",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(kesText(category.averagePrice), fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text(kesText(category.averagePrice) + " per " + com.knowapp.android.data.qtyText("1", category.unit).removePrefix("1 "), fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Text(
                     String.format(java.util.Locale.US, "%,.2f - %,.2f", category.minPrice, category.maxPrice),
                     style = MaterialTheme.typography.labelSmall,

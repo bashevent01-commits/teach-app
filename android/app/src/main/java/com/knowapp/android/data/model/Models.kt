@@ -26,6 +26,7 @@ data class TransactionOut(
     val amount: String, // Decimal serialized as string by FastAPI/Pydantic
     @SerializedName("stock_item_id") val stockItemId: Int? = null,
     val quantity: String? = null,
+    val unit: String? = null,
     @SerializedName("mpesa_code") val mpesaCode: String? = null,
     @SerializedName("mpesa_payer_name") val mpesaPayerName: String? = null,
     @SerializedName("transaction_date") val transactionDate: String,
@@ -46,6 +47,7 @@ data class StockItemOut(
     val description: String? = null,
     @SerializedName("unit_price") val unitPrice: String? = null,
     val quantity: String,
+    val unit: String = "pieces",
     @SerializedName("low_stock_threshold") val lowStockThreshold: String? = null,
     @SerializedName("created_at") val createdAt: String,
 )
@@ -124,6 +126,8 @@ data class CategoryInsightOut(
     @SerializedName("min_price") val minPrice: Double,
     @SerializedName("max_price") val maxPrice: Double,
     @SerializedName("total_quantity_sold") val totalQuantitySold: String,
+    val unit: String = "pieces",
+    @SerializedName("quantity_sold_text") val quantitySoldText: String? = null,
 )
 
 data class RegionBreakdownEntry(
@@ -154,6 +158,8 @@ data class CategoryDetailOut(
     @SerializedName("regional_breakdown") val regionalBreakdown: List<RegionBreakdownEntry>,
     val trend: List<TrendPointOut>,
     @SerializedName("constituency_breakdown") val constituencyBreakdown: List<RegionBreakdownEntry>? = null,
+    val unit: String = "pieces",
+    @SerializedName("quantity_sold_text") val quantitySoldText: String? = null,
 )
 
 data class ProductCategoryOut(
@@ -393,6 +399,7 @@ data class TransferOut(
     val id: Int,
     @SerializedName("item_name") val itemName: String,
     val quantity: String,
+    val unit: String = "pieces",
     @SerializedName("from_branch_id") val fromBranchId: Int,
     @SerializedName("from_branch_name") val fromBranchName: String,
     @SerializedName("to_branch_id") val toBranchId: Int,
@@ -423,6 +430,7 @@ data class ProfitTotals(
 data class ProfitItemOut(
     @SerializedName("item_id") val itemId: Int?,
     val name: String,
+    val unit: String = "pieces",
     val units: String,
     val revenue: String,
     val cost: String,
@@ -447,6 +455,7 @@ data class CostItemOut(
     @SerializedName("unit_price") val unitPrice: String? = null,
     @SerializedName("avg_cost") val avgCost: String? = null,
     val quantity: String = "0",
+    val unit: String = "pieces",
 )
 
 data class CostBody(@SerializedName("avg_cost") val avgCost: String)

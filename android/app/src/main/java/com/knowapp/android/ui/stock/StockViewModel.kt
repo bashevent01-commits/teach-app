@@ -34,6 +34,7 @@ data class StockUiState(
     val transfers: List<TransferOut> = emptyList(),
     val pendingCount: Int = 0,
     val exchangeBusy: Boolean = false,
+    val suggestedCategory: String? = null,
 )
 
 class StockViewModel(
@@ -111,6 +112,8 @@ class StockViewModel(
         _state.value = _state.value.copy(message = null)
     }
 
+    fun clearSuggestion() { _state.value = _state.value.copy(suggestedCategory = null) }
+
     private fun fail(text: String, onDone: (Boolean) -> Unit) {
         _state.value = _state.value.copy(saving = false, message = text)
         onDone(false)
@@ -126,6 +129,7 @@ class StockViewModel(
         quantity: String,
         assignBranch: String,
         lowAt: String,
+        unit: String,
         onDone: (Boolean) -> Unit,
     ) {
         viewModelScope.launch {
@@ -139,14 +143,18 @@ class StockViewModel(
             val categoryId: Int = if (categoryName == NEW_CATEGORY) {
                 if (newCategory.isBlank()) return@launch fail("Enter a name for the new category.", onDone)
                 val created = repository.createCategory(newCategory.trim())
-                created.getOrNull()?.id ?: return@launch fail(created.exceptionOrNull()?.message ?: "Couldn't create the category.", onDone)
+                created.getOrNull()?.id ?: run {
+                    val clash = created.exceptionOrNull() as? com.knowapp.android.data.repository.CategoryExistsException
+                    if (clash != null) _state.value = _state.value.copy(suggestedCategory = clash.existingName)
+                    return@launch fail(created.exceptionOrNull()?.message ?: "Couldn't create the category.", onDone)
+                }
             } else {
                 _state.value.categories.firstOrNull { it.name == categoryName }?.id ?: return@launch fail("Choose a category.", onDone)
             }
 
             val description = description.trim().ifBlank { null }
-            val result = if (editing == null) repository.create(name.trim(), categoryId, description, priceValue, quantityValue, if (isOwner) _state.value.branches.firstOrNull { it.name == _state.value.branchFilter }?.id else null, lowValue)
-            else repository.update(editing.id, name.trim(), categoryId, description, priceValue, _state.value.branches.firstOrNull { it.name == assignBranch }?.id, lowValue)
+            val result = if (editing == null) repository.create(name.trim(), categoryId, description, priceValue, quantityValue, if (isOwner) _state.value.branches.firstOrNull { it.name == _state.value.branchFilter }?.id else null, lowValue, unit)
+            else repository.update(editing.id, name.trim(), categoryId, description, priceValue, _state.value.branches.firstOrNull { it.name == assignBranch }?.id, lowValue, unit)
 
             result.onSuccess {
                 _state.value = _state.value.copy(saving = false, message = if (editing == null) "Item added." else "Item updated.")

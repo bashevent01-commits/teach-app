@@ -55,6 +55,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.knowapp.android.data.OTHER_UNIT
+import com.knowapp.android.data.STOCK_UNITS
+import com.knowapp.android.data.qtyText
+import com.knowapp.android.data.unitChoice
+import com.knowapp.android.data.unitKey
 import com.knowapp.android.data.model.StockItemOut
 import com.knowapp.android.ui.components.kes
 import com.knowapp.android.ui.components.SimpleDropdown
@@ -251,8 +256,8 @@ fun StockScreen(
             state = state,
             canAssign = viewModel.isOwner && editing?.branchId == null && editing != null,
             onDismiss = { showForm = false },
-            onSave = { name, category, newCategory, description, price, qty, branch, lowAt ->
-                viewModel.save(editing, name, category, newCategory, description, price, qty, branch, lowAt) { ok -> if (ok) showForm = false }
+            onSave = { name, category, newCategory, description, price, qty, branch, lowAt, unit ->
+                viewModel.save(editing, name, category, newCategory, description, price, qty, branch, lowAt, unit) { ok -> if (ok) showForm = false }
             },
             onDelete = { item -> viewModel.delete(item) { ok -> if (ok) showForm = false } },
             docCount = editing?.let { state.docCounts[it.id] ?: 0 } ?: 0,
@@ -289,7 +294,7 @@ private fun StockCard(item: StockItemOut, docCount: Int, onClick: () -> Unit) {
         Column(horizontalAlignment = Alignment.End) {
             Text(item.unitPrice?.let { kes(it) } ?: "No price", fontWeight = FontWeight.Bold)
             Text(
-                if (qty <= BigDecimal.ZERO) "Out of stock" else if (low) "${qty.stripTrailingZeros().toPlainString()} left · low" else "${qty.stripTrailingZeros().toPlainString()} in stock",
+                if (qty <= BigDecimal.ZERO) "Out of stock" else if (low) "${qtyText(item.quantity, item.unit)} left · low" else "${qtyText(item.quantity, item.unit)} in stock",
                 style = MaterialTheme.typography.bodySmall,
                 color = if (qty <= BigDecimal.ZERO) DangerRed else if (low) WarnAmber else MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -303,7 +308,7 @@ private fun StockForm(
     editing: StockItemOut?,
     state: StockUiState,
     onDismiss: () -> Unit,
-    onSave: (String, String, String, String, String, String, String, String) -> Unit,
+    onSave: (String, String, String, String, String, String, String, String, String) -> Unit,
     canAssign: Boolean = false,
     onDelete: (StockItemOut) -> Unit,
     docCount: Int,
@@ -322,6 +327,14 @@ private fun StockForm(
     var confirmDelete by remember { mutableStateOf(false) }
     var branch by remember { mutableStateOf("") }
     var lowAt by remember { mutableStateOf(editing?.lowStockThreshold?.toBigDecimalOrNull()?.stripTrailingZeros()?.toPlainString() ?: "") }
+    var unitLabelChoice by remember { mutableStateOf(unitChoice(editing?.unit)) }
+    var customUnit by remember { mutableStateOf(if (unitChoice(editing?.unit) == OTHER_UNIT) editing?.unit ?: "" else "") }
+    val chosenUnit = if (unitLabelChoice == OTHER_UNIT) customUnit.trim().ifBlank { "pieces" } else unitKey(unitLabelChoice) ?: "pieces"
+
+    // When the shared list already has a category that means the same, switch to it
+    androidx.compose.runtime.LaunchedEffect(state.suggestedCategory) {
+        state.suggestedCategory?.let { category = it; newCategory = "" }
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -334,11 +347,16 @@ private fun StockForm(
                 SimpleDropdown("Assign to branch", listOf("Keep shared") + state.branches.map { it.name }, branch.ifEmpty { "Keep shared" }, { branch = if (it == "Keep shared") "" else it })
             }
             SimpleDropdown("Category", categoryNames, category, { category = it })
+            state.suggestedCategory?.let { Text("Everyone shares one list of categories, so please use \"$it\" instead of adding a new one.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
             if (category == NEW_CATEGORY) {
                 OutlinedTextField(value = newCategory, onValueChange = { newCategory = it }, label = { Text("New category name") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
             }
+            SimpleDropdown("Counted in", STOCK_UNITS.map { it.second } + OTHER_UNIT, unitLabelChoice, { unitLabelChoice = it })
+            if (unitLabelChoice == OTHER_UNIT) {
+                OutlinedTextField(value = customUnit, onValueChange = { customUnit = it }, label = { Text("Your unit, such as debe or tray of 30") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
+            }
             OutlinedTextField(
-                value = price, onValueChange = { price = it }, label = { Text("Unit price (KES)") }, singleLine = true,
+                value = price, onValueChange = { price = it }, label = { Text("Price for one ${unitWordFor(chosenUnit)} (KES)") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), shape = SmallRadius,
             )
             OutlinedTextField(
@@ -348,7 +366,7 @@ private fun StockForm(
             )
             if (editing == null) {
                 OutlinedTextField(
-                    value = quantity, onValueChange = { quantity = it }, label = { Text("Starting quantity") }, singleLine = true,
+                    value = quantity, onValueChange = { quantity = it }, label = { Text("Starting quantity (${chosenUnit})") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), shape = SmallRadius,
                 )
             } else {
@@ -357,7 +375,7 @@ private fun StockForm(
             OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description (optional)") }, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
 
             Button(
-                onClick = { onSave(name, category, newCategory, description, price, quantity, branch, lowAt) },
+                onClick = { onSave(name, category, newCategory, description, price, quantity, branch, lowAt, chosenUnit) },
                 enabled = !state.saving,
                 shape = PillShape,
                 modifier = Modifier.fillMaxWidth(),
@@ -433,7 +451,7 @@ private fun ExchangeSheet(
     val poolPicked = isOwner && fromName == POOL_LABEL
     val fromId: Int? = if (isOwner) (if (poolPicked) null else state.branches.firstOrNull { it.name == fromName }?.id ?: state.branches.firstOrNull()?.id) else meId
     val mine = state.items.filter { if (isOwner) (if (poolPicked) it.branchId == null else it.branchId == fromId) else (it.branchId == meId || it.branchId == null) }
-    val labels = mine.associateBy { "${it.name}${if (it.branchId == null) " (shared)" else ""} \u2014 ${plain(it.quantity)} in stock" }
+    val labels = mine.associateBy { "${it.name}${if (it.branchId == null) " (shared)" else ""} \u2014 ${qtyText(it.quantity, it.unit)} in stock" }
     val chosenItem = labels[itemLabel] ?: mine.firstOrNull()
     val targets = state.branches.filter { it.id != fromId }
     val chosenTo = targets.firstOrNull { it.name == toName } ?: targets.firstOrNull()
@@ -443,8 +461,8 @@ private fun ExchangeSheet(
     val summary = when {
         chosenItem == null || chosenTo == null -> "Choose what to send and who receives it."
         qty <= 0.0 -> "Sending ${chosenItem.name} from $fromText to ${chosenTo.name}. Enter a quantity."
-        qty > available -> "Sending ${plain(quantity)} \u00D7 ${chosenItem.name} to ${chosenTo.name}. Only ${plain(chosenItem.quantity)} available."
-        else -> "Sending ${plain(quantity)} \u00D7 ${chosenItem.name} from $fromText to ${chosenTo.name}. ${plain((available - qty).toString())} will be left."
+        qty > available -> "Sending ${plain(quantity)} ${unitWordFor(chosenItem.unit)} of ${chosenItem.name} to ${chosenTo.name}. Only ${qtyText(chosenItem.quantity, chosenItem.unit)} available."
+        else -> "Sending ${plain(quantity)} ${unitWordFor(chosenItem.unit)} of ${chosenItem.name} from $fromText to ${chosenTo.name}. ${qtyText((available - qty).toString(), chosenItem.unit)} will be left."
     }
 
     if (confirming && chosenItem != null && chosenTo != null) {
@@ -480,7 +498,7 @@ private fun ExchangeSheet(
                     SimpleDropdown(label = "Item", options = labels.keys.toList(), selected = labels.entries.firstOrNull { it.value == chosenItem }?.key ?: "", onSelected = { itemLabel = it })
                 }
                 OutlinedTextField(
-                    value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity") }, singleLine = true,
+                    value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity" + (chosenItem?.let { " (${it.unit})" } ?: "")) }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), shape = SmallRadius,
                 )
                 SimpleDropdown(label = "Send to", options = targets.map { it.name }, selected = chosenTo?.name ?: "", onSelected = { toName = it })
@@ -500,7 +518,7 @@ private fun ExchangeSheet(
             if (state.transfers.isEmpty()) Text("No transfers yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             state.transfers.forEach { t ->
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("${plain(t.quantity)} \u00D7 ${t.itemName}", fontWeight = FontWeight.Bold)
+                    Text("${qtyText(t.quantity, t.unit)} of ${t.itemName}", fontWeight = FontWeight.Bold)
                     Text("From ${t.fromBranchName} \u2192 to ${t.toBranchName}" + (t.note?.let { " \u00B7 $it" } ?: ""), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (t.status != "pending") {
                         Text(t.status.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
@@ -521,3 +539,6 @@ private fun ExchangeSheet(
         }
     }
 }
+
+// "Price for one kg" reads better than "one kgs"
+private fun unitWordFor(unit: String): String = qtyText("1", unit).removePrefix("1 ")

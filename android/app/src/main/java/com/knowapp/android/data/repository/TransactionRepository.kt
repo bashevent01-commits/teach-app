@@ -51,6 +51,7 @@ data class SaleLine(
     val stockItemId: Int?,
     val quantity: String?,
     val amount: String,
+    val unit: String? = null,
 )
 
 // Several items paid for together: one receipt, one payment

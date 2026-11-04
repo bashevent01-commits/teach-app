@@ -22,7 +22,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-data class ReceiptLine(val name: String, val quantity: String?, val unitPrice: BigDecimal?, val amount: BigDecimal)
+data class ReceiptLine(val name: String, val quantity: String?, val unitPrice: BigDecimal?, val amount: BigDecimal, val unit: String? = null)
 
 data class ReceiptData(
     val isIncome: Boolean,
@@ -59,7 +59,7 @@ object ReceiptBuilder {
         val lines = entries.sortedBy { it.id }.map { t ->
             val amount = t.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
             val qty = t.quantity?.toBigDecimalOrNull()
-            ReceiptLine(t.category, clean(qty), if (qty != null && qty.signum() > 0) amount.divide(qty, 2, RoundingMode.HALF_UP) else null, amount)
+            ReceiptLine(t.category, clean(qty), if (qty != null && qty.signum() > 0) amount.divide(qty, 2, RoundingMode.HALF_UP) else null, amount, t.unit)
         }
         return ReceiptData(
             isIncome = first.type == "income",
@@ -81,7 +81,7 @@ object ReceiptBuilder {
         val lines = sale.lines.map { l ->
             val amount = l.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
             val qty = l.quantity?.toBigDecimalOrNull()
-            ReceiptLine(l.category ?: "Item", clean(qty), if (qty != null && qty.signum() > 0) amount.divide(qty, 2, RoundingMode.HALF_UP) else null, amount)
+            ReceiptLine(l.category ?: "Item", clean(qty), if (qty != null && qty.signum() > 0) amount.divide(qty, 2, RoundingMode.HALF_UP) else null, amount, l.unit)
         }
         return ReceiptData(
             isIncome = sale.type == "income",
@@ -175,7 +175,7 @@ object ReceiptPdf {
             }
             if (line.quantity != null) {
                 val unit = line.unitPrice?.let { " x ${money.format(it)}" } ?: ""
-                canvas?.drawText("${line.quantity}$unit", PAD + 6f, y, paint(7.5f, color = 0xFF5D6F6B.toInt()))
+                canvas?.drawText("${com.knowapp.android.data.qtyText(line.quantity, line.unit)}$unit", PAD + 6f, y, paint(7.5f, color = 0xFF5D6F6B.toInt()))
                 y += 10f
             }
             y += 3f

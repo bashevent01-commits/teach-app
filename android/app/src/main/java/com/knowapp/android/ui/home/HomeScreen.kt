@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.knowapp.android.data.MpesaParser
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
+import com.knowapp.android.data.qtyText
 import com.knowapp.android.data.model.resolveMediaUrl
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.filled.CheckCircle
@@ -347,7 +348,7 @@ fun HomeScreen(
                             val q = i.quantity.toBigDecimalOrNull() ?: BigDecimal.ZERO
                             Row(modifier = Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(i.name, maxLines = 1, modifier = Modifier.weight(1f))
-                                Text(if (q <= BigDecimal.ZERO) "Out" else "${q.stripTrailingZeros().toPlainString()} left", color = if (q <= BigDecimal.ZERO) DangerRed else WarnAmber, fontWeight = FontWeight.SemiBold)
+                                Text(if (q <= BigDecimal.ZERO) "Out" else "${qtyText(i.quantity, i.unit)} left", color = if (q <= BigDecimal.ZERO) DangerRed else WarnAmber, fontWeight = FontWeight.SemiBold)
                             }
                         }
                         if (needRestock.size > 3) Text("and ${needRestock.size - 3} more in Stock", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
@@ -593,7 +594,7 @@ private fun ReceiptRow(group: List<TransactionOut>, onOpen: () -> Unit, onView: 
     }
 }
 
-private data class CartLine(val useStock: Boolean, val name: String, val stockItemId: Int?, val quantity: String?, val amount: BigDecimal)
+private data class CartLine(val useStock: Boolean, val name: String, val stockItemId: Int?, val quantity: String?, val amount: BigDecimal, val unit: String? = null)
 
 private val INCOME_SUGGESTIONS = listOf("Fees", "Sales", "Donation", "Other")
 private val EXPENSE_SUGGESTIONS = listOf("Rent", "Salaries", "Transport", "Utilities", "Supplies", "Other")
@@ -756,7 +757,7 @@ private fun RecordSheet(
         }
         error = problem
         if (problem != null) return null
-        return CartLine(useStock, if (useStock) item!!.name else category.trim(), if (useStock) item!!.id else null, if (useStock) quantity else null, chosen!!)
+        return CartLine(useStock, if (useStock) item!!.name else category.trim(), if (useStock) item!!.id else null, if (useStock) quantity else null, chosen!!, if (useStock) item!!.unit else null)
     }
 
     fun addToCart() {
@@ -781,7 +782,7 @@ private fun RecordSheet(
                 description = description.trim().ifBlank { null },
                 mpesaCode = if (method != "cash") reference.trim().ifBlank { null } else null,
                 mpesaPayerName = if (method != "cash") payer.trim().ifBlank { null } else null,
-                lines = all.map { com.knowapp.android.data.repository.SaleLine(if (it.useStock) "STOCK" else "OTHER", it.name, it.stockItemId, it.quantity, it.amount.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()) },
+                lines = all.map { com.knowapp.android.data.repository.SaleLine(if (it.useStock) "STOCK" else "OTHER", it.name, it.stockItemId, it.quantity, it.amount.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString(), it.unit) },
                 batchId = batchId,
             ),
             photoUri,
@@ -832,7 +833,7 @@ private fun RecordSheet(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(l.name, fontWeight = FontWeight.SemiBold)
-                                if (l.quantity != null) Text("${l.quantity} item${if (l.quantity == "1") "" else "s"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (l.quantity != null) Text(qtyText(l.quantity, l.unit), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Text(kes(l.amount.toPlainString()), fontWeight = FontWeight.Bold)
                             androidx.compose.material3.IconButton(onClick = { cart.removeAt(i) }) {
@@ -877,10 +878,10 @@ private fun RecordSheet(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     SimpleDropdown("Item", stock.map { it.name }, itemName, { itemName = it })
                     if (item?.unitPrice != null) {
-                        Text("Price ${kes(item.unitPrice)} · ${item.quantity} in stock", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Price ${kes(item.unitPrice)} per ${qtyText("1", item.unit).removePrefix("1 ")} · ${qtyText(item.quantity, item.unit)} in stock", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     OutlinedTextField(
-                        value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity") }, singleLine = true,
+                        value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity" + (item?.let { " (${it.unit})" } ?: "")) }, singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), shape = SmallRadius,
                     )
                 }
@@ -1115,7 +1116,7 @@ internal fun DetailSheet(t: TransactionOut, onEdit: () -> Unit, onDismiss: () ->
             Text("${if (t.type == "income") "+" else "\u2212"}${kes(t.amount)}", color = color, fontWeight = FontWeight.Bold, fontSize = 30.sp, fontFamily = DisplayFontFamily)
             DetailLine("Method", methodLabel(t.method))
             DetailLine("Date", dayLabel(t.transactionDate))
-            t.quantity?.let { DetailLine("Quantity", it.toBigDecimalOrNull()?.stripTrailingZeros()?.toPlainString() ?: it) }
+            t.quantity?.let { DetailLine("Quantity", qtyText(it, t.unit)) }
             t.mpesaCode?.takeIf { it.isNotBlank() }?.let { DetailLine("M-Pesa code", it) }
             t.mpesaPayerName?.takeIf { it.isNotBlank() }?.let { DetailLine("Name on M-Pesa", it) }
             t.description?.takeIf { it.isNotBlank() }?.let { DetailLine("Note", it) }
@@ -1150,7 +1151,7 @@ internal fun EditSheet(t: TransactionOut, onDismiss: () -> Unit, onSave: (Map<St
             Text("The date stays the same. Totals and stock update when you save.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount (KES)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
             if (isStock && t.quantity != null) {
-                OutlinedTextField(value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
+                OutlinedTextField(value = quantity, onValueChange = { quantity = it }, label = { Text("Quantity (${t.unit ?: "pieces"})") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
             }
             if (!isStock) {
                 OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Category") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))

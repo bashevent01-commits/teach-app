@@ -42,15 +42,20 @@ class StockRepository(private val api: ApiService) {
             val response = api.createProductCategory(mapOf("name" to name))
             val body = response.body()
             if (response.isSuccessful && body != null) Result.success(body)
-            else Result.failure(Exception(errorDetail(response.errorBody()?.string(), response.code())))
+            else {
+                val raw = response.errorBody()?.string()
+                val existing = runCatching { com.google.gson.Gson().fromJson(raw, CategoryClash::class.java)?.existing }.getOrNull()
+                if (response.code() == 409 && existing != null) Result.failure(CategoryExistsException(existing.name, errorDetail(raw, response.code())))
+                else Result.failure(Exception(errorDetail(raw, response.code())))
+            }
         } catch (e: IOException) {
             Result.failure(Exception(offline))
         }
     }
 
-    private suspend fun createRaw(name: String, categoryId: Int, description: String?, unitPrice: Double?, quantity: Double, branchId: Int? = null, lowAt: Double? = null): Result<StockItemOut> = withContext(Dispatchers.IO) {
+    private suspend fun createRaw(name: String, categoryId: Int, description: String?, unitPrice: Double?, quantity: Double, branchId: Int? = null, lowAt: Double? = null, unit: String = "pieces"): Result<StockItemOut> = withContext(Dispatchers.IO) {
         try {
-            val body = mapOf<String, Any?>("name" to name, "category_id" to categoryId, "description" to description, "unit_price" to unitPrice, "quantity" to quantity, "branch_id" to branchId, "low_stock_threshold" to lowAt)
+            val body = mapOf<String, Any?>("name" to name, "category_id" to categoryId, "description" to description, "unit_price" to unitPrice, "quantity" to quantity, "unit" to unit, "branch_id" to branchId, "low_stock_threshold" to lowAt)
             val response = api.createStockItem(body)
             val item = response.body()
             if (response.isSuccessful && item != null) Result.success(item)
@@ -60,9 +65,9 @@ class StockRepository(private val api: ApiService) {
         }
     }
 
-    private suspend fun updateRaw(id: Int, name: String, categoryId: Int, description: String?, unitPrice: Double?, branchId: Int? = null, lowAt: Double? = null): Result<StockItemOut> = withContext(Dispatchers.IO) {
+    private suspend fun updateRaw(id: Int, name: String, categoryId: Int, description: String?, unitPrice: Double?, branchId: Int? = null, lowAt: Double? = null, unit: String? = null): Result<StockItemOut> = withContext(Dispatchers.IO) {
         try {
-            val body = mapOf<String, Any?>("name" to name, "category_id" to categoryId, "description" to description, "unit_price" to unitPrice, "branch_id" to branchId, "low_stock_threshold" to lowAt)
+            val body = mapOf<String, Any?>("name" to name, "category_id" to categoryId, "description" to description, "unit_price" to unitPrice, "unit" to unit, "branch_id" to branchId, "low_stock_threshold" to lowAt)
             val response = api.updateStockItem(id, body)
             val item = response.body()
             if (response.isSuccessful && item != null) Result.success(item)
@@ -82,9 +87,16 @@ class StockRepository(private val api: ApiService) {
         }
     }
 
-    suspend fun create(name: String, categoryId: Int, description: String?, unitPrice: Double?, quantity: Double, branchId: Int? = null, lowAt: Double? = null): Result<StockItemOut> = createRaw(name, categoryId, description, unitPrice, quantity, branchId, lowAt).also { if (it.isSuccess) DataVersion.bump() }
+    suspend fun create(name: String, categoryId: Int, description: String?, unitPrice: Double?, quantity: Double, branchId: Int? = null, lowAt: Double? = null, unit: String = "pieces"): Result<StockItemOut> = createRaw(name, categoryId, description, unitPrice, quantity, branchId, lowAt, unit).also { if (it.isSuccess) DataVersion.bump() }
 
-    suspend fun update(id: Int, name: String, categoryId: Int, description: String?, unitPrice: Double?, branchId: Int? = null, lowAt: Double? = null): Result<StockItemOut> = updateRaw(id, name, categoryId, description, unitPrice, branchId, lowAt).also { if (it.isSuccess) DataVersion.bump() }
+    suspend fun update(id: Int, name: String, categoryId: Int, description: String?, unitPrice: Double?, branchId: Int? = null, lowAt: Double? = null, unit: String? = null): Result<StockItemOut> = updateRaw(id, name, categoryId, description, unitPrice, branchId, lowAt, unit).also { if (it.isSuccess) DataVersion.bump() }
 
     suspend fun delete(id: Int): Result<Unit> = deleteRaw(id).also { if (it.isSuccess) DataVersion.bump() }
 }
+
+
+// What the server sends back when a new category means the same as one already in the shared list
+private data class CategoryClash(val existing: ExistingCategory? = null)
+private data class ExistingCategory(val id: Int, val name: String)
+
+class CategoryExistsException(val existingName: String, message: String) : Exception(message)
