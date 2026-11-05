@@ -9,6 +9,7 @@ data class TokenResponse(
     @SerializedName("staff_type") val staffType: String? = null,
     @SerializedName("full_name") val fullName: String,
     @SerializedName("institution_id") val institutionId: Int? = null,
+    @SerializedName("institution_type") val institutionType: String? = null,
 )
 
 data class ApiErrorBody(
@@ -34,6 +35,8 @@ data class TransactionOut(
     @SerializedName("batch_id") val batchId: String? = null,
     @SerializedName("recorded_by_id") val recordedById: Int,
     @SerializedName("created_at") val createdAt: String,
+    @SerializedName("member_id") val memberId: Int? = null,
+    @SerializedName("member_name") val memberName: String? = null,
 )
 
 data class StockItemOut(
@@ -107,6 +110,7 @@ data class UserOut(
     @SerializedName("is_active") val isActive: Boolean,
     @SerializedName("institution_id") val institutionId: Int? = null,
     @SerializedName("institution_name") val institutionName: String? = null,
+    @SerializedName("institution_type") val institutionType: String? = null,
     @SerializedName("last_active_at") val lastActiveAt: String? = null,
     @SerializedName("share_audits") val shareAudits: Boolean,
     @SerializedName("created_at") val createdAt: String,
@@ -223,6 +227,7 @@ data class PendingTransaction(
     val error: String? = null,
     val imagePath: String? = null,
     val batchId: String? = null,
+    val memberId: Int? = null,
 )
 
 
@@ -571,4 +576,28 @@ data class PayoutRequestRow(
     val status: String,
     @SerializedName("balance_due") val balanceDue: String,
     @SerializedName("requested_at") val requestedAt: String? = null,
+)
+
+
+data class MemberOut(
+    val id: Int,
+    val name: String,
+    val phone: String? = null,
+    val plan: String? = null,
+    val fee: String,
+    val period: String,
+    @SerializedName("next_due") val nextDue: String,
+    @SerializedName("last_paid_on") val lastPaidOn: String? = null,
+    @SerializedName("is_active") val isActive: Boolean = true,
+    val notes: String? = null,
+    @SerializedName("branch_id") val branchId: Int? = null,
+    val status: String,
+    @SerializedName("days_to_due") val daysToDue: Int = 0,
+)
+
+data class DueMembersOut(
+    val date: String,
+    val overdue: List<MemberOut> = emptyList(),
+    val today: List<MemberOut> = emptyList(),
+    val tomorrow: List<MemberOut> = emptyList(),
 )

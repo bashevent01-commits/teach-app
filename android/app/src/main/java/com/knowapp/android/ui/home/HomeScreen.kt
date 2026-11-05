@@ -149,6 +149,7 @@ private fun greeting(): String {
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onOpenMembers: () -> Unit = {},
     viewModel: HomeViewModel,
     onSeeAll: () -> Unit,
     onToggleTheme: (Boolean) -> Unit,
@@ -164,6 +165,12 @@ fun HomeScreen(
     val isTeacher = session?.staffType == "teacher"
 
     var recordKind by remember { mutableStateOf<String?>(null) }
+    var payMemberId by remember { mutableStateOf<Int?>(null) }
+    val handoff by com.knowapp.android.data.NavRequests.payMemberId.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(handoff) {
+        handoff?.let { payMemberId = it; recordKind = "income"; com.knowapp.android.data.NavRequests.payMemberId.value = null }
+    }
+    val isGym = session?.institutionType == "gym"
     var showOpening by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<TransactionOut?>(null) }
     var editing by remember { mutableStateOf<TransactionOut?>(null) }
@@ -261,6 +268,8 @@ fun HomeScreen(
                     }
                 }
             }
+
+            if (isGym) item { DueCard(state.members, onOpenMembers) }
 
             item {
                 HeroCard {
@@ -404,11 +413,14 @@ fun HomeScreen(
             recentNotes = sameKind.mapNotNull { it.description?.takeIf { d -> d.isNotBlank() } }.distinct().take(3),
             recentCategories = sameKind.map { it.category }.filter { it.isNotBlank() }.distinct().take(4),
             onMethodChosen = onMethodChosen,
-            onDismiss = { recordKind = null },
-            onSubmit = { draft, photo -> viewModel.record(draft, photo) { ok -> if (ok) recordKind = null } },
+            onDismiss = { recordKind = null; payMemberId = null },
+            onSubmit = { draft, photo -> viewModel.record(draft, photo) { ok -> if (ok) { recordKind = null; payMemberId = null } } },
             onSubmitSale = { sale, photo -> viewModel.recordSale(sale, photo) { ok -> if (ok) recordKind = null } },
             onCheckCode = { code -> viewModel.checkReference(code) },
             serverError = state.recordError,
+            members = state.members.filter { it.isActive },
+            gym = isGym,
+            startMemberId = payMemberId,
         )
     }
 
@@ -674,6 +686,9 @@ private fun RecordSheet(
     onSubmitSale: (com.knowapp.android.data.repository.NewSale, Uri?) -> Unit,
     onCheckCode: suspend (String) -> com.knowapp.android.data.model.ReferenceCheckOut?,
     serverError: String? = null,
+    members: List<com.knowapp.android.data.model.MemberOut> = emptyList(),
+    gym: Boolean = false,
+    startMemberId: Int? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val isIncome = kind == "income"
@@ -749,6 +764,13 @@ private fun RecordSheet(
     val qty = if (useStock && item != null) entered?.let { convertQty(it, activeUnit, itemUnit) } else entered
     val tooSmall = useStock && entered != null && entered > BigDecimal.ZERO && qty != null && qty < BigDecimal("0.01")
     val sendQuantity = qty?.stripTrailingZeros()?.toPlainString()
+    // In a gym, money in is a member's subscription: pick the member and the fee fills in
+    val memberMode = gym && isIncome
+    var memberId by remember { mutableStateOf(startMemberId) }
+    val chosenMember = members.firstOrNull { it.id == memberId }
+    androidx.compose.runtime.LaunchedEffect(memberId) {
+        chosenMember?.let { amount = it.fee.toBigDecimalOrNull()?.stripTrailingZeros()?.toPlainString() ?: "" }
+    }
     val computed = if (useStock && item?.unitPrice != null && qty != null) item.unitPrice.toBigDecimalOrNull()?.multiply(qty) else null
     val shownTotal = amount.toBigDecimalOrNull() ?: computed
 
@@ -809,13 +831,14 @@ private fun RecordSheet(
                 type = kind,
                 method = method,
                 categoryType = if (useStock) "STOCK" else "OTHER",
-                category = if (useStock) item?.name else category.trim().ifBlank { "Other" },
+                category = if (useStock) item?.name else if (memberMode) "Subscription" else category.trim().ifBlank { "Other" },
                 description = description.trim().ifBlank { null },
                 amount = chosenAmount.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString(),
                 stockItemId = if (useStock) item?.id else null,
                 quantity = if (useStock) sendQuantity else null,
                 mpesaCode = if (method != "cash") reference.trim().ifBlank { null } else null,
                 mpesaPayerName = if (method != "cash") payer.trim().ifBlank { null } else null,
+                memberId = if (memberMode) chosenMember?.id else null,
             ),
             photoUri,
         )
@@ -880,10 +903,23 @@ private fun RecordSheet(
                 }
             }
 
-            if (!isTeacher) {
+            if (!isTeacher && !memberMode) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ChoiceCard("General", null, !useStock, accent, Modifier.weight(1f)) { useStock = false }
                     ChoiceCard("Stock item", null, useStock, accent, Modifier.weight(1f)) { useStock = true }
+                }
+            }
+
+            if (memberMode) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val labels = members.map { "${it.name} · ${com.knowapp.android.data.dueLabel(it)}" }
+                    SimpleDropdown("Member", labels, chosenMember?.let { "${it.name} · ${com.knowapp.android.data.dueLabel(it)}" } ?: "", { picked -> memberId = members.getOrNull(labels.indexOf(picked))?.id })
+                    chosenMember?.let {
+                        Text(
+                            "${it.plan ?: com.knowapp.android.data.periodLabel(it.period)} · ${kes(it.fee)} ${com.knowapp.android.data.periodLabel(it.period).lowercase()}. Paying moves the next due date on.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
@@ -910,7 +946,7 @@ private fun RecordSheet(
                 }
             }
 
-            if (!useStock) {
+            if (!useStock && !memberMode) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Item or category") }, placeholder = { Text("What is this for?") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
                     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -921,8 +957,10 @@ private fun RecordSheet(
                 }
             }
 
-            OutlinedButton(onClick = { addToCart() }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(14.dp)) {
-                Text(if (cart.isEmpty()) "+ Add another item to this ${if (isIncome) "sale" else "payment"}" else "+ Add this item and another", fontWeight = FontWeight.SemiBold)
+            if (!memberMode) {
+                OutlinedButton(onClick = { addToCart() }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(14.dp)) {
+                    Text(if (cart.isEmpty()) "+ Add another item to this ${if (isIncome) "sale" else "payment"}" else "+ Add this item and another", fontWeight = FontWeight.SemiBold)
+                }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1029,6 +1067,7 @@ private fun RecordSheet(
                   } else {
                     val chosenAmount = amount.toBigDecimalOrNull() ?: computed
                     error = when {
+                        memberMode && chosenMember == null -> "Choose a member."
                         useStock && item == null -> "Choose a stock item."
                         useStock && tooSmall -> "That is too small to record. The smallest amount is 0.01 $itemUnit."
                         useStock && (qty == null || qty <= BigDecimal.ZERO) -> "Enter a quantity."
@@ -1040,7 +1079,7 @@ private fun RecordSheet(
                         val warnings = buildList {
                             if (duplicate?.exists == true) add("This code was already recorded. Make sure this is a different payment.")
                             if (method == "mpesa" && reference.trim().length < 8) add("There is no M-Pesa transaction code on this entry.")
-                            if (method == "cash" && !useStock && description.isBlank() && photoUri == null) add("There is no note or photo on this entry as proof.")
+                            if (method == "cash" && !useStock && !memberMode && description.isBlank() && photoUri == null) add("There is no note or photo on this entry as proof.")
                             if (method == "bank" && !useStock && description.isBlank() && photoUri == null && reference.isBlank()) add("There is no bank reference, note or photo on this entry.")
                         }
                         if (warnings.isNotEmpty()) warningText = warnings.joinToString("\n\n") else submitNow(chosenAmount!!)
@@ -1242,6 +1281,30 @@ private fun SuccessCheck() {
                 modifier = Modifier.size(64.dp).graphicsLayer(scaleX = scale, scaleY = scale),
             )
             Text("Saved", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 12.dp))
+        }
+    }
+}
+
+
+// Who pays today and tomorrow, and who is behind, so the front desk can chase them
+@Composable
+private fun DueCard(members: List<com.knowapp.android.data.model.MemberOut>, onOpenMembers: () -> Unit) {
+    val behind = members.filter { it.status == "overdue" }
+    val today = members.filter { it.status == "due_today" }
+    val tomorrow = members.filter { it.status == "due_tomorrow" }
+    androidx.compose.material3.Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Members to chase", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            if (behind.isEmpty() && today.isEmpty() && tomorrow.isEmpty()) {
+                Text("No one is due today or tomorrow.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            listOf(Triple("Behind", behind, DangerRed), Triple("Due today", today, ExpenseOrange), Triple("Due tomorrow", tomorrow, Color(0xFFCA8A04))).forEach { (label, list, color) ->
+                if (list.isNotEmpty()) {
+                    Text("$label (${list.size})", color = color, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(list.take(4).joinToString(", ") { it.name } + if (list.size > 4) " and ${list.size - 4} more" else "", fontSize = 14.sp)
+                }
+            }
+            androidx.compose.material3.OutlinedButton(onClick = onOpenMembers, shape = CircleShape, modifier = Modifier.fillMaxWidth()) { Text("Open members") }
         }
     }
 }

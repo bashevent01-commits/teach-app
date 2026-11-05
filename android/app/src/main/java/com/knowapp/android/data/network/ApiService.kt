@@ -327,4 +327,19 @@ interface ApiService {
 
     @POST("/api/admin/payout-requests/{id}/reject")
     suspend fun rejectPayoutRequest(@Path("id") id: Int, @Body body: Map<String, String?>): Response<com.knowapp.android.data.model.PayoutRequestRow>
+
+    @GET("/api/members")
+    suspend fun members(@Query("state") state: String = "all", @Query("q") q: String? = null): Response<List<com.knowapp.android.data.model.MemberOut>>
+
+    @GET("/api/members/due")
+    suspend fun dueMembers(): Response<com.knowapp.android.data.model.DueMembersOut>
+
+    @POST("/api/members")
+    suspend fun addMember(@Body body: Map<String, @JvmSuppressWildcards Any?>): Response<com.knowapp.android.data.model.MemberOut>
+
+    @PATCH("/api/members/{id}")
+    suspend fun updateMember(@Path("id") id: Int, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<com.knowapp.android.data.model.MemberOut>
+
+    @DELETE("/api/members/{id}")
+    suspend fun deleteMember(@Path("id") id: Int): Response<Unit>
 }

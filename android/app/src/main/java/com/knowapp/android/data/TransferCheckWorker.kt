@@ -12,6 +12,7 @@ class TransferCheckWorker(context: Context, params: WorkerParameters) : Coroutin
         val session = container.sessionStore.session.value ?: return Result.success()
         if (session.role == "super_admin" || session.role == "agent" || session.staffType == "teacher") return Result.success()
         TransferAlerts.check(applicationContext, container.exchangeRepository)
+        runCatching { MemberDueAlerts.check(applicationContext, container) }
         return Result.success()
     }
 }

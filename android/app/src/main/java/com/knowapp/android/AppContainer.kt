@@ -29,7 +29,7 @@ import com.knowapp.android.data.repository.UsersRepository
 /** One instance built in KnowApplication.onCreate, threaded down to ViewModels. */
 class AppContainer(context: Context) {
     val sessionStore = SessionStore(context.applicationContext)
-    private val apiService = NetworkModule.buildApiService(sessionStore, context.applicationContext.cacheDir)
+    val apiService = NetworkModule.buildApiService(sessionStore, context.applicationContext.cacheDir)
 
     val authRepository = AuthRepository(apiService, sessionStore)
     val offlineStore = OfflineStore(context)
@@ -56,6 +56,7 @@ class AppContainer(context: Context) {
     val billingRepository = com.knowapp.android.data.repository.BillingRepository(apiService)
     val billingGate = com.knowapp.android.data.BillingGate(context, billingRepository)
     val paymentsAdminRepository = com.knowapp.android.data.repository.PaymentsAdminRepository(apiService)
+    val membersRepository = com.knowapp.android.data.repository.MembersRepository(apiService)
     val partnerRepository = com.knowapp.android.data.repository.PartnerRepository(apiService)
     val partnersAdminRepository = com.knowapp.android.data.repository.PartnersAdminRepository(apiService)
     val marketDemoStore = com.knowapp.android.data.MarketDemoStore(context)

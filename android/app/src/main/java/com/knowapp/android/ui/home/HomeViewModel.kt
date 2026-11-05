@@ -45,6 +45,7 @@ data class HomeUiState(
     val recordError: String? = null,
     val refreshing: Boolean = false,
     val message: String? = null,
+    val members: List<com.knowapp.android.data.model.MemberOut> = emptyList(),
 )
 
 class HomeViewModel(
@@ -56,6 +57,7 @@ class HomeViewModel(
     private val institutions: InstitutionsRepository,
     private val photos: PhotoStore,
     network: NetworkMonitor,
+    private val members: com.knowapp.android.data.repository.MembersRepository,
 ) : ViewModel() {
     val session: StateFlow<Session?> = authRepository.session
 
@@ -88,6 +90,11 @@ class HomeViewModel(
         }
     }
 
+    private suspend fun loadMembers() {
+        if (sessionStore.session.value?.institutionType != "gym") return
+        members.list().onSuccess { list -> _state.value = _state.value.copy(members = list) }
+    }
+
     private suspend fun loadStock() {
         val uid = sessionStore.session.value?.userId ?: return
         val isTeacher = sessionStore.session.value?.staffType == "teacher"
@@ -117,6 +124,7 @@ class HomeViewModel(
         val data = transactions.loadHome()
         _state.value = _state.value.copy(loading = false, loaded = true, transactions = data.transactions, pending = data.pending, opening = data.opening)
         loadStock()
+        loadMembers()
     }
 
     fun pullRefresh() {

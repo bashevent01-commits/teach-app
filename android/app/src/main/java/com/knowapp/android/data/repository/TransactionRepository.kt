@@ -42,6 +42,7 @@ data class NewTransaction(
     val mpesaPayerName: String?,
     val imagePath: String? = null,
     val batchId: String? = null,
+    val memberId: Int? = null,
 )
 
 // One line of a sale or purchase made of several items
@@ -115,10 +116,11 @@ private fun NewTransaction.toFields(): Map<String, String> = buildMap {
     mpesaCode?.takeIf { it.isNotBlank() }?.let { put("mpesa_code", it) }
     mpesaPayerName?.takeIf { it.isNotBlank() }?.let { put("mpesa_payer_name", it) }
     batchId?.takeIf { it.isNotBlank() }?.let { put("batch_id", it) }
+    memberId?.let { put("member_id", it.toString()) }
 }
 
 private fun PendingTransaction.toFields(): Map<String, String> = NewTransaction(
-    type, method, categoryType, category, description, amount, stockItemId, quantity, mpesaCode, mpesaPayerName, batchId = batchId,
+    type, method, categoryType, category, description, amount, stockItemId, quantity, mpesaCode, mpesaPayerName, batchId = batchId, memberId = memberId,
 ).toFields()
 
 class TransactionRepository(
@@ -303,6 +305,7 @@ class TransactionRepository(
                     createdAt = Instant.now().toString(),
                     imagePath = draft.imagePath,
                     batchId = draft.batchId,
+                    memberId = draft.memberId,
                 )
                 store.savePending(uid, store.pending(uid) + queued)
             }

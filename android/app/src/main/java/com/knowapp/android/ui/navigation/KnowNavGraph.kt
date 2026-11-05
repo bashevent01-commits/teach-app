@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.Business
+import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
@@ -72,7 +73,7 @@ private fun <T> vmFactory(create: () -> T) = object : androidx.lifecycle.ViewMod
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
 // Every destination on the bar is its own page; what appears depends on who is signed in
-private fun tabsFor(role: String?, staffType: String?): List<Tab> = when (role) {
+private fun tabsFor(role: String?, staffType: String?, gym: Boolean = false): List<Tab> = when (role) {
     "super_admin" -> listOf(
         Tab(Routes.OVERVIEW, "Overview", Icons.Outlined.Dashboard),
         Tab(Routes.INSTITUTIONS, "Institutions", Icons.Outlined.Business),
@@ -87,14 +88,14 @@ private fun tabsFor(role: String?, staffType: String?): List<Tab> = when (role) 
     )
     "institution_admin" -> listOf(
         Tab(Routes.BOOKS, "Books", Icons.Outlined.AccountBalance),
-        Tab(Routes.STOCK, "Stock", Icons.Outlined.Inventory2),
+        if (gym) Tab(Routes.MEMBERS, "Members", Icons.Outlined.FitnessCenter) else Tab(Routes.STOCK, "Stock", Icons.Outlined.Inventory2),
         Tab(Routes.NEWS, "News", Icons.Outlined.Article),
         Tab(Routes.ACCOUNTS, "Accounts", Icons.Outlined.Group),
         Tab(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
     )
     else -> buildList {
         add(Tab(Routes.HOME, "Home", Icons.Outlined.Home))
-        if (staffType != "teacher") add(Tab(Routes.STOCK, "Stock", Icons.Outlined.Inventory2))
+        if (staffType != "teacher") add(if (gym) Tab(Routes.MEMBERS, "Members", Icons.Outlined.FitnessCenter) else Tab(Routes.STOCK, "Stock", Icons.Outlined.Inventory2))
         add(Tab(Routes.NEWS, "News", Icons.Outlined.Article))
         add(Tab(Routes.STATEMENTS, "Statements", Icons.Outlined.Receipt))
         add(Tab(Routes.SETTINGS, "Settings", Icons.Outlined.Settings))
@@ -112,7 +113,7 @@ private fun startFor(role: String?): String = when (role) {
 fun KnowNavGraph(container: AppContainer) {
     val navController = rememberNavController()
     val session by container.sessionStore.session.collectAsState()
-    val tabs = tabsFor(session?.role, session?.staffType)
+    val tabs = tabsFor(session?.role, session?.staffType, session?.institutionType == "gym")
     val alertContext = androidx.compose.ui.platform.LocalContext.current
     // While the app is open, look for stock sent to this person every 45 seconds
     androidx.compose.runtime.LaunchedEffect(session?.userId) {
@@ -144,6 +145,24 @@ fun KnowNavGraph(container: AppContainer) {
             popUpTo(startFor(session?.role)) { saveState = true }
             launchSingleTop = true
             restoreState = true
+        }
+    }
+
+    // Workspaces saved before they had a type learn it once
+    androidx.compose.runtime.LaunchedEffect(session?.userId) {
+        val s = session ?: return@LaunchedEffect
+        if ((s.role == "staff" || s.role == "institution_admin") && s.institutionType == null) {
+            runCatching { container.apiService.getMe().body() }.getOrNull()?.let { container.sessionStore.setInstitutionType(it.institutionType) }
+        }
+    }
+
+    // Other screens ask to open a page through this
+    val navRequest by com.knowapp.android.data.NavRequests.route.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(navRequest, session) {
+        val route = navRequest ?: return@LaunchedEffect
+        if (session != null) {
+            com.knowapp.android.data.NavRequests.route.value = null
+            goTab(route)
         }
     }
 
@@ -192,6 +211,7 @@ fun KnowNavGraph(container: AppContainer) {
                         container.institutionsRepository,
                         container.photoStore,
                         container.networkMonitor,
+                        container.membersRepository,
                     )
                 },
             )
@@ -204,6 +224,7 @@ fun KnowNavGraph(container: AppContainer) {
                 onMethodChosen = { container.themeStore.rememberMethod(it) },
                 onSeeAll = { navController.navigate(Routes.HISTORY) },
                 onToggleTheme = { makeDark -> container.themeStore.set(if (makeDark) ThemeMode.DARK else ThemeMode.LIGHT) },
+                onOpenMembers = { goTab(Routes.MEMBERS) },
             )
         }
         composable(Routes.AGENT) {
@@ -259,6 +280,19 @@ fun KnowNavGraph(container: AppContainer) {
         composable(Routes.BOOKS) {
             val viewModel: BooksViewModel = viewModel(factory = vmFactory { BooksViewModel(container.booksRepository, container.auditRepository) })
             BooksScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false, onViewAudits = { navController.navigate(Routes.AUDITS) }, onViewStatements = { navController.navigate(Routes.STATEMENTS) })
+        }
+        composable(Routes.MEMBERS) {
+            val viewModel: com.knowapp.android.ui.members.MembersViewModel = viewModel(
+                factory = vmFactory { com.knowapp.android.ui.members.MembersViewModel(container.membersRepository) },
+            )
+            com.knowapp.android.ui.members.MembersScreen(
+                viewModel = viewModel,
+                canRecordPayment = session?.role == "staff",
+                onRecordPayment = { member ->
+                    com.knowapp.android.data.NavRequests.payMemberId.value = member.id
+                    goTab(Routes.HOME)
+                },
+            )
         }
         composable(Routes.STOCK) {
             val viewModel: StockViewModel = viewModel(factory = vmFactory { StockViewModel(container.stockRepository, container.documentsRepository, container.exchangeRepository, session?.role == "institution_admin", session?.userId) })

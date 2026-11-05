@@ -20,6 +20,7 @@ data class Session(
     val staffType: String?,
     val fullName: String,
     val institutionId: Int?,
+    val institutionType: String? = null,
 )
 
 class SessionStore(context: Context) {
@@ -63,6 +64,12 @@ class SessionStore(context: Context) {
             .putInt(KEY_INSTITUTION_ID, session.institutionId ?: -1)
             .apply()
         _session.value = session
+    }
+
+    // Sessions saved before workspaces had a type learn it here
+    fun setInstitutionType(type: String?) {
+        val current = _session.value ?: return
+        if (current.institutionType != type) save(current.copy(institutionType = type))
     }
 
     fun clear() {

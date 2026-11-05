@@ -25,6 +25,7 @@ object Routes {
     const val ACCOUNTS = "accounts"
     const val MARKET = "market"
     const val PARTNERS = "partners"
+    const val MEMBERS = "members"
     const val PAYMENTS = "payments"
     const val CATEGORY_DETAIL = "category_detail/{categoryId}"
 
