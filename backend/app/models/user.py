@@ -71,6 +71,10 @@ class User(Base):
     posts = relationship("Post", back_populates="author")
 
     @property
+    def institution_type(self) -> str | None:
+        return self.institution.type if self.institution else None
+
+    @property
     def institution_name(self) -> str | None:
         return self.institution.name if self.institution else None
 

@@ -129,7 +129,7 @@ class SignupRequest(BaseModel):
     @classmethod
     def business_type_clean(cls, v: str | None) -> str | None:
         v = (v or "").strip().lower()
-        return v if v in ("shop", "supermarket", "school", "other") else "shop"
+        return v if v in ("shop", "supermarket", "school", "gym", "other") else "shop"
 
     @field_validator("account_type")
     @classmethod
@@ -181,6 +181,7 @@ class UserOut(BaseModel):
     avatar_path: str | None = None
     institution_id: int | None
     institution_name: str | None = None
+    institution_type: str | None = None
     email: str | None = None
     last_active_at: datetime | None = None
     share_audits: bool

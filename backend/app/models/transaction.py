@@ -69,6 +69,7 @@ class Transaction(Base):
     # Optional evidence photo (receipt, till slip, etc.)
     image_path = Column(String(500), nullable=True)
     # Lines of one sale or purchase entered together share this id
+    member_id = Column(Integer, ForeignKey("members.id", ondelete="SET NULL"), nullable=True, index=True)
     batch_id = Column(String(36), nullable=True, index=True)
 
     recorded_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -77,8 +78,14 @@ class Transaction(Base):
     institution = relationship("Institution", back_populates="transactions")
     recorded_by = relationship("User", back_populates="transactions_recorded", foreign_keys=[recorded_by_id])
     stock_item = relationship("StockItem", back_populates="transactions")
+    member = relationship("Member")
     journal_entry = relationship("JournalEntry", back_populates="transaction", uselist=False, cascade="all, delete-orphan")
 
     @property
     def unit(self) -> str | None:
         return self.stock_item.unit if self.stock_item else None
+
+    @property
+    def member_name(self) -> str | None:
+        return self.member.name if self.member else None
+

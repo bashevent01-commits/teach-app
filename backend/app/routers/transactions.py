@@ -13,6 +13,8 @@ from app.core.staff_scope import resolve_staff_filter
 from app.models.audit import Audit, AuditStatus
 from app.models.stock_item import StockItem
 from app.models.transaction import Transaction, TransactionType, TransactionMethod, TransactionCategoryType
+from app.routers.members import member_for
+from app.utils.members import advance, today_local
 from app.models.user import User, UserRole, StaffType
 from pydantic import ValidationError
 
@@ -127,6 +129,7 @@ def create_transaction(
     mpesa_code: str | None = Form(None),
     mpesa_payer_name: str | None = Form(None),
     batch_id: str | None = Form(None),
+    member_id: int | None = Form(None),
     image: UploadFile | None = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_institution_scope),
@@ -144,6 +147,15 @@ def create_transaction(
     """
     if current_user.role != UserRole.STAFF:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only staff record transactions")
+
+    # A gym subscription is income from one member; it pushes that member's next due date forward
+    member = None
+    if member_id is not None:
+        if type != TransactionType.INCOME or category_type != TransactionCategoryType.OTHER:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A member payment is income in the general category")
+        member = member_for(db, current_user, member_id)
+        category = category or "Subscription"
+        description = description or f"{member.name} - {member.plan or member.period}"
 
     category, stock_item_id, quantity = _check_line(db, current_user, type, category_type, category, amount, stock_item_id, quantity)
 
@@ -170,9 +182,14 @@ def create_transaction(
         recorded_by_id=current_user.id,
         # Items sold together while offline arrive one by one, so they carry the receipt id with them
         batch_id=(batch_id.strip() if batch_id and 8 <= len(batch_id.strip()) <= 36 else None),
+        member_id=member.id if member else None,
     )
     db.add(txn)
     db.flush()
+    if member:
+        today = today_local()
+        member.next_due = advance(member.next_due, today, member.period)
+        member.last_paid_on = today
     post_transaction(db, txn)
     db.commit()
     db.refresh(txn)

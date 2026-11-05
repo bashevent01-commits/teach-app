@@ -22,3 +22,4 @@ class TokenResponse(BaseModel):
     staff_type: str | None = None
     full_name: str
     institution_id: int | None = None
+    institution_type: str | None = None

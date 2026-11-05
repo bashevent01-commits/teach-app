@@ -141,6 +141,7 @@ def login(
         staff_type=user.staff_type.value if user.staff_type else None,
         full_name=user.full_name,
         institution_id=user.institution_id,
+        institution_type=user.institution_type,
     )
 
 
@@ -241,6 +242,7 @@ def signup(
         staff_type=user.staff_type.value if user.staff_type else None,
         full_name=user.full_name,
         institution_id=user.institution_id,
+        institution_type=user.institution_type,
     )
 
 
