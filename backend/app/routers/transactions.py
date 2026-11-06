@@ -14,6 +14,7 @@ from app.models.audit import Audit, AuditStatus
 from app.models.stock_item import StockItem
 from app.models.transaction import Transaction, TransactionType, TransactionMethod, TransactionCategoryType
 from app.routers.members import member_for
+from app.utils.billing import require_premium
 from app.utils.members import advance, today_local
 from app.models.user import User, UserRole, StaffType
 from pydantic import ValidationError
@@ -161,6 +162,7 @@ def create_transaction(
 
     image_path = None
     if image is not None and image.filename:
+        require_premium(db, current_user, "attach photos and store documents")
         contents = read_upload(image)
         image_path = save_transaction_image(image, contents)
 
@@ -283,6 +285,7 @@ def create_batch(
         created.append(txn)
 
     if image is not None and image.filename:
+        require_premium(db, current_user, "attach photos and store documents")
         image_path = save_transaction_image(image, read_upload(image))
         for txn in created:
             txn.image_path = image_path
@@ -436,6 +439,7 @@ def update_transaction(
         txn.mpesa_payer_name = mpesa_payer_name.strip() or None
     old_image_path = txn.image_path
     if image is not None and image.filename:
+        require_premium(db, current_user, "attach photos and store documents")
         contents = read_upload(image)
         txn.image_path = save_transaction_image(image, contents)
 

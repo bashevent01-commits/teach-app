@@ -27,6 +27,10 @@ class Institution(Base):
     # The agent who registered this business (if any) and its agreed monthly fee
     partner_id = Column(Integer, ForeignKey("partners.id", ondelete="SET NULL"), nullable=True, index=True)
     monthly_fee = Column(Numeric(12, 2), nullable=True)
+    # "free" for the free plan; empty or "paid" for a paying workspace
+    tier = Column(String(10), nullable=True)
+    # When billing began for a workspace that upgraded from free; empty means the 7-day trial ran from sign-up
+    billing_start = Column(DateTime(timezone=True), nullable=True)
 
     users = relationship("User", back_populates="institution", cascade="all, delete-orphan")
     transactions = relationship("Transaction", back_populates="institution", cascade="all, delete-orphan")

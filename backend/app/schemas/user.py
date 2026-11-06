@@ -109,6 +109,8 @@ class SignupRequest(BaseModel):
     business_type: str | None = None
     county: str | None = None
     constituency: str | None = None
+    # "free" or "paid"; only an individual account can choose the free plan
+    plan: str | None = None
 
     @field_validator("email")
     @classmethod
@@ -130,6 +132,12 @@ class SignupRequest(BaseModel):
     def business_type_clean(cls, v: str | None) -> str | None:
         v = (v or "").strip().lower()
         return v if v in ("shop", "supermarket", "school", "gym", "other") else "shop"
+
+    @field_validator("plan")
+    @classmethod
+    def plan_valid(cls, v: str | None) -> str | None:
+        v = (v or "").strip().lower()
+        return v if v in ("free", "paid") else None
 
     @field_validator("account_type")
     @classmethod
@@ -160,6 +168,8 @@ class SignupRequest(BaseModel):
         check_password(self.password, self.username)
         if self.account_type == "owner" and not self.business_name:
             raise ValueError("Enter your business name")
+        if self.plan == "free" and self.account_type == "owner":
+            raise ValueError("A business account is on a paid plan")
         # Owners and sales-and-stock individuals trade somewhere, and the market data needs to know where
         if self.account_type in ("owner", "staff") and not (self.county and self.constituency):
             raise ValueError("Choose your county and constituency")

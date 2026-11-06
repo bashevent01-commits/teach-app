@@ -13,6 +13,7 @@ from app.core.limiter import limiter
 from app.models.source_document import SourceDocument
 from app.models.stock_item import StockItem
 from app.models.transaction import Transaction
+from app.utils.billing import require_premium
 from app.models.user import User, UserRole
 from app.schemas.source_document import SourceDocumentOut
 from app.utils.uploads import delete_storage_object, save_transaction_image, read_upload
@@ -91,6 +92,7 @@ def create_document(
     current_user: User = Depends(get_current_user),
 ):
     _require_member(current_user)
+    require_premium(db, current_user, "store source documents")
     if doc_type not in DOCUMENT_KEYS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown document type")
     if quantity is not None and quantity < 0:

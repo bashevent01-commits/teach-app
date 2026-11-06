@@ -39,8 +39,8 @@ def _proof_row(db: Session, p: PaymentProof) -> dict:
     agent = db.get(User, partner.user_id) if partner else None
     return {"id": p.id, "business": inst.name if inst else "Removed business", "sender": sender.full_name if sender else None, "sender_username": sender.username if sender else None,
             "message": p.message, "code": p.code, "amount": money(p.amount), "amount_due": money(p.amount_due), "paid_at": p.paid_at.isoformat() if p.paid_at else None,
-            "recipient": p.recipient, "account_ref": p.account_ref, "status": p.status, "note": p.review_note, "agent": agent.full_name if agent else None,
-            "months": max(1, min(12, int(p.amount // p.amount_due))) if p.amount_due else 1, "created_at": p.created_at.isoformat() if p.created_at else None}
+            "recipient": p.recipient, "account_ref": p.account_ref, "status": p.status, "purpose": p.purpose, "note": p.review_note, "agent": agent.full_name if agent else None,
+            "months": 1 if p.purpose == "upgrade" else (max(1, min(12, int(p.amount // p.amount_due))) if p.amount_due else 1), "created_at": p.created_at.isoformat() if p.created_at else None}
 
 
 @router.get("/payment-proofs")
@@ -59,12 +59,19 @@ def approve_proof(proof_id: int, payload: Approve, request: Request, db: Session
     if not proof or proof.status != "pending":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No waiting payment message with that id")
     inst = db.get(Institution, proof.institution_id)
-    c = bill.cycle(db, inst)
-    months = payload.months or max(1, min(12, int(proof.amount // proof.amount_due)))
+    upgrading = proof.purpose == "upgrade"
+    # A free workspace that pays becomes a paid one, billed from today with no trial
+    if upgrading:
+        inst.tier, inst.billing_start = "paid", bill.utcnow()
+        start = bill.utcnow().astimezone(bill.LOCAL)
+        months = 1
+    else:
+        c = bill.cycle(db, inst)
+        months = payload.months or max(1, min(12, int(proof.amount // proof.amount_due)))
+        start = bill.add_months(c.trial_ends.astimezone(bill.LOCAL), c.paid_months)
     each = (Decimal(proof.amount) / months).quantize(CENT)
     partner = db.get(Partner, inst.partner_id) if inst.partner_id else None
     today = datetime.now(bill.LOCAL).date()
-    start = bill.add_months(c.trial_ends.astimezone(bill.LOCAL), c.paid_months)
     commission = Decimal("0.00")
     for i in range(months):
         share = commission_for(each, partner.commission_rate) if partner else Decimal("0.00")
@@ -74,7 +81,7 @@ def approve_proof(proof_id: int, payload: Approve, request: Request, db: Session
     proof.status, proof.reviewed_by_id, proof.reviewed_at = "approved", admin.id, datetime.now(timezone.utc)
     if partner and commission > 0:
         db.add(PartnerNotice(partner_id=partner.id, institution_name=inst.name, amount=commission,
-                             text=f"{inst.name} paid KES {Decimal(proof.amount):,.2f}. You earned KES {commission:,.2f} and can ask for a payout of that amount."))
+                             text=f"{inst.name} {'upgraded and paid' if upgrading else 'paid'} KES {Decimal(proof.amount):,.2f}. You earned KES {commission:,.2f} and can ask for a payout of that amount."))
     db.commit()
     bill.forget(inst.id)
     log_activity(db, action="payment_proof_approved", actor=admin, target_type="institution", target_id=inst.id, detail=f"Approved M-Pesa {proof.code} for {months} month(s)", request=request)

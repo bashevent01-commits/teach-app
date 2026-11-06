@@ -12,7 +12,7 @@ from app.models.billing import PaymentProof
 from app.models.institution import Institution
 from app.models.user import User, UserRole
 from app.utils import billing as bill
-from app.utils.billing import (EXTRA_ACCOUNT_PRICE, INDIVIDUAL_PRICE, OWNER_INCLUDED_ACCOUNTS, OWNER_PRICE, PAYBILL, PAYBILL_NAME, TRIAL_DAYS)
+from app.utils.billing import (UPGRADE_PRICE, EXTRA_ACCOUNT_PRICE, INDIVIDUAL_PRICE, OWNER_INCLUDED_ACCOUNTS, OWNER_PRICE, PAYBILL, PAYBILL_NAME, TRIAL_DAYS)
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
@@ -47,6 +47,10 @@ class BillingStatus(BaseModel):
     account_ref: str = ""
     agent_registered: bool = False
     preview_allowed: bool = False
+    # "free" or "paid"; premium is true when the paid features are open (including while an upgrade is being checked)
+    tier: str = "paid"
+    premium: bool = True
+    upgrade_price: int = UPGRADE_PRICE
 
 
 class ProofIn(BaseModel):
@@ -63,6 +67,16 @@ def billing_status(db: Session = Depends(get_db), current_user: User = Depends(g
     institution = db.get(Institution, current_user.institution_id) if current_user.institution_id else None
     preview = current_user.role == UserRole.INSTITUTION_ADMIN and current_user.username.lower() == bill.PREVIEW_USERNAME
     c = bill.cycle(db, institution)
+    if bill.is_free(institution):
+        latest = db.query(PaymentProof).filter(PaymentProof.institution_id == institution.id).order_by(PaymentProof.id.desc()).first()
+        pending = latest is not None and latest.status == "pending"
+        return BillingStatus(
+            applies=False, state="free", tier="free", premium=bill.has_premium(db, institution), total=UPGRADE_PRICE, can_pay=True,
+            proof_status="pending" if pending else ("rejected" if latest is not None and latest.status == "rejected" else "none"),
+            proof_note=latest.review_note if latest is not None and latest.status == "rejected" else None, account_ref=current_user.username,
+            agent_registered=institution.partner_id is not None, preview_allowed=preview,
+            note="Your payment is waiting to be checked. The paid features are open meanwhile." if pending else "You are on the free plan. Upgrade to store documents and print statements.",
+        )
     if not c.billed:
         return BillingStatus(applies=False, preview_allowed=preview)
     payer = _is_payer(current_user, institution)
@@ -94,19 +108,22 @@ def submit_proof(payload: ProofIn, request: Request, db: Session = Depends(get_d
     """The paying account pastes its M-Pesa message; a readable one keeps the app open while a super admin confirms it."""
     institution = db.get(Institution, current_user.institution_id) if current_user.institution_id else None
     c = bill.cycle(db, institution)
-    if not c.billed or not _is_payer(current_user, institution):
+    free = bill.is_free(institution)
+    if (not c.billed and not free) or institution is None or not _is_payer(current_user, institution):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the account that pays the fee can send a payment message")
-    if c.proof_status == "pending":
+    pending = db.query(PaymentProof.id).filter(PaymentProof.institution_id == institution.id, PaymentProof.status == "pending").first() is not None
+    if pending:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Your last payment message is still being checked")
+    total = UPGRADE_PRICE if free else c.total
     try:
-        found = bill.check_proof(payload.message, c.total)
+        found = bill.check_proof(payload.message, total)
     except ValueError as err:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(err))
     if db.query(PaymentProof.id).filter(PaymentProof.code == found["code"], PaymentProof.status != "rejected").first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That M-Pesa message has already been used")
-    proof = PaymentProof(institution_id=institution.id, submitted_by_id=current_user.id, message=" ".join(payload.message.split())[:1000], amount_due=c.total, **found)
+    proof = PaymentProof(institution_id=institution.id, submitted_by_id=current_user.id, message=" ".join(payload.message.split())[:1000], amount_due=total, purpose="upgrade" if free else "fee", **found)
     db.add(proof)
     db.commit()
     bill.forget(institution.id)
     log_activity(db, action="payment_proof_sent", actor=current_user, target_type="institution", target_id=institution.id, detail=f"Sent M-Pesa proof {found['code']}", request=request)
-    return {"status": "pending", "message": "Thank you. Your payment is being checked and the app stays open."}
+    return {"status": "pending", "message": "Thank you. Your upgrade is being checked and the paid features are open meanwhile." if free else "Thank you. Your payment is being checked and the app stays open."}

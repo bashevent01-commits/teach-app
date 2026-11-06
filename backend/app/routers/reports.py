@@ -12,6 +12,7 @@ from app.models.audit import Audit
 from app.core.staff_scope import resolve_staff_filter
 from app.models.institution import Institution
 from app.models.transaction import Transaction, TransactionMethod
+from app.utils.billing import require_premium
 from app.models.user import User, UserRole
 from app.utils.report_pdf import build_audit_report_pdf, build_statement_pdf
 
@@ -69,6 +70,7 @@ def generate_statement_report(
     combined) over a date range — the Audit page's "Statements" feature.
     """
     if current_user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN):
+        require_premium(db, current_user, "print statements")
         scoped_institution_id = current_user.institution_id
     else:
         if institution_id is None:

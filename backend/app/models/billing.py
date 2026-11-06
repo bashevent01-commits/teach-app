@@ -17,6 +17,8 @@ class PaymentProof(Base):
     paid_at = Column(DateTime(timezone=True), nullable=True)
     recipient = Column(String(120), nullable=True)
     account_ref = Column(String(80), nullable=True)
+    # "fee" for the monthly fee, "upgrade" for a free workspace moving to the paid plan
+    purpose = Column(String(10), nullable=False, default="fee", server_default="fee")
     status = Column(String(12), nullable=False, default="pending", index=True)
     review_note = Column(String(200), nullable=True)
     reviewed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

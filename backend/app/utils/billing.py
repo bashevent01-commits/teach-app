@@ -50,8 +50,35 @@ def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
+UPGRADE_PRICE = INDIVIDUAL_PRICE
+
+
+def is_free(institution: Institution | None) -> bool:
+    return institution is not None and institution.tier == "free"
+
+
+def pending_upgrade(db: Session, institution_id: int) -> bool:
+    return db.query(PaymentProof.id).filter(PaymentProof.institution_id == institution_id, PaymentProof.purpose == "upgrade", PaymentProof.status == "pending").first() is not None
+
+
+def has_premium(db: Session, institution: Institution | None) -> bool:
+    """The paid features: open to paying workspaces, and to a free one while its upgrade payment is waiting to be checked."""
+    return not is_free(institution) or pending_upgrade(db, institution.id)
+
+
+def require_premium(db: Session, user: User, what: str) -> None:
+    """Refuses a free workspace a paid feature; the message starts with Upgrade so apps can show the banner."""
+    from fastapi import HTTPException, status
+
+    inst = db.get(Institution, user.institution_id) if user.institution_id else None
+    if user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN) and not has_premium(db, inst):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Upgrade to the paid plan to {what}. It is KES {UPGRADE_PRICE} a month.")
+
+
 def is_billed(db: Session, institution: Institution) -> bool:
     """Only workspaces that signed themselves up are billed; ones a super admin set up are handled by hand."""
+    if is_free(institution):
+        return False
     if institution.type == "individual":
         return True
     return db.query(ActivityLog.id).filter(
@@ -94,7 +121,8 @@ def cycle(db: Session, institution: Institution | None, now: datetime | None = N
     now = now or utcnow()
     plan, base, used, extra, total = plan_amounts(db, institution)
     paid = db.query(FeePayment).filter(FeePayment.institution_id == institution.id, FeePayment.voided_at.is_(None)).count()
-    trial_ends = _aware(institution.created_at) + timedelta(days=TRIAL_DAYS)
+    # A workspace that upgraded from free is billed from the day it upgraded, with no trial
+    trial_ends = _aware(institution.billing_start) if institution.billing_start else _aware(institution.created_at) + timedelta(days=TRIAL_DAYS)
     due_moment = add_months(trial_ends.astimezone(LOCAL), paid)
     popup_from = _first_popup(due_moment)
     lock_at = (popup_from + timedelta(days=1)).replace(hour=LOCK_HOUR, minute=0, second=0, microsecond=0)

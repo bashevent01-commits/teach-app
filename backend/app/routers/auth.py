@@ -203,7 +203,7 @@ def signup(
         role, staff_type = UserRole.INSTITUTION_ADMIN, None
     else:
         # The username is unique, so this workspace name is too
-        workspace = Institution(name=f"{payload.full_name} (@{payload.username})"[:200], type="individual", partner_id=partner.id if partner else None)
+        workspace = Institution(name=f"{payload.full_name} (@{payload.username})"[:200], type="individual", partner_id=partner.id if partner else None, tier="free" if payload.plan == "free" else None)
         role = UserRole.STAFF
         staff_type = StaffType.TEACHER if payload.account_type == "personal" else StaffType.GENERAL
     try:
