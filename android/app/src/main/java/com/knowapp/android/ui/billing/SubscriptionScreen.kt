@@ -83,6 +83,7 @@ fun SubscriptionScreen(viewModel: SubscriptionViewModel, onBack: () -> Unit, onP
                     Text(state.error ?: "", color = MaterialTheme.colorScheme.error)
                     TextButton(onClick = viewModel::load) { Text("Try again") }
                 }
+                status != null && status.tier == "free" -> FreePlanCard(status, onPay)
                 status == null || !status.applies -> Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
                     Column(modifier = Modifier.padding(22.dp)) {
                         Text("Subscription", style = MaterialTheme.typography.titleMedium)
@@ -272,6 +273,29 @@ private fun MethodTile(name: String, sub: String) {
         }
         Box(modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, CircleShape).padding(horizontal = 10.dp, vertical = 4.dp)) {
             Text("Soon", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+
+@Composable
+private fun FreePlanCard(status: BillingStatusOut, onPay: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
+        Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("FREE PLAN", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text("What you get", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            listOf(
+                true to "Record income and expenses",
+                true to "Categories, balances and history",
+                false to "Store source documents and photos",
+                false to "Print or share statements",
+            ).forEach { (included, text) ->
+                Text((if (included) "\u2713  " else "\u2717  ") + text, color = if (included) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(status.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+            if (status.proofStatus != "pending") {
+                androidx.compose.material3.Button(onClick = onPay, shape = CircleShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Upgrade for KES ${status.upgradePrice} a month", fontWeight = FontWeight.Bold) }
+            }
         }
     }
 }

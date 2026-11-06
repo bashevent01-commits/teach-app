@@ -85,6 +85,8 @@ fun BillingOverlay(container: AppContainer) {
     val scope = rememberCoroutineScope()
     val userId = session?.userId
     val relevant = session?.role == "staff" || session?.role == "institution_admin"
+    val upgradeAsk by com.knowapp.android.data.PlanState.upgradeRequest.collectAsState()
+    LaunchedEffect(upgradeAsk) { if (upgradeAsk != 0L) container.billingGate.openPay() }
     var step by remember { mutableStateOf(0) }
     var thanks by remember { mutableStateOf<String?>(null) }
     var lastMode by remember { mutableStateOf<FlowMode?>(null) }

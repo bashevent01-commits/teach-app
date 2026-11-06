@@ -15,6 +15,13 @@ object BillingSignal {
     fun fire() { closed.value = System.currentTimeMillis() }
 }
 
+// True while this workspace is on the free plan; screens use it to show the upgrade banner
+object PlanState {
+    val free = MutableStateFlow(false)
+    val upgradeRequest = MutableStateFlow(0L)
+    fun requestUpgrade() { upgradeRequest.value = System.currentTimeMillis() }
+}
+
 data class GateState(
     val status: BillingStatusOut? = null,
     val payOpen: Boolean = false,
@@ -33,11 +40,15 @@ class BillingGate(context: Context, private val repository: BillingRepository) {
 
     suspend fun refresh(userId: Int) {
         repository.status().onSuccess { s ->
+            PlanState.free.value = s.tier == "free" && !s.premium
             _state.update { it.copy(status = s, dismissedDay = prefs.getString("later_$userId", null)) }
         }
     }
 
-    fun reset() { _state.value = GateState() }
+    fun reset() {
+        PlanState.free.value = false
+        _state.value = GateState()
+    }
 
     // "Remind me later" hides the reminder until 4pm tomorrow
     fun remindTomorrow(userId: Int) {

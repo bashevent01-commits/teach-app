@@ -542,6 +542,9 @@ data class BillingStatusOut(
     @SerializedName("account_ref") val accountRef: String = "",
     @SerializedName("agent_registered") val agentRegistered: Boolean = false,
     @SerializedName("preview_allowed") val previewAllowed: Boolean = false,
+    val tier: String = "paid",
+    val premium: Boolean = true,
+    @SerializedName("upgrade_price") val upgradePrice: Int = 200,
 )
 
 data class PartnerNoticeRow(val id: Int, val text: String, val business: String? = null, val amount: String = "0")

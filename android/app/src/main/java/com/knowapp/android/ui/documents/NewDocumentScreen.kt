@@ -61,6 +61,7 @@ private const val NONE = "None"
 @Composable
 fun NewDocumentScreen(viewModel: NewDocumentViewModel, docType: String, preselectedItemId: Int?, onBack: () -> Unit, onSaved: () -> Unit) {
     val state by viewModel.state.collectAsState()
+    val onFreePlan by com.knowapp.android.data.PlanState.free.collectAsState()
     val type = DocumentCatalog.byKey(docType)
 
     var reference by remember { mutableStateOf("") }
@@ -103,11 +104,14 @@ fun NewDocumentScreen(viewModel: NewDocumentViewModel, docType: String, preselec
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("New document", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
+            Column {
+                TopAppBar(
+                    title = { Text("New document", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                )
+                if (onFreePlan) com.knowapp.android.ui.components.UpgradeBanner("Storing source documents is part of the paid plan.")
+            }
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->

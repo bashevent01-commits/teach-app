@@ -121,6 +121,8 @@ fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBac
     var pickingFrom by remember { mutableStateOf(false) }
     var pickingTo by remember { mutableStateOf(false) }
     var downloading by remember { mutableStateOf(false) }
+    val onFreePlan by com.knowapp.android.data.PlanState.free.collectAsState()
+    var showUpgrade by remember { mutableStateOf(false) }
 
     fun buildPdf(): File {
         val dir = File(context.cacheDir, "statements").apply { mkdirs() }
@@ -166,16 +168,19 @@ fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBac
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Statements", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
-                actions = { OutlinedButton(onClick = onViewAudits, shape = PillShape, modifier = Modifier.padding(end = 12.dp)) { Text("Audits") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
+            Column {
+                TopAppBar(
+                    title = { Text("Statements", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
+                    actions = { OutlinedButton(onClick = onViewAudits, shape = PillShape, modifier = Modifier.padding(end = 12.dp)) { Text("Audits") } },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                )
+                if (showUpgrade && onFreePlan) com.knowapp.android.ui.components.UpgradeBanner("Printing and sharing statements is part of the paid plan.")
+            }
         },
         bottomBar = {
             Surface(color = MaterialTheme.colorScheme.background, tonalElevation = 0.dp) {
                 Button(
-                    onClick = { downloading = true },
+                    onClick = { if (onFreePlan) showUpgrade = true else downloading = true },
                     enabled = !state.loading,
                     shape = PillShape,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp).height(52.dp),

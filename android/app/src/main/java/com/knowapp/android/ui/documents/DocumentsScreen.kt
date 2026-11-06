@@ -66,6 +66,8 @@ import com.knowapp.android.ui.theme.DisplayFontFamily
 @Composable
 fun DocumentsScreen(viewModel: DocumentsViewModel, onBack: () -> Unit, onNew: (String) -> Unit) {
     var picking by remember { mutableStateOf(false) }
+    val onFreePlan by com.knowapp.android.data.PlanState.free.collectAsState()
+    var showUpgrade by remember { mutableStateOf(false) }
     val state by viewModel.state.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     var open by remember { mutableStateOf<DocumentOut?>(null) }
@@ -80,15 +82,18 @@ fun DocumentsScreen(viewModel: DocumentsViewModel, onBack: () -> Unit, onNew: (S
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Source documents", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
+            Column {
+                TopAppBar(
+                    title = { Text("Source documents", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                )
+                if (onFreePlan) com.knowapp.android.ui.components.UpgradeBanner("Storing source documents is part of the paid plan.")
+            }
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { picking = true },
+                onClick = { if (onFreePlan) showUpgrade = true else picking = true },
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                 text = { Text("New document") },
                 containerColor = MaterialTheme.colorScheme.primary,

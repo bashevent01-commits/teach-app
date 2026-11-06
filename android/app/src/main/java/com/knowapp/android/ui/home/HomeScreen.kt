@@ -766,6 +766,7 @@ private fun RecordSheet(
     val sendQuantity = qty?.stripTrailingZeros()?.toPlainString()
     // In a gym, money in is a member's subscription: pick the member and the fee fills in
     val memberMode = gym && isIncome
+    val onFreePlan by com.knowapp.android.data.PlanState.free.collectAsState()
     var memberId by remember { mutableStateOf(startMemberId) }
     val chosenMember = members.firstOrNull { it.id == memberId }
     androidx.compose.runtime.LaunchedEffect(memberId) {
@@ -985,7 +986,7 @@ private fun RecordSheet(
                         }
                     }
                     OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Who or what is it for?") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
-                    PhotoSection(photoUri, "", { startCamera() }, { gallery.launch("image/*") }, { photoUri = null })
+                    if (onFreePlan) com.knowapp.android.ui.components.UpgradeBanner("Adding photos is part of the paid plan. A note works on the free plan.") else PhotoSection(photoUri, "", { startCamera() }, { gallery.launch("image/*") }, { photoUri = null })
                 }
                 "mpesa" -> Column(
                     modifier = Modifier.fillMaxWidth().background(accent.copy(alpha = 0.08f), RoundedCornerShape(16.dp)).padding(14.dp),
@@ -1032,7 +1033,7 @@ private fun RecordSheet(
                     OutlinedTextField(value = reference, onValueChange = { reference = it.uppercase() }, label = { Text("Bank reference or slip number") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
                     duplicate?.takeIf { it.exists }?.let { DuplicateWarning(it) }
                     OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Note (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
-                    PhotoSection(photoUri, "", { startCamera() }, { gallery.launch("image/*") }, { photoUri = null })
+                    if (onFreePlan) com.knowapp.android.ui.components.UpgradeBanner("Adding photos is part of the paid plan. A note works on the free plan.") else PhotoSection(photoUri, "", { startCamera() }, { gallery.launch("image/*") }, { photoUri = null })
                 }
             }
 
