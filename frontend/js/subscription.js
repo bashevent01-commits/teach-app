@@ -3,7 +3,9 @@
   const root = $("#subRoot");
   try {
     const s = await Api.billingStatus();
-    root.innerHTML = s.applies
+    root.innerHTML = s.tier === "free"
+      ? BillingView.renderFree(s)
+      : s.applies
       ? BillingView.render(s)
       : "<div class=\"sub-panel\"><h3>Subscription</h3><p>Your account is managed by your institution. There is nothing for you to pay here.</p></div>";
     $("#payNowBtn")?.addEventListener("click", () => PayFlow.open());

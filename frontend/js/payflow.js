@@ -153,7 +153,25 @@ const PayFlow = (() => {
     });
   }
 
-  return {
+  // The banner shown when someone on the free plan tries a paid feature
+  function banner(message) {
+    document.getElementById("upgradeBanner")?.remove();
+    const el2 = document.createElement("div");
+    el2.id = "upgradeBanner";
+    el2.className = "upgrade-banner";
+    el2.innerHTML = `<div><strong>Upgrade to continue</strong><p>${escapeHtml(message)}</p></div><button type="button" class="primary-btn" id="upgradeBannerBtn">Upgrade for KES 200 a month</button>`;
+    (document.querySelector("main") || document.body).insertAdjacentElement("afterbegin", el2);
+    el2.querySelector("#upgradeBannerBtn").addEventListener("click", () => { el2.remove(); api.open(); });
+    el2.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const api = {
+    isFree() { return !!status && status.tier === "free" && !status.premium; },
+    blocked(message) {
+      if (!api.isFree()) return false;
+      banner(message);
+      return true;
+    },
     start(sess) {
       if (!sess || !["staff", "institution_admin"].includes(sess.role)) return;
       session = sess;
@@ -164,4 +182,5 @@ const PayFlow = (() => {
     open() { mode = "pay"; step = 1; render(); },
     preview() { mode = "preview"; step = 0; previewAgent = false; render(); },
   };
+  return api;
 })();

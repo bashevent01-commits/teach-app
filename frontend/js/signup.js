@@ -5,6 +5,8 @@ let plan = "individual";
 
 // Owners and sales-and-stock accounts say where they trade; personal accounts do not
 function showLocation() {
+  document.getElementById("planField").hidden = plan === "owner";
+  if (plan === "owner") document.getElementById("signupPlan").value = "paid";
   const needs = plan === "owner" || document.getElementById("signupType").value === "staff";
   document.getElementById("locationFields").hidden = !needs;
   document.getElementById("signupCounty").required = needs;
@@ -52,6 +54,7 @@ document.getElementById("signupForm").addEventListener("submit", async (e) => {
       username: document.getElementById("signupUsername").value.trim(),
       email: document.getElementById("signupEmail").value.trim() || null,
       partner_code: document.getElementById("signupPartner").value.trim() || null,
+      plan: plan === "owner" ? "paid" : document.getElementById("signupPlan").value,
       county: document.getElementById("signupCounty").value || null,
       constituency: document.getElementById("signupConstituency").value || null,
       password: document.getElementById("signupPassword").value,

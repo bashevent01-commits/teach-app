@@ -198,6 +198,7 @@
   let viewerTitle = "";
 
   function printStatement() {
+    if (window.PayFlow && PayFlow.blocked("Printing statements is part of the paid plan.")) return;
     if (window.KnowApp && window.KnowApp.printHtml) {
       window.KnowApp.printHtml(viewerHtml, viewerTitle);
       return;
@@ -241,11 +242,15 @@
 
   // The dedicated print icon opens the same table and triggers Print immediately.
   $$("[data-print]").forEach((btn) => {
-    btn.addEventListener("click", () => openStatementWindow(btn.dataset.print, true));
+    btn.addEventListener("click", () => {
+      if (window.PayFlow && PayFlow.blocked("Printing statements is part of the paid plan.")) return;
+      openStatementWindow(btn.dataset.print, true);
+    });
   });
 
   $$("[data-download]").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      if (window.PayFlow && PayFlow.blocked("Downloading statements is part of the paid plan.")) return;
       const range = statementRange();
       if (!range) return;
       const method = btn.dataset.download;

@@ -299,6 +299,7 @@
     }
 
     // In a gym, money in is a member's subscription: pick the member and the fee fills in
+    const freePlan = !!(window.PayFlow && PayFlow.isFree());
     const memberMode = session.institution_type === "gym" && flow === "income";
     let members = [];
     if (memberMode) {
@@ -354,11 +355,11 @@
         <label class="field"><span>Amount (KES)</span><input type="number" id="txnAmount" min="0.01" step="0.01" required /></label>
         <button type="button" class="ghost-btn" id="addItemBtn" ${memberMode ? "hidden" : ""}>+ Add another item</button>
         <label class="field"><span>Description (optional)</span><input type="text" id="txnDescription" /></label>
-        <label class="chip-input wide">
+        ${freePlan ? `<div class="upgrade-banner"><div><strong>Upgrade to add photos</strong><p>Adding photos is part of the paid plan. A note works on the free plan.</p></div><button type="button" class="primary-btn" id="txnUpgradeBtn">Upgrade for KES 200 a month</button></div>` : `<label class="chip-input wide">
           <span class="ico" data-ico="image"></span> Add a photo (optional)
           <input type="file" id="txnImage" accept="image/png,image/jpeg,image/webp" hidden />
-        </label>
-        <p class="file-hint" id="txnImageName">Receipt, till slip, or similar evidence — not required.</p>
+        </label>`}
+        <p class="file-hint" id="txnImageName" ${freePlan ? "hidden" : ""}>Receipt, till slip, or similar evidence — not required.</p>
         <p class="file-hint">Date and time are recorded automatically.</p>
         <div class="cart-total" id="cartTotal" hidden><span id="cartTotalLabel">Total</span><strong id="cartTotalValue"></strong></div>
         <div class="form-actions">
@@ -458,7 +459,8 @@
       }
     });
 
-    $("#txnImage").addEventListener("change", () => {
+    $("#txnUpgradeBtn")?.addEventListener("click", () => { Sheet.close(); PayFlow.open(); });
+    $("#txnImage")?.addEventListener("change", () => {
       const file = $("#txnImage").files[0];
       $("#txnImageName").textContent = file ? `Selected: ${file.name}` : "Receipt, till slip, or similar evidence — not required.";
     });

@@ -57,5 +57,14 @@ const BillingView = (() => {
       ${s.preview_allowed ? `<button class="ghost-btn" id="previewPayBtn">Preview the payment reminder</button>` : ""}</div>`;
   }
 
-  return { render: (s, headline) => hero(s, headline) + timeline(s) + plan(s) + accounts(s) + pay(s), hero, timeline, plan, fmt, kes };
+  // The free plan: what is included, what is not, and how to upgrade
+  const renderFree = (s) => `<div class="sub-panel"><h3>Free plan</h3>
+    <ul class="free-list">
+      <li class="yes">Record income and expenses</li><li class="yes">Categories, balances and history</li>
+      <li class="no">Store source documents and photos</li><li class="no">Print or download statements</li>
+    </ul>
+    <p class="hint">${s.note}</p>
+    ${s.proof_status !== "pending" ? `<button class="primary-btn" id="payNowBtn">Upgrade for ${kes(s.upgrade_price)} a month</button>` : ""}</div>`;
+
+  return { render: (s, headline) => hero(s, headline) + timeline(s) + plan(s) + accounts(s) + pay(s), renderFree, hero, timeline, plan, fmt, kes };
 })();

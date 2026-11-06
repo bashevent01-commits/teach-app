@@ -1,4 +1,4 @@
-const CACHE = "know-v41";
+const CACHE = "know-v42";
 const IMG_CACHE = "know-img-v1";
 const IMG_MAX = 150;
 const ASSETS = [
