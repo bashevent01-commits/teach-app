@@ -779,3 +779,10 @@ body.payflow-open { overflow: hidden; }
 .pt-notice p { margin: 6px 0 12px; }
 
 .qty-row { display: grid; grid-template-columns: 1fr 130px; gap: 10px; }
+
+.md-title { margin: 8px 0 0; font-size: .95rem; color: var(--brand); }
+.md-row { display: flex; justify-content: space-between; margin: 0; }
+.mem-counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.mem-counter { text-align: center; padding: 10px; border-radius: 14px; background: var(--brand-soft); cursor: pointer; border: 0; color: inherit; font: inherit; }
+.mem-counter strong { display: block; font-size: 1.6rem; }
+.mem-overdue { color: #dc2626; } .mem-today { color: #ea580c; } .mem-tomorrow { color: #ca8a04; } .mem-ok { color: #16a34a; } .mem-paused { color: #6b7280; }

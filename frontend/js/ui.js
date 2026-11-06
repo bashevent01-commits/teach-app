@@ -358,6 +358,10 @@ const NAV_ITEMS = {
 
 function renderNav(session, activePage) {
   let items = NAV_ITEMS[session.role] || NAV_ITEMS.staff;
+  // A gym counts members where other businesses count stock
+  if (session.institution_type === "gym") {
+    items = items.map((item) => (item.nav === "stock" ? { href: "members.html", nav: "members", label: "Members", icon: "accounts" } : item));
+  }
   if (session.role === "staff" && session.staff_type === "teacher") {
     items = items.filter((item) => item.nav !== "stock");
   }
@@ -469,6 +473,14 @@ const Splash = (() => {
 async function initShell(page, allowedRoles) {
   Splash.show();
   const session = requireRole(...allowedRoles);
+  // Sessions saved before workspaces had a type learn it once
+  if (session && (session.role === "staff" || session.role === "institution_admin") && session.institution_type === undefined) {
+    try {
+      const me = await Api.users.me();
+      session.institution_type = me.institution_type || null;
+      Session.set({ ...session });
+    } catch (e) { /* offline: try again next page */ }
+  }
   applyTheme();
   renderNav(session, page);
   await renderIdentity(session);
@@ -484,6 +496,11 @@ async function initShell(page, allowedRoles) {
     loader.src = "./js/payflow.js";
     loader.onload = () => PayFlow.start(session);
     document.head.appendChild(loader);
+  }
+  if (session && session.role === "institution_admin" && session.institution_type === "gym") {
+    const due = document.createElement("script");
+    due.src = "./js/memberdue.js";
+    document.head.appendChild(due);
   }
   return session;
 }

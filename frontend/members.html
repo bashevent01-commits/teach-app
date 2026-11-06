@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.onrender.com https://*.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>KNOW - Members</title>
+    <meta name="description" content="Your gym members and their subscription payments." />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body data-page="members">
+    <div class="app-shell" id="appShell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-logo" id="sidebarLogo" src="./assets/logo.svg" alt="KNOW logo" />
+          <div class="brand-text">
+            <strong id="sidebarSchool">KNOW</strong>
+            <span>Staff</span>
+          </div>
+        </div>
+        <nav class="side-nav" aria-label="Main"></nav>
+        <div class="side-foot">
+          <p class="principle">&ldquo;Every item, every quantity, accounted for.&rdquo;</p>
+        </div>
+      </aside>
+
+      <main class="main" id="main">
+        <header class="topbar">
+          <div class="topbar-id">
+            <img class="topbar-logo" id="topLogo" src="./assets/logo.svg" alt="KNOW logo" />
+            <div class="topbar-copy">
+              <p class="greeting" id="greeting">Good morning</p>
+              <p class="subtle" id="schoolLine">Institution</p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn" id="modeToggle" aria-label="Toggle light or dark mode" title="Light / dark mode">
+              <span class="ico" data-ico="mode"></span>
+            </button>
+          </div>
+        </header>
+
+        <section class="page is-active" data-page="members">
+          <div class="card">
+            <div class="card-head">
+              <h2>Members</h2>
+              <div class="head-actions"><button class="primary-btn" id="newMemberBtn">+ Add member</button></div>
+            </div>
+            <div class="mem-counters" id="memCounters"></div>
+            <div class="grid-2">
+              <label class="field"><span>Search</span><input type="search" id="memSearch" placeholder="Name or phone" /></label>
+              <label class="field"><span>Show</span>
+                <select id="memFilter">
+                  <option value="all">Everyone</option><option value="overdue">Behind</option><option value="due_today">Due today</option>
+                  <option value="due_tomorrow">Due tomorrow</option><option value="paused">Paused</option>
+                </select>
+              </label>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead><tr><th>Member</th><th>Plan</th><th>Fee</th><th>Next payment</th><th></th></tr></thead>
+                <tbody id="memBody"><tr class="empty-row"><td colspan="5">Loading</td></tr></tbody>
+              </table>
+            </div>
+            <p class="file-hint">A payment is recorded from Home with Receiving. It moves the member's next due date on by one period.</p>
+          </div>
+        </section>
+      </main>
+
+      <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+    </div>
+
+    <div class="sheet-backdrop" id="sheetBackdrop" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+        <div class="sheet-head">
+          <h2 id="sheetTitle">Add item</h2>
+          <button class="icon-btn" id="sheetClose" aria-label="Close">&#10005;</button>
+        </div>
+        <div class="sheet-body" id="sheetBody"></div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="config.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/members.js"></script>
+  </body>
+</html>

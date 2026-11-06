@@ -272,9 +272,9 @@ async function handleLoginSubmit({ username, password, expectedRole, wrongRoleMe
     // state-changing requests can authenticate via the Authorization
     // header when the CSRF cookie isn't readable cross-site — see the
     // TokenStore comment above.
-    const { user_id, role, staff_type, full_name, institution_id, access_token } = data;
+    const { user_id, role, staff_type, full_name, institution_id, institution_type, access_token } = data;
     TokenStore.set(access_token);
-    Session.set({ user_id, role, staff_type, full_name, institution_id });
+    Session.set({ user_id, role, staff_type, full_name, institution_id, institution_type });
     location.href = homePageFor(data.role);
   } catch (err) {
     msgEl.textContent = err.status === 401 || err.status === 400
@@ -325,6 +325,7 @@ const Api = {
   users: {
     list: () => apiFetch("/api/users"),
     me: () => apiFetch("/api/users/me"),
+
     changeMyPassword: (current_password, new_password) => apiFetch("/api/users/me/password", { method: "POST", body: { current_password, new_password } }),
     updateAuditSharing: (share_audits) => apiFetch("/api/users/me/audit-sharing", { method: "PATCH", body: { share_audits } }),
     create: (payload) => apiFetch("/api/users", { method: "POST", body: payload }),
@@ -334,6 +335,14 @@ const Api = {
     sendResetLink: (id) => apiFetch(`/api/users/${id}/send-reset-link`, { method: "POST" }),
     setMyEmail: (email, current_password) => apiFetch("/api/users/me/email", { method: "POST", body: { email, current_password } }),
     resetPassword: (id, new_password) => apiFetch(`/api/users/${id}/reset-password`, { method: "POST", body: { new_password } }),
+  },
+
+  members: {
+    list: () => apiFetch("/api/members"),
+    due: () => apiFetch("/api/members/due"),
+    add: (body) => apiFetch("/api/members", { method: "POST", body }),
+    update: (id, body) => apiFetch(`/api/members/${id}`, { method: "PATCH", body }),
+    remove: (id) => apiFetch(`/api/members/${id}`, { method: "DELETE" }),
   },
 
   admin: {
@@ -410,7 +419,7 @@ const Api = {
      * optional on any entry (usually prefilled via Api.mpesa.parse).
      * description and image are always optional. Date is set server-side.
      */
-    async create({ type, method, category_type, category, description, amount, stock_item_id, quantity, mpesa_code, mpesa_payer_name, batch_id, image }) {
+    async create({ type, method, category_type, category, description, amount, stock_item_id, quantity, mpesa_code, mpesa_payer_name, batch_id, member_id, image }) {
       const form = new FormData();
       form.append("type", type);
       form.append("method", method);
@@ -423,6 +432,7 @@ const Api = {
       if (mpesa_code) form.append("mpesa_code", mpesa_code);
       if (mpesa_payer_name) form.append("mpesa_payer_name", mpesa_payer_name);
       if (batch_id) form.append("batch_id", batch_id);
+      if (member_id !== undefined && member_id !== null) form.append("member_id", member_id);
       if (image) form.append("image", image);
       return apiFetch("/api/transactions", { method: "POST", body: form, isForm: true });
     },

@@ -78,7 +78,7 @@ import com.knowapp.android.ui.theme.PillShape
 import com.knowapp.android.ui.theme.SmallRadius
 import com.knowapp.android.ui.theme.WarnAmber
 
-private val TYPE_SUGGESTIONS = listOf("School", "Shop", "Supermarket", "Canteen", "Pharmacy", "Other")
+private val TYPE_SUGGESTIONS = listOf("School", "Shop", "Supermarket", "Canteen", "Pharmacy", "Gym", "Other")
 
 private fun isQuiet(inst: InstitutionStatsOut): Boolean = (daysSince(inst.lastActivityAt) ?: Long.MAX_VALUE) > 14
 

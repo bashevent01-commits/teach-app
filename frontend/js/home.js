@@ -262,6 +262,28 @@
     btn.addEventListener("click", () => openTxnSheet(btn.dataset.flow));
   });
 
+  // A gym front desk sees who to chase, and arrives here from Members with a payment already started
+  if (session.institution_type === "gym") {
+    renderDueCard();
+    onFreshData(renderDueCard);
+    if (new URLSearchParams(location.search).get("pay")) openTxnSheet("income");
+  }
+
+  async function renderDueCard() {
+    let host = $("#dueCard");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "dueCard";
+      host.className = "card";
+      document.querySelector("section.page").insertAdjacentElement("afterbegin", host);
+    }
+    let due;
+    try { due = await Api.members.due(); } catch (err) { return; }
+    const line = (label, list, cls) => list.length ? `<p><strong class="${cls}">${label} (${list.length})</strong><br>${list.slice(0, 4).map((m) => escapeHtml(m.name)).join(", ")}${list.length > 4 ? ` and ${list.length - 4} more` : ""}</p>` : "";
+    const body = line("Behind", due.overdue, "mem-overdue") + line("Due today", due.today, "mem-today") + line("Due tomorrow", due.tomorrow, "mem-tomorrow");
+    host.innerHTML = `<div class="card-head"><h2>Members to chase</h2><a class="ghost-btn" href="members.html">Open members</a></div>${body || "<p>No one is due today or tomorrow.</p>"}`;
+  }
+
   async function openTxnSheet(flow) {
     const title = flow === "income" ? "Receiving" : "Paying";
     const stockVerb = flow === "income" ? "Sale (removes from stock)" : "Restock (adds to stock)";
@@ -275,6 +297,15 @@
         stockItems = (err.status === 0 ? await Offline.cacheGet("stock_items") : null) || [];
       }
     }
+
+    // In a gym, money in is a member's subscription: pick the member and the fee fills in
+    const memberMode = session.institution_type === "gym" && flow === "income";
+    let members = [];
+    if (memberMode) {
+      try { members = (await Api.members.list()).filter((m) => m.is_active); } catch (err) { members = []; }
+    }
+    const memberLabel = (m) => `${m.name} - ${m.status === "overdue" ? "behind" : m.status === "due_today" ? "due today" : m.status === "due_tomorrow" ? "due tomorrow" : "next " + m.next_due}`;
+    const payParam = Number(new URLSearchParams(location.search).get("pay")) || null;
 
     const stockOptions = stockItems.map((s) =>
       `<option value="${s.id}" data-price="${s.unit_price || 0}" data-qty="${s.quantity}" data-unit="${escapeHtml(s.unit || "pieces")}">${escapeHtml(s.name)} (${qtyText(s.quantity, s.unit)} in stock)</option>`
@@ -292,7 +323,11 @@
           </select>
         </label>
 
-        ${isTeacher ? "" : `
+        ${memberMode ? `
+        <label class="field"><span>Member</span><select id="txnMember"><option value="">Choose a member</option>${members.map((m) => `<option value="${m.id}" data-fee="${m.fee}" ${m.id === payParam ? "selected" : ""}>${escapeHtml(memberLabel(m))}</option>`).join("")}</select></label>
+        <p class="file-hint" id="memberHint">Paying moves the next due date on.</p>` : ""}
+
+        ${isTeacher || memberMode ? "" : `
         <div class="segmented" id="categoryTypeSegmented">
           <button type="button" data-type="OTHER" class="is-active">Other</button>
           <button type="button" data-type="STOCK">Stock item</button>
@@ -304,7 +339,7 @@
           <p class="file-hint" id="mpesaParseResult"></p>
         </div>
 
-        <div id="otherCategoryField">
+        <div id="otherCategoryField" ${memberMode ? "hidden" : ""}>
           <label class="field"><span>Category</span><input type="text" id="txnCategory" placeholder="e.g. rent, utilities" /></label>
         </div>
 
@@ -317,7 +352,7 @@
         </div>
 
         <label class="field"><span>Amount (KES)</span><input type="number" id="txnAmount" min="0.01" step="0.01" required /></label>
-        <button type="button" class="ghost-btn" id="addItemBtn">+ Add another item</button>
+        <button type="button" class="ghost-btn" id="addItemBtn" ${memberMode ? "hidden" : ""}>+ Add another item</button>
         <label class="field"><span>Description (optional)</span><input type="text" id="txnDescription" /></label>
         <label class="chip-input wide">
           <span class="ico" data-ico="image"></span> Add a photo (optional)
@@ -333,6 +368,14 @@
     `);
 
     let categoryType = "OTHER";
+    if (memberMode) {
+      const pick = () => {
+        const opt = $("#txnMember").selectedOptions[0];
+        if (opt && opt.dataset.fee) $("#txnAmount").value = Number(opt.dataset.fee);
+      };
+      $("#txnMember").addEventListener("change", pick);
+      pick();
+    }
     let mpesaCode = null;
     let mpesaPayerName = null;
 
@@ -513,7 +556,11 @@
       hideFormMessage(msg);
       const submitBtn = $("#txnSubmit");
 
-      if (categoryType === "OTHER" && !$("#txnCategory").value.trim()) {
+      if (memberMode && !$("#txnMember").value) {
+        showFormMessage(msg, "Choose a member.");
+        return;
+      }
+      if (!memberMode && categoryType === "OTHER" && !$("#txnCategory").value.trim()) {
         showFormMessage(msg, "Category is required.");
         return;
       }
@@ -529,7 +576,8 @@
         type: flow,
         method: $("#txnMethod").value,
         category_type: categoryType,
-        category: categoryType === "OTHER" ? $("#txnCategory").value.trim() : undefined,
+        category: memberMode ? "Subscription" : categoryType === "OTHER" ? $("#txnCategory").value.trim() : undefined,
+        member_id: memberMode ? parseInt($("#txnMember").value, 10) : undefined,
         stock_item_id: categoryType === "STOCK" ? parseInt($("#txnStockItem").value, 10) : undefined,
         quantity: categoryType === "STOCK" ? stockQty() : undefined,
         amount: parseFloat($("#txnAmount").value),

@@ -56,9 +56,9 @@ document.getElementById("signupForm").addEventListener("submit", async (e) => {
       constituency: document.getElementById("signupConstituency").value || null,
       password: document.getElementById("signupPassword").value,
     });
-    const { user_id, role, staff_type, full_name, institution_id, access_token } = data;
+    const { user_id, role, staff_type, full_name, institution_id, institution_type, access_token } = data;
     TokenStore.set(access_token);
-    Session.set({ user_id, role, staff_type, full_name, institution_id });
+    Session.set({ user_id, role, staff_type, full_name, institution_id, institution_type });
     location.href = "welcome.html";
   } catch (error) {
     err.textContent = error.status === 429 ? "Too many sign-ups from this connection. Please try again later." : (error.message || "Could not create the account. Try again.");

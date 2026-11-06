@@ -4,7 +4,7 @@
   let institutions = [];
   let billing = {};
 
-  const COMMON_TYPES = ["school", "shop", "supermarket", "canteen", "pharmacy", "other"];
+  const COMMON_TYPES = ["school", "shop", "supermarket", "canteen", "pharmacy", "gym", "other"];
 
   await loadInstitutions();
 
