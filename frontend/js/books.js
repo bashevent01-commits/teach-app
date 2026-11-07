@@ -1,11 +1,11 @@
 (async function () {
-  const session = await initShell("books", ["institution_admin"]);
+  const session = await initShell("books", ["institution_admin", "staff"]);
 
   let staff = [];
   const filterEl = $("#staffFilter");
 
   try {
-    staff = (await Api.users.list()).filter((u) => u.role === "staff");
+    try { staff = (await Api.users.list()).filter((u) => u.role === "staff"); } catch (err) { staff = []; }
     filterEl.innerHTML = `<option value="">All staff (collective)</option>` +
       staff.map((u) => `<option value="${u.id}">${escapeHtml(u.full_name)} (${escapeHtml(u.username)})</option>`).join("");
   } catch (err) {

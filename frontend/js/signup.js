@@ -5,8 +5,7 @@ let plan = "individual";
 
 // Owners and sales-and-stock accounts say where they trade; personal accounts do not
 function showLocation() {
-  document.getElementById("planField").hidden = plan === "owner";
-  if (plan === "owner") document.getElementById("signupPlan").value = "paid";
+  document.getElementById("focusField").hidden = plan === "owner" || document.getElementById("signupType").value !== "staff";
   const needs = plan === "owner" || document.getElementById("signupType").value === "staff";
   document.getElementById("locationFields").hidden = !needs;
   document.getElementById("signupCounty").required = needs;
@@ -26,10 +25,14 @@ function choosePlan(next) {
   document.getElementById("ownerFields").hidden = !owner;
   document.getElementById("useForField").hidden = owner;
   document.getElementById("signupBusiness").required = owner;
-  document.getElementById("formTitle").textContent = owner ? "Create your owner account" : "Create your individual account";
+  const free = plan === "free";
+  document.getElementById("formTitle").textContent = owner ? "Create your owner account" : free ? "Create your free account" : "Create your individual account";
   document.getElementById("formHint").textContent = owner
     ? "KES 500/month after your free week. Includes 5 individual accounts, then KES 200 each."
+    : free
+    ? "Free: record income and expenses. No source documents, photos or printing statements. You can upgrade any time."
     : "KES 200/month after your free week. This account cannot create other accounts.";
+  document.getElementById("signupSubmit").textContent = free ? "Create free account" : "Start free trial";
   showLocation();
   stepPlan.hidden = true;
   stepForm.hidden = false;
@@ -49,19 +52,19 @@ document.getElementById("signupForm").addEventListener("submit", async (e) => {
     const data = await Api.signup({
       account_type: owner ? "owner" : document.getElementById("signupType").value,
       business_name: owner ? document.getElementById("signupBusiness").value.trim() : null,
-      business_type: owner ? document.getElementById("signupBusinessType").value : null,
+      business_type: owner ? document.getElementById("signupBusinessType").value : document.getElementById("signupType").value === "staff" ? document.getElementById("signupFocus").value : null,
       full_name: document.getElementById("signupName").value.trim(),
       username: document.getElementById("signupUsername").value.trim(),
       email: document.getElementById("signupEmail").value.trim() || null,
       partner_code: document.getElementById("signupPartner").value.trim() || null,
-      plan: plan === "owner" ? "paid" : document.getElementById("signupPlan").value,
+      plan: plan === "free" ? "free" : "paid",
       county: document.getElementById("signupCounty").value || null,
       constituency: document.getElementById("signupConstituency").value || null,
       password: document.getElementById("signupPassword").value,
     });
-    const { user_id, role, staff_type, full_name, institution_id, institution_type, access_token } = data;
+    const { user_id, role, staff_type, full_name, institution_id, institution_type, individual, access_token } = data;
     TokenStore.set(access_token);
-    Session.set({ user_id, role, staff_type, full_name, institution_id, institution_type });
+    Session.set({ user_id, role, staff_type, full_name, institution_id, institution_type, individual });
     location.href = "welcome.html";
   } catch (error) {
     err.textContent = error.status === 429 ? "Too many sign-ups from this connection. Please try again later." : (error.message || "Could not create the account. Try again.");

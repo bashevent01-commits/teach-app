@@ -24,7 +24,13 @@
         </div>
         <div id="stepPlan">
           <h2>Choose your account</h2>
-          <p class="hint">Both start with 7 days free. You can pay after that.</p>
+          <p class="hint">The paid plans start with 7 days free. A business account is never free.</p>
+          <button type="button" class="plan-card" data-plan="free">
+            <span class="plan-tag">Free</span>
+            <span class="plan-price">KES 0<small>/month</small></span>
+            <span class="plan-line">For one person: record income and expenses, in a shop, gym or personal account.</span>
+            <span class="plan-line plan-muted">No source documents, no photos, no printing statements. Upgrade any time.</span>
+          </button>
           <button type="button" class="plan-card" data-plan="individual">
             <span class="plan-tag">Individual</span>
             <span class="plan-price">KES 200<small>/month</small></span>
@@ -57,11 +63,11 @@
                 </select>
               </label>
             </div>
-            <label class="field" id="planField" hidden>
-              <span>Plan</span>
-              <select id="signupPlan">
-                <option value="free">Free: record income and expenses (no documents, photos or printing statements)</option>
-                <option value="paid">Standard: KES 200 a month, with 7 days free</option>
+            <label class="field" id="focusField" hidden>
+              <span>What do you run?</span>
+              <select id="signupFocus">
+                <option value="shop">A shop (stock)</option>
+                <option value="gym">A gym (members)</option>
               </select>
             </label>
             <div id="locationFields" hidden>

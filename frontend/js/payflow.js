@@ -22,6 +22,10 @@ const PayFlow = (() => {
   async function check() {
     clearTimeout(timer);
     try { status = await Api.billingStatus(); } catch (e) { status = status || null; }
+    const known = Session.get();
+    if (status && known && (known.individual !== status.individual || known.institution_type !== status.institution_type)) {
+      Session.set({ ...known, individual: status.individual, institution_type: status.institution_type });
+    }
     decide();
     timer = setTimeout(check, nextCheck());
   }

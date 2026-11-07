@@ -1,4 +1,4 @@
-const CACHE = "know-v42";
+const CACHE = "know-v43";
 const IMG_CACHE = "know-img-v1";
 const IMG_MAX = 150;
 const ASSETS = [
@@ -22,6 +22,8 @@ const ASSETS = [
   "./js/memberdue.js",
   "./js/members.js",
   "./members.html",
+  "./advanced.html",
+  "./js/advanced.js",
   "./js/signup.js",
   "./forgot-password.html",
   "./reset-password.html",

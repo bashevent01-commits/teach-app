@@ -104,15 +104,15 @@ fun SubscriptionScreen(
                     if (status.plan == "owner") AccountsCard(status)
                     PayCard(status, onPay, onPreview)
                     if (status.canUpgradeBusiness && onQuote != null && onUpgradeBusiness != null) {
-                        var showBusiness by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                        val showBusiness = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
                         Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
                             Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text("Opened another branch?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Text("Become a business to add branches. You keep everything you have, and only pay the difference.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                androidx.compose.material3.OutlinedButton(onClick = { showBusiness = true }, shape = CircleShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Become a business") }
+                                androidx.compose.material3.OutlinedButton(onClick = { showBusiness.value = true }, shape = CircleShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Become a business") }
                             }
                         }
-                        if (showBusiness) UpgradeBusinessSheet(status, onQuote, onUpgradeBusiness, onDismiss = { showBusiness = false })
+                        if (showBusiness.value) UpgradeBusinessSheet(status, onQuote, onUpgradeBusiness, onDismiss = { showBusiness.value = false })
                     }
                 }
             }

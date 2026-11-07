@@ -272,9 +272,9 @@ async function handleLoginSubmit({ username, password, expectedRole, wrongRoleMe
     // state-changing requests can authenticate via the Authorization
     // header when the CSRF cookie isn't readable cross-site — see the
     // TokenStore comment above.
-    const { user_id, role, staff_type, full_name, institution_id, institution_type, access_token } = data;
+    const { user_id, role, staff_type, full_name, institution_id, institution_type, individual, access_token } = data;
     TokenStore.set(access_token);
-    Session.set({ user_id, role, staff_type, full_name, institution_id, institution_type });
+    Session.set({ user_id, role, staff_type, full_name, institution_id, institution_type, individual });
     location.href = homePageFor(data.role);
   } catch (err) {
     msgEl.textContent = err.status === 401 || err.status === 400

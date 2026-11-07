@@ -44,6 +44,7 @@ fun AdvancedSettingsScreen(onBack: () -> Unit, onOpenBooks: () -> Unit, onOpenAu
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Entry(title: String, subtitle: String, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {

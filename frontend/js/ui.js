@@ -362,6 +362,10 @@ function renderNav(session, activePage) {
   if (session.institution_type === "gym") {
     items = items.map((item) => (item.nav === "stock" ? { href: "members.html", nav: "members", label: "Members", icon: "accounts" } : item));
   }
+  // An individual account keeps to a few pages; plan, books and audits sit under Settings
+  if (session.role === "staff" && session.individual) {
+    items = items.filter((item) => item.nav !== "subscription").map((item) => (item.nav === "audit" ? { ...item, label: "Statements" } : item));
+  }
   if (session.role === "staff" && session.staff_type === "teacher") {
     items = items.filter((item) => item.nav !== "stock");
   }
@@ -474,10 +478,11 @@ async function initShell(page, allowedRoles) {
   Splash.show();
   const session = requireRole(...allowedRoles);
   // Sessions saved before workspaces had a type learn it once
-  if (session && (session.role === "staff" || session.role === "institution_admin") && session.institution_type === undefined) {
+  if (session && (session.role === "staff" || session.role === "institution_admin") && (session.institution_type === undefined || session.individual === undefined)) {
     try {
       const me = await Api.users.me();
       session.institution_type = me.institution_type || null;
+      session.individual = !!me.individual;
       Session.set({ ...session });
     } catch (e) { /* offline: try again next page */ }
   }

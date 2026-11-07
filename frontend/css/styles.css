@@ -792,3 +792,5 @@ body.payflow-open { overflow: hidden; }
 .free-list { list-style: none; padding: 0; margin: 8px 0 12px; display: flex; flex-direction: column; gap: 6px; }
 .free-list .yes::before { content: "\2713  "; color: #16a34a; font-weight: 700; }
 .free-list .no { opacity: .6; } .free-list .no::before { content: "\2717  "; font-weight: 700; }
+
+.adv-links { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
