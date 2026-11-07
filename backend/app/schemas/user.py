@@ -192,6 +192,7 @@ class UserOut(BaseModel):
     institution_id: int | None
     institution_name: str | None = None
     institution_type: str | None = None
+    individual: bool = False
     email: str | None = None
     last_active_at: datetime | None = None
     share_audits: bool

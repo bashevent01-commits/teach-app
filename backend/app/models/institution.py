@@ -29,6 +29,10 @@ class Institution(Base):
     monthly_fee = Column(Numeric(12, 2), nullable=True)
     # "free" for the free plan; empty or "paid" for a paying workspace
     tier = Column(String(10), nullable=True)
+    # What an individual account runs: "shop" or "gym"; empty for everything else
+    focus = Column(String(10), nullable=True)
+    # Fee payments up to this id belong to an earlier plan and no longer count toward the current cycle
+    fee_floor = Column(Integer, nullable=True)
     # When billing began for a workspace that upgraded from free; empty means the 7-day trial ran from sign-up
     billing_start = Column(DateTime(timezone=True), nullable=True)
 
@@ -37,3 +41,8 @@ class Institution(Base):
     audits = relationship("Audit", back_populates="institution", cascade="all, delete-orphan")
     posts = relationship("Post", back_populates="institution", cascade="all, delete-orphan")
     stock_items = relationship("StockItem", back_populates="institution", cascade="all, delete-orphan")
+
+    @property
+    def kind(self) -> str:
+        """What the workspace does day to day: a gym if it is one or an individual chose gym, otherwise its type."""
+        return "gym" if self.type == "gym" or self.focus == "gym" else self.type

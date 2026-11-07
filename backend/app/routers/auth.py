@@ -142,6 +142,7 @@ def login(
         full_name=user.full_name,
         institution_id=user.institution_id,
         institution_type=user.institution_type,
+        individual=user.individual,
     )
 
 
@@ -203,7 +204,7 @@ def signup(
         role, staff_type = UserRole.INSTITUTION_ADMIN, None
     else:
         # The username is unique, so this workspace name is too
-        workspace = Institution(name=f"{payload.full_name} (@{payload.username})"[:200], type="individual", partner_id=partner.id if partner else None, tier="free" if payload.plan == "free" else None)
+        workspace = Institution(name=f"{payload.full_name} (@{payload.username})"[:200], type="individual", partner_id=partner.id if partner else None, tier="free" if payload.plan == "free" else None, focus=("gym" if payload.business_type == "gym" else "shop") if payload.account_type == "staff" else None)
         role = UserRole.STAFF
         staff_type = StaffType.TEACHER if payload.account_type == "personal" else StaffType.GENERAL
     try:
@@ -243,6 +244,7 @@ def signup(
         full_name=user.full_name,
         institution_id=user.institution_id,
         institution_type=user.institution_type,
+        individual=user.individual,
     )
 
 

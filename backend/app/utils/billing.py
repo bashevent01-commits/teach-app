@@ -104,6 +104,7 @@ class Cycle:
     proof_status: str = "none"
     proof_note: str | None = None
     period: str | None = None
+    paid_until: datetime | None = None
 
 
 def plan_amounts(db: Session, institution: Institution) -> tuple[str, int, int, int, int]:
@@ -120,14 +121,14 @@ def cycle(db: Session, institution: Institution | None, now: datetime | None = N
         return Cycle()
     now = now or utcnow()
     plan, base, used, extra, total = plan_amounts(db, institution)
-    paid = db.query(FeePayment).filter(FeePayment.institution_id == institution.id, FeePayment.voided_at.is_(None)).count()
+    paid = db.query(FeePayment).filter(FeePayment.institution_id == institution.id, FeePayment.voided_at.is_(None), FeePayment.id > (institution.fee_floor or 0)).count()
     # A workspace that upgraded from free is billed from the day it upgraded, with no trial
     trial_ends = _aware(institution.billing_start) if institution.billing_start else _aware(institution.created_at) + timedelta(days=TRIAL_DAYS)
     due_moment = add_months(trial_ends.astimezone(LOCAL), paid)
     popup_from = _first_popup(due_moment)
     lock_at = (popup_from + timedelta(days=1)).replace(hour=LOCK_HOUR, minute=0, second=0, microsecond=0)
     out = Cycle(billed=True, individual=plan == "individual", plan=plan, base=base, used=used, extra=extra, total=total,
-                trial_ends=trial_ends, popup_from=popup_from, lock_at=lock_at, due_date=popup_from.date(), paid_months=paid,
+                trial_ends=trial_ends, popup_from=popup_from, lock_at=lock_at, due_date=popup_from.date(), paid_months=paid, paid_until=due_moment,
                 period=add_months(trial_ends.astimezone(LOCAL), paid).strftime("%Y-%m"))
     latest = db.query(PaymentProof).filter(PaymentProof.institution_id == institution.id).order_by(PaymentProof.id.desc()).first()
     pending = latest is not None and latest.status == "pending"
@@ -177,3 +178,49 @@ def check_proof(message: str, total_due: int, now: datetime | None = None) -> di
     if when > now.astimezone(LOCAL) + timedelta(hours=1) or when < now.astimezone(LOCAL) - timedelta(days=14):
         raise ValueError("That payment is more than 2 weeks old. Paste the message from your latest payment.")
     return {"code": parsed["code"], "amount": parsed["amount"], "paid_at": when, "recipient": recipient[:120], "account_ref": (parsed["account_ref"] or "")[:80] or None}
+
+
+class UpgradeConflict(Exception):
+    pass
+
+
+def upgrade_quote(db: Session, institution: Institution, now: datetime | None = None) -> dict:
+    """What it costs a paid individual to become a business: unused days of the KES 200 month are credited toward the first KES 500 month."""
+    now = now or utcnow()
+    c = cycle(db, institution, now)
+    out = {"price": OWNER_PRICE, "credit": 0, "due_now": OWNER_PRICE, "state": c.state, "pending": c.proof_status == "pending"}
+    if c.state == "trial":
+        # Nothing has been paid yet, so the trial simply carries on at the business price
+        out.update(due_now=0)
+    elif c.state == "paid" and c.paid_until is not None:
+        length = (c.paid_until - add_months(c.paid_until, -1)).total_seconds()
+        remaining = max(0.0, (c.paid_until.astimezone(timezone.utc) - now).total_seconds())
+        credit = min(INDIVIDUAL_PRICE, int(INDIVIDUAL_PRICE * remaining / length)) if length > 0 else 0
+        out.update(credit=credit, due_now=OWNER_PRICE - credit)
+    return out
+
+
+def convert_to_business(db: Session, institution: Institution, details: dict, restart_billing: bool, now: datetime | None = None) -> User:
+    """Turns an individual workspace into a business: it keeps all its data, the person's login stays as the first branch, and a new owner login is added."""
+    now = now or utcnow()
+    from sqlalchemy import func as sa_func
+    if db.query(Institution.id).filter(sa_func.lower(Institution.name) == details["business_name"].lower(), Institution.id != institution.id).first():
+        raise UpgradeConflict("A business with this name already exists")
+    if db.query(User.id).filter(sa_func.lower(User.username) == details["owner_username"].lower()).first():
+        raise UpgradeConflict("That owner username is already taken")
+    branch = db.query(User).filter(User.institution_id == institution.id, User.role == UserRole.STAFF).first()
+    institution.name = details["business_name"]
+    institution.type = details["business_type"]
+    institution.focus = None
+    institution.region = branch.county if branch else None
+    institution.constituency = branch.constituency if branch else None
+    owner = User(username=details["owner_username"], full_name=details["owner_full_name"], email=details.get("owner_email"),
+                 hashed_password=details["owner_password_hash"], role=UserRole.INSTITUTION_ADMIN, institution_id=institution.id)
+    db.add(owner)
+    if restart_billing:
+        from app.models.partner import FeePayment as FP
+        institution.billing_start = now
+        institution.fee_floor = db.query(sa_func.coalesce(sa_func.max(FP.id), 0)).scalar() or 0
+    db.flush()
+    forget(institution.id)
+    return owner

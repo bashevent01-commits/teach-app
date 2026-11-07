@@ -70,7 +70,7 @@ def _gym(db: Session, user: User) -> Institution:
     if user.role == UserRole.STAFF and user.staff_type == StaffType.TEACHER:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Personal accounts don't have members")
     inst = db.get(Institution, user.institution_id) if user.institution_id else None
-    if not inst or inst.type != "gym":
+    if not inst or inst.kind != "gym":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Members are only for gym workspaces")
     return inst
 

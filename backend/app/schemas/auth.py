@@ -23,3 +23,4 @@ class TokenResponse(BaseModel):
     full_name: str
     institution_id: int | None = None
     institution_type: str | None = None
+    individual: bool = False

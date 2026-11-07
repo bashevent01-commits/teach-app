@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -60,8 +61,17 @@ def approve_proof(proof_id: int, payload: Approve, request: Request, db: Session
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No waiting payment message with that id")
     inst = db.get(Institution, proof.institution_id)
     upgrading = proof.purpose == "upgrade"
+    if proof.purpose == "business":
+        # Becoming a business: the person's login stays as the first branch and a new owner login is created
+        try:
+            bill.convert_to_business(db, inst, json.loads(proof.payload or "{}"), restart_billing=True)
+        except bill.UpgradeConflict as err:
+            db.rollback()
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"{err}. Decline this message and ask them to choose another.")
+        start = bill.utcnow().astimezone(bill.LOCAL)
+        months = 1
     # A free workspace that pays becomes a paid one, billed from today with no trial
-    if upgrading:
+    elif upgrading:
         inst.tier, inst.billing_start = "paid", bill.utcnow()
         start = bill.utcnow().astimezone(bill.LOCAL)
         months = 1
@@ -81,7 +91,7 @@ def approve_proof(proof_id: int, payload: Approve, request: Request, db: Session
     proof.status, proof.reviewed_by_id, proof.reviewed_at = "approved", admin.id, datetime.now(timezone.utc)
     if partner and commission > 0:
         db.add(PartnerNotice(partner_id=partner.id, institution_name=inst.name, amount=commission,
-                             text=f"{inst.name} {'upgraded and paid' if upgrading else 'paid'} KES {Decimal(proof.amount):,.2f}. You earned KES {commission:,.2f} and can ask for a payout of that amount."))
+                             text=f"{inst.name} {'became a business and paid' if proof.purpose == 'business' else 'upgraded and paid' if upgrading else 'paid'} KES {Decimal(proof.amount):,.2f}. You earned KES {commission:,.2f} and can ask for a payout of that amount."))
     db.commit()
     bill.forget(inst.id)
     log_activity(db, action="payment_proof_approved", actor=admin, target_type="institution", target_id=inst.id, detail=f"Approved M-Pesa {proof.code} for {months} month(s)", request=request)

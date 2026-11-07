@@ -21,6 +21,8 @@ class PaymentProof(Base):
     purpose = Column(String(10), nullable=False, default="fee", server_default="fee")
     status = Column(String(12), nullable=False, default="pending", index=True)
     review_note = Column(String(200), nullable=True)
+    # Details of a business upgrade, kept until the payment is checked (the password is already hashed)
+    payload = Column(Text, nullable=True)
     reviewed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

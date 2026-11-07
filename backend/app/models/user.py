@@ -72,7 +72,11 @@ class User(Base):
 
     @property
     def institution_type(self) -> str | None:
-        return self.institution.type if self.institution else None
+        return self.institution.kind if self.institution else None
+
+    @property
+    def individual(self) -> bool:
+        return bool(self.institution and self.institution.type == "individual")
 
     @property
     def institution_name(self) -> str | None:
