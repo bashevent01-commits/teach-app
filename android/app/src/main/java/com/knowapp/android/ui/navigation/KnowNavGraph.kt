@@ -247,6 +247,8 @@ fun KnowNavGraph(container: AppContainer) {
                 onBack = { navController.popBackStack() },
                 onPay = { container.billingGate.openPay() },
                 onPreview = if (gateState.status?.previewAllowed == true) ({ container.billingGate.startPreview() }) else null,
+                onQuote = { container.billingRepository.upgradeQuote() },
+                onUpgradeBusiness = { fields -> container.billingRepository.upgradeToBusiness(fields) },
             )
         }
         composable(Routes.PROFIT) {
@@ -265,6 +267,7 @@ fun KnowNavGraph(container: AppContainer) {
             SettingsScreen(
                 updateManager = container.updateManager,
                 themeStore = container.themeStore,
+                onOpenAdvanced = if (session?.individual == true) ({ navController.navigate(Routes.ADVANCED) }) else null,
                 onOpenSubscription = if (session?.role == "staff" || session?.role == "institution_admin") ({ navController.navigate(Routes.SUBSCRIPTION) }) else null,
                 profile = viewModel(factory = vmFactory { com.knowapp.android.ui.settings.ProfileViewModel(container.profileRepository, container.photoStore) }),
                 onSignOut = {
@@ -275,11 +278,18 @@ fun KnowNavGraph(container: AppContainer) {
         }
         composable(Routes.STATEMENTS) {
             val viewModel: StatementsViewModel = viewModel(factory = vmFactory { StatementsViewModel(container.transactionRepository, container.booksRepository, container.institutionsRepository, container.sessionStore, session?.role == "institution_admin") })
-            StatementsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = session?.role == "institution_admin", onViewAudits = { navController.navigate(Routes.AUDITS) })
+            StatementsScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = session?.role == "institution_admin", onViewAudits = { navController.navigate(Routes.AUDITS) }, showAudits = session?.individual != true)
+        }
+        composable(Routes.ADVANCED) {
+            com.knowapp.android.ui.settings.AdvancedSettingsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenBooks = { navController.navigate(Routes.BOOKS) },
+                onOpenAudits = { navController.navigate(Routes.AUDITS) },
+            )
         }
         composable(Routes.BOOKS) {
             val viewModel: BooksViewModel = viewModel(factory = vmFactory { BooksViewModel(container.booksRepository, container.auditRepository) })
-            BooksScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = false, onViewAudits = { navController.navigate(Routes.AUDITS) }, onViewStatements = { navController.navigate(Routes.STATEMENTS) })
+            BooksScreen(viewModel = viewModel, onBack = { navController.popBackStack() }, showBack = session?.individual == true, onViewAudits = { navController.navigate(Routes.AUDITS) }, onViewStatements = { navController.navigate(Routes.STATEMENTS) })
         }
         composable(Routes.MEMBERS) {
             val viewModel: com.knowapp.android.ui.members.MembersViewModel = viewModel(

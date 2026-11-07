@@ -10,6 +10,7 @@ data class TokenResponse(
     @SerializedName("full_name") val fullName: String,
     @SerializedName("institution_id") val institutionId: Int? = null,
     @SerializedName("institution_type") val institutionType: String? = null,
+    val individual: Boolean = false,
 )
 
 data class ApiErrorBody(
@@ -119,6 +120,7 @@ data class UserOut(
     val email: String? = null,
     val county: String? = null,
     val constituency: String? = null,
+    val individual: Boolean = false,
 )
 
 data class CategoryInsightOut(
@@ -545,6 +547,9 @@ data class BillingStatusOut(
     val tier: String = "paid",
     val premium: Boolean = true,
     @SerializedName("upgrade_price") val upgradePrice: Int = 200,
+    val individual: Boolean = false,
+    @SerializedName("institution_type") val institutionType: String? = null,
+    @SerializedName("can_upgrade_business") val canUpgradeBusiness: Boolean = false,
 )
 
 data class PartnerNoticeRow(val id: Int, val text: String, val business: String? = null, val amount: String = "0")
@@ -603,4 +608,13 @@ data class DueMembersOut(
     val overdue: List<MemberOut> = emptyList(),
     val today: List<MemberOut> = emptyList(),
     val tomorrow: List<MemberOut> = emptyList(),
+)
+
+
+data class UpgradeQuoteOut(
+    val price: Int = 500,
+    val credit: Int = 0,
+    @SerializedName("due_now") val dueNow: Int = 500,
+    val state: String = "",
+    val pending: Boolean = false,
 )

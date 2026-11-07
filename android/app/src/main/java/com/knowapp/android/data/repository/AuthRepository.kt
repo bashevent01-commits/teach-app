@@ -28,6 +28,7 @@ class AuthRepository(
                     fullName = body.fullName,
                     institutionId = body.institutionId,
                     institutionType = body.institutionType,
+                    individual = body.individual,
                 )
                 sessionStore.save(session)
                 sessionStore.saveCredentials(username, password)

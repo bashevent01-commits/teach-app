@@ -31,7 +31,7 @@ data class GateState(
 )
 
 // Holds the fee reminder state: when to remind, when the app closes, and the payment steps
-class BillingGate(context: Context, private val repository: BillingRepository) {
+class BillingGate(context: Context, private val repository: BillingRepository, private val sessionStore: com.knowapp.android.data.SessionStore) {
     private val prefs = context.applicationContext.getSharedPreferences("know_billing", Context.MODE_PRIVATE)
     private val _state = MutableStateFlow(GateState())
     val state: StateFlow<GateState> = _state
@@ -41,6 +41,7 @@ class BillingGate(context: Context, private val repository: BillingRepository) {
     suspend fun refresh(userId: Int) {
         repository.status().onSuccess { s ->
             PlanState.free.value = s.tier == "free" && !s.premium
+            sessionStore.setWorkspace(s.individual, s.institutionType)
             _state.update { it.copy(status = s, dismissedDay = prefs.getString("later_$userId", null)) }
         }
     }

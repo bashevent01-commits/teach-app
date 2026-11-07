@@ -342,4 +342,10 @@ interface ApiService {
 
     @DELETE("/api/members/{id}")
     suspend fun deleteMember(@Path("id") id: Int): Response<Unit>
+
+    @GET("/api/billing/upgrade-quote")
+    suspend fun upgradeQuote(): Response<com.knowapp.android.data.model.UpgradeQuoteOut>
+
+    @POST("/api/billing/upgrade-to-business")
+    suspend fun upgradeToBusiness(@Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Map<String, String>>
 }

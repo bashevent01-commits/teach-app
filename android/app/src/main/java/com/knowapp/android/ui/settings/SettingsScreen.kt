@@ -79,7 +79,7 @@ private fun memberSinceText(iso: String?): String? = runCatching {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(updateManager: UpdateManager, themeStore: ThemeStore, profile: ProfileViewModel, onSignOut: suspend () -> Unit, onOpenSubscription: (() -> Unit)? = null) {
+fun SettingsScreen(updateManager: UpdateManager, themeStore: ThemeStore, onOpenAdvanced: (() -> Unit)? = null, profile: ProfileViewModel, onSignOut: suspend () -> Unit, onOpenSubscription: (() -> Unit)? = null) {
     val profileState by profile.state.collectAsState()
     val photoPicker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri -> if (uri != null) profile.onPhotoPicked(uri) }
     val themeMode by themeStore.mode.collectAsState()
@@ -213,6 +213,15 @@ fun SettingsScreen(updateManager: UpdateManager, themeStore: ThemeStore, profile
                 androidx.compose.animation.AnimatedVisibility(visible = dirty || profileState.saving) {
                     Button(onClick = profile::save, enabled = !profileState.saving, shape = PillShape, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
                         Text(if (profileState.saving) "Saving…" else "Save changes", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+
+            if (onOpenAdvanced != null) {
+                androidx.compose.material3.Card(onClick = onOpenAdvanced, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp)) {
+                        Text("Advanced settings", fontWeight = FontWeight.Bold)
+                        Text("Books and audits", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }

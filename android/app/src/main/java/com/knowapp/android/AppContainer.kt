@@ -54,7 +54,7 @@ class AppContainer(context: Context) {
     val exchangeRepository = com.knowapp.android.data.repository.ExchangeRepository(apiService)
     val profitRepository = com.knowapp.android.data.repository.ProfitRepository(apiService)
     val billingRepository = com.knowapp.android.data.repository.BillingRepository(apiService)
-    val billingGate = com.knowapp.android.data.BillingGate(context, billingRepository)
+    val billingGate = com.knowapp.android.data.BillingGate(context, billingRepository, sessionStore)
     val paymentsAdminRepository = com.knowapp.android.data.repository.PaymentsAdminRepository(apiService)
     val membersRepository = com.knowapp.android.data.repository.MembersRepository(apiService)
     val partnerRepository = com.knowapp.android.data.repository.PartnerRepository(apiService)

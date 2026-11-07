@@ -28,4 +28,26 @@ class BillingRepository(private val api: ApiService) {
             Result.failure(Exception("Couldn't reach the server. Check your connection and try again."))
         }
     }
+
+    suspend fun upgradeQuote(): Result<com.knowapp.android.data.model.UpgradeQuoteOut> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.upgradeQuote()
+            val body = response.body()
+            if (response.isSuccessful && body != null) Result.success(body)
+            else Result.failure(Exception(errorDetail(response.errorBody()?.string(), response.code())))
+        } catch (e: IOException) {
+            Result.failure(Exception("Couldn't reach the server. Check your connection and try again."))
+        }
+    }
+
+    suspend fun upgradeToBusiness(fields: Map<String, Any?>): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.upgradeToBusiness(fields)
+            val body = response.body()
+            if (response.isSuccessful && body != null) Result.success(body["message"] ?: "Done.")
+            else Result.failure(Exception(errorDetail(response.errorBody()?.string(), response.code())))
+        } catch (e: IOException) {
+            Result.failure(Exception("Couldn't reach the server. Check your connection and try again."))
+        }
+    }
 }

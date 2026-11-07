@@ -114,7 +114,7 @@ private fun dayHeading(date: LocalDate): String {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBack: Boolean = true, onViewAudits: () -> Unit = {}) {
+fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBack: Boolean = true, onViewAudits: () -> Unit = {}, showAudits: Boolean = true) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val lines = state.lines
@@ -171,7 +171,7 @@ fun StatementsScreen(viewModel: StatementsViewModel, onBack: () -> Unit, showBac
             Column {
                 TopAppBar(
                     title = { Text("Statements", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold) },
-                    actions = { OutlinedButton(onClick = onViewAudits, shape = PillShape, modifier = Modifier.padding(end = 12.dp)) { Text("Audits") } },
+                    actions = { if (showAudits) OutlinedButton(onClick = onViewAudits, shape = PillShape, modifier = Modifier.padding(end = 12.dp)) { Text("Audits") } },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
                 )
                 if (showUpgrade && onFreePlan) com.knowapp.android.ui.components.UpgradeBanner("Printing and sharing statements is part of the paid plan.")

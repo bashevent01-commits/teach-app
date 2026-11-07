@@ -21,6 +21,7 @@ data class Session(
     val fullName: String,
     val institutionId: Int?,
     val institutionType: String? = null,
+    val individual: Boolean = false,
 )
 
 class SessionStore(context: Context) {
@@ -64,6 +65,12 @@ class SessionStore(context: Context) {
             .putInt(KEY_INSTITUTION_ID, session.institutionId ?: -1)
             .apply()
         _session.value = session
+    }
+
+    // The workspace can change under a signed-in person (a free account upgrading, an individual becoming a business)
+    fun setWorkspace(individual: Boolean, type: String?) {
+        val current = _session.value ?: return
+        if (current.individual != individual || current.institutionType != type) save(current.copy(individual = individual, institutionType = type))
     }
 
     // Sessions saved before workspaces had a type learn it here
