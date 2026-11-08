@@ -15,7 +15,7 @@ from app.core.security import hash_password
 from app.models.user import StaffType, User, UserRole
 from app.schemas.user import check_password, clean_email
 from app.utils import billing as bill
-from app.utils.billing import (UPGRADE_PRICE, EXTRA_ACCOUNT_PRICE, INDIVIDUAL_PRICE, OWNER_INCLUDED_ACCOUNTS, OWNER_PRICE, PAYBILL, PAYBILL_NAME, TRIAL_DAYS)
+from app.utils.billing import (UPGRADE_PRICE, EXTRA_ACCOUNT_PRICE, OWNER_INCLUDED_ACCOUNTS, PAYBILL, PAYBILL_NAME, TRIAL_DAYS)
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 

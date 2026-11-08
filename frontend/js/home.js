@@ -65,9 +65,7 @@
     }
   }
 
-  // Folds queued-but-not-yet-synced entries into the same list real
-  // transactions render from, so they show up (marked "Pending sync")
-  // immediately rather than only appearing after the next server round trip.
+  // Folds queued-but-not-yet-synced entries into the same list real transactions render from, so they show up (marked
   async function mergeInPending() {
     const pending = await Offline.listPending();
     transactions = [...transactions, ...pending.map(Offline.pendingAsTransaction)];
@@ -209,7 +207,7 @@
     if ($("#optEdit")) $("#optEdit").addEventListener("click", () => openEditSheet(g[0]));
   });
 
-  /* ---------------- Edit a saved entry ---------------- */
+
 
   function openEditSheet(t) {
     const isStock = t.category_type === "STOCK";
@@ -256,7 +254,7 @@
     });
   }
 
-  /* ---------------- Receiving / Paying sheet ---------------- */
+
 
   $$(".action-card[data-flow]").forEach((btn) => {
     btn.addEventListener("click", () => openTxnSheet(btn.dataset.flow));
@@ -596,8 +594,7 @@
         Receipt.saved(Receipt.fromTransactions([created], business || session.full_name || "KNOW", session.full_name || ""));
       } catch (err) {
         if (err.status === 0) {
-          // No connection — queue it locally instead of losing the entry;
-          // it'll sync automatically on the next "online" event.
+          // No connection — queue it locally instead of losing the entry; it'll sync automatically on the next "online" event.
           const { image, ...rest } = fields;
           await Offline.queueTransaction({ ...rest, imageBlob: image, imageName: image?.name });
           Sheet.close();

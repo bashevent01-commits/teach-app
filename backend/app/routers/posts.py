@@ -24,10 +24,7 @@ def create_post(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_institution_scope),
 ):
-    """
-    Accepts multipart/form-data (rather than a JSON body) so an optional
-    photo can be attached to the post — images only, no video.
-    """
+    """Accepts multipart/form-data (rather than a JSON body) so an optional photo can be attached to the post — images only,"""
     if current_user.role != UserRole.STAFF:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only staff post news")
 

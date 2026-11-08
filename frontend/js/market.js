@@ -39,7 +39,7 @@
     }
   }
 
-  /* ---------------- Detail / drill-down view ---------------- */
+
 
   async function openDetail(categoryId) {
     const listView = $("#listView");
@@ -132,7 +132,7 @@
     loadCategories(); // pick up anything that's changed since
   });
 
-  /* ---------------- Manage categories sheet ---------------- */
+
 
   $("#manageCategoriesBtn").addEventListener("click", async () => {
     await loadAllCategoriesForManage();

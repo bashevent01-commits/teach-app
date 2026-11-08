@@ -25,12 +25,7 @@ def log_activity(
     detail: str | None = None,
     request: Request | None = None,
 ) -> None:
-    """
-    Records one activity log entry and commits it immediately. Call this
-    AFTER your own db.commit() for the primary operation, not before — it
-    commits the session it's given, so calling it mid-transaction would
-    prematurely commit whatever else is pending on that session too.
-    """
+    """Records one activity log entry and commits it immediately."""
     entry = ActivityLog(
         actor_id=actor.id if actor else None,
         actor_username=actor_username or (actor.username if actor else None),

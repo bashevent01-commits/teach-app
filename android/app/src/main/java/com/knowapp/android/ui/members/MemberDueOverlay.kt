@@ -34,10 +34,19 @@ fun MemberDueOverlay(container: AppContainer) {
     var due by remember { mutableStateOf<DueMembersOut?>(null) }
     val userId = session?.userId
 
+    // Android 13 and later ask before showing notifications; owners never open Home, which is where that used to be asked
+    val askNotify = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
+
     LaunchedEffect(userId, session?.institutionType) {
         val s = session ?: return@LaunchedEffect
-        if (s.role != "institution_admin" || s.institutionType != "gym") return@LaunchedEffect
+        val eligible = s.role == "institution_admin" || (s.role == "staff" && s.individual)
+        if (!eligible || s.institutionType != "gym") return@LaunchedEffect
         val prefs = context.getSharedPreferences("know_member_due", Context.MODE_PRIVATE)
+        if (android.os.Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED && !prefs.getBoolean("asked_notify", false)) {
+            prefs.edit().putBoolean("asked_notify", true).apply()
+            askNotify.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+        runCatching { com.knowapp.android.data.MemberDueAlerts.check(context, container) }
         val day = LocalDate.now(ZoneId.of("Africa/Nairobi")).toString()
         if (prefs.getString("dialog_${s.userId}", "") == day) return@LaunchedEffect
         val result = container.membersRepository.due().getOrNull() ?: return@LaunchedEffect

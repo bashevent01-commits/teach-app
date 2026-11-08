@@ -12,7 +12,7 @@ import com.knowapp.android.ui.theme.Brand
 import com.knowapp.android.ui.theme.BrandSoft
 import com.knowapp.android.ui.theme.PillShape
 
-/** Matches .badge: brand-soft background, brand-colored text, pill shape. */
+// Matches .badge: brand-soft background, brand-colored text, pill shape.
 @Composable
 fun Badge(text: String, modifier: Modifier = Modifier) {
     Text(

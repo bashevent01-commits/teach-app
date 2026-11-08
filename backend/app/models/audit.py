@@ -12,12 +12,7 @@ class AuditStatus(str, enum.Enum):
 
 
 class Audit(Base):
-    """
-    A financial audit entered by a staff member: a titled period (e.g.
-    "Term 1 2026 Financial Audit") with a summary and a set of
-    transactions (statements) attached. Reports are generated from a
-    finalized audit.
-    """
+    """A financial audit entered by a staff member: a titled period (e.g."""
     __tablename__ = "audits"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -35,8 +30,4 @@ class Audit(Base):
 
     institution = relationship("Institution", back_populates="audits")
     submitted_by = relationship("User")
-    # Transactions are no longer individually attached to an audit — a
-    # finalized audit's "statements" are whatever transactions fall inside
-    # its period_start/period_end for its institution (see
-    # routers/audits.py and routers/reports.py), computed on read rather
-    # than stored.
+    # Transactions are no longer individually attached to an audit — a finalized audit's "statements" are whatever

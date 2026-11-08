@@ -40,8 +40,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ApiService {
-    // /api/auth/login expects application/x-www-form-urlencoded
-    // (FastAPI's OAuth2PasswordRequestForm), not JSON.
+    // /api/auth/login expects application/x-www-form-urlencoded (FastAPI's OAuth2PasswordRequestForm), not JSON.
     @FormUrlEncoded
     @POST("/api/auth/login")
     suspend fun login(@FieldMap fields: Map<String, String>): Response<TokenResponse>
@@ -55,10 +54,6 @@ interface ApiService {
         @Query("category_type") categoryType: String? = null,
         @Query("staff_id") staffId: Int? = null,
     ): Response<List<TransactionOut>>
-
-    @FormUrlEncoded
-    @POST("/api/transactions")
-    suspend fun createTransaction(@FieldMap fields: Map<String, String>): Response<TransactionOut>
 
     @Multipart
     @POST("/api/transactions")

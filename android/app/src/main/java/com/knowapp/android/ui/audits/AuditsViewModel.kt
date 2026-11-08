@@ -24,8 +24,7 @@ data class AuditsUiState(
 )
 
 class AuditsViewModel(private val repository: AuditRepository, private val sessionStore: SessionStore) : ViewModel() {
-    // Only staff submit audits (server-enforced — see backend/app/routers/audits.py's
-    // create_audit), and institution_admin/super_admin must pass institution_id.
+    // Only staff submit audits (server-enforced — see backend/app/routers/audits.py's create_audit), and
     var uiState by mutableStateOf(AuditsUiState(canCreate = sessionStore.session.value?.role == "staff"))
         private set
 

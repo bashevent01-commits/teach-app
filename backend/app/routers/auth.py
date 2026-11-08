@@ -46,10 +46,7 @@ def _set_session_cookies(response: Response, token: str, csrf_token: str) -> Non
         samesite=settings.COOKIE_SAMESITE,
         path="/",
     )
-    # Deliberately NOT httponly — the frontend reads this to echo it back as
-    # an X-CSRF-Token header on state-changing requests (double-submit
-    # pattern). It authenticates nothing by itself; it only proves the
-    # request came from a script that could read this origin's cookies.
+    # Deliberately NOT httponly — the frontend reads this to echo it back as an X-CSRF-Token header on state-changing
     response.set_cookie(
         key=CSRF_COOKIE,
         value=csrf_token,
@@ -71,15 +68,7 @@ def login(
     db: Session = Depends(get_db),
     x_client: str | None = Header(None),
 ):
-    """
-    Credential-based login. Accounts are provisioned by a super admin —
-    a standalone staff or personal account can also be opened through /signup.
-
-    Two layers of brute-force protection stack here: the slowapi limit
-    above throttles by IP, and the per-account lockout below stops a
-    distributed attack against one specific username regardless of
-    how many IPs it comes from.
-    """
+    """Credential-based login."""
     # Usernames ignore capital letters and stray spaces, so "Sam" and "sam " both reach the same account
     submitted_username = form_data.username.strip()
     user = db.query(User).filter(func.lower(User.username) == submitted_username.lower()).first()
@@ -159,11 +148,7 @@ def logout_all(request: Request, response: Response, db: Session = Depends(get_d
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(response: Response):
-    """
-    Clears the session cookies. Doesn't require a valid session — logging
-    out should always succeed, even against an already-expired or tampered
-    cookie.
-    """
+    """Clears the session cookies."""
     response.delete_cookie(ACCESS_TOKEN_COOKIE, path="/")
     response.delete_cookie(CSRF_COOKIE, path="/")
 

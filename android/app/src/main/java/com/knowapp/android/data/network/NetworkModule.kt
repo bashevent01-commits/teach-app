@@ -23,7 +23,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
-/** Attaches the stored bearer token to every outgoing request, if present. */
+// Attaches the stored bearer token to every outgoing request, if present.
 private class AuthInterceptor(private val sessionStore: SessionStore) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val token = sessionStore.currentToken()
@@ -148,9 +148,7 @@ object NetworkModule {
             level = HttpLoggingInterceptor.Level.NONE
         }
 
-        // Render's free tier cold-starts after inactivity — a first request
-        // can take 30-50s to wake the backend, so timeouts are generous
-        // rather than the OkHttp default of 10s.
+        // Render's free tier cold-starts after inactivity — a first request can take 30-50s to wake the backend, so timeouts are
         val client = OkHttpClient.Builder()
             .connectTimeout(45, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS)

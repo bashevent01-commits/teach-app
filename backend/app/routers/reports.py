@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.audit import Audit
 from app.core.staff_scope import resolve_staff_filter
 from app.models.institution import Institution
 from app.models.transaction import Transaction, TransactionMethod
@@ -25,8 +24,7 @@ def generate_audit_report(request: Request, audit_id: int, db: Session = Depends
     audit = _get_audit_visible(audit_id, current_user, db)
 
     institution = db.query(Institution).filter(Institution.id == audit.institution_id).first()
-    # Computed from the audit's period rather than a stored link — see
-    # routers/audits.py's /transactions endpoint for the same query.
+    # Computed from the audit's period rather than a stored link — see routers/audits.py's /transactions endpoint for the
     audit_query = db.query(Transaction).filter(
         Transaction.institution_id == audit.institution_id,
         Transaction.transaction_date >= audit.period_start,
@@ -65,10 +63,7 @@ def generate_statement_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    A printable movement statement for one method (or every method
-    combined) over a date range — the Audit page's "Statements" feature.
-    """
+    """A printable movement statement for one method (or every method combined) over a date range — the Audit page's"""
     if current_user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN):
         require_premium(db, current_user, "print statements")
         scoped_institution_id = current_user.institution_id

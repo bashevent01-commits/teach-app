@@ -42,8 +42,7 @@
     return existing + `<option value="__new__">+ Add new category…</option>`;
   }
 
-  // Shared by both the Add and Edit sheets: shows an inline name field when
-  // "+ Add new category…" is picked, creates it, then re-selects it.
+  // Shared by both the Add and Edit sheets: shows an inline name field when "+ Add new category…" is picked, creates it,
   function wireCategoryPicker(selectId, blockId, inputId, addBtnId) {
     const select = $(`#${selectId}`);
     select.addEventListener("change", () => {
@@ -143,7 +142,7 @@
     }
   }
 
-  /* ---------------- Add item sheet ---------------- */
+
 
   $("#newStockBtn").addEventListener("click", async () => {
     await loadCategories();
@@ -206,7 +205,7 @@
     });
   });
 
-  /* ---------------- Edit item sheet ---------------- */
+
 
   async function openEditSheet(id) {
     const item = items.find((s) => String(s.id) === String(id));
@@ -269,7 +268,7 @@
     });
   }
 
-  /* ---------------- Exchange panel ---------------- */
+
 
   $("#exchangeBtn").addEventListener("click", openExchange);
 

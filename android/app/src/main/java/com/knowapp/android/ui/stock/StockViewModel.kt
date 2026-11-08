@@ -112,8 +112,6 @@ class StockViewModel(
         _state.value = _state.value.copy(message = null)
     }
 
-    fun clearSuggestion() { _state.value = _state.value.copy(suggestedCategory = null) }
-
     private fun fail(text: String, onDone: (Boolean) -> Unit) {
         _state.value = _state.value.copy(saving = false, message = text)
         onDone(false)

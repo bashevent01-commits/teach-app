@@ -45,9 +45,7 @@ class StockItemCreate(BaseModel):
 
 
 class StockItemUpdate(BaseModel):
-    """Edits the item's catalog info only — quantity changes go through
-    transactions (a restock or a sale), not a direct edit here, so the
-    stock count always has a transaction trail behind it."""
+    """Edits the item's catalog info only — quantity changes go through transactions (a restock or a sale), not a direct edit"""
     name: str | None = None
     category_id: int | None = None
     description: str | None = None

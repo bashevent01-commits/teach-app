@@ -10,7 +10,7 @@
     return imagePath ? `${API_BASE}/${imagePath}` : null;
   }
 
-  /* ---------------- Reports queue ---------------- */
+
 
   async function loadReports() {
     const wrap = $("#reportsList");
@@ -67,7 +67,7 @@
     }
   }
 
-  /* ---------------- All posts browser ---------------- */
+
 
   async function loadPosts() {
     const wrap = $("#postsList");

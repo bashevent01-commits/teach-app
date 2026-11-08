@@ -1,10 +1,4 @@
-/* ============================================================
-   KNOW — API client
-   Auth is an httpOnly session cookie (set by the backend on login) plus a
-   readable CSRF cookie that gets echoed back as a header on state-changing
-   requests. The frontend never persists the raw access token — only
-   non-sensitive display fields (role, name, institution_id, user_id).
-   ============================================================ */
+// ============================================================ KNOW — API client Auth is an httpOnly session cookie (set
 
 const API_BASE = window.TEACH_API_BASE || "http://localhost:8000";
 
@@ -17,11 +11,6 @@ function readCookie(name) {
 }
 
 // Holds the access token for the frontend+backend-on-different-domains case.
-// The httpOnly session cookie still carries auth for same-site deployments;
-// here it also doubles as the CSRF bypass, since a cross-site page can't
-// read the backend's csrf_token cookie to echo it back (browsers block
-// that regardless of SameSite). Authorization headers aren't sent
-// automatically cross-site, so this doesn't reintroduce CSRF risk.
 const TokenStore = {
   KEY: "know_access_token",
   get() { return sessionStorage.getItem(this.KEY); },
@@ -49,14 +38,11 @@ const Session = {
   },
 
   isAuthenticated() {
-    // Reflects "we were logged in as of the last successful response."
-    // The real session lives in the httpOnly cookie; if it's expired or
-    // cleared server-side, the next API call 401s and apiFetch() below
-    // clears this and redirects.
+    // Reflects "we were logged in as of the last successful response." The real session lives in the httpOnly cookie; if it's
     return !!this.get()?.role;
   },
 
-  /** Which login page this session (or the last known one) belongs on. */
+  // Which login page this session (or the last known one) belongs on.
   loginPageFor(role) {
     return role === "super_admin" ? "admin-login.html" : "login.html";
   },
@@ -94,9 +80,7 @@ async function rawFetch(path, { method = "GET", body, isForm = false } = {}) {
   if (!isForm && body !== undefined) headers["Content-Type"] = "application/json";
 
   if (UNSAFE_METHODS.has(method)) {
-    // Same-site deployments can read+echo the CSRF cookie; cross-site ones
-    // can't, so fall back to the Authorization header, which the backend
-    // exempts from the CSRF check (see api.js header comment above).
+    // Same-site deployments can read+echo the CSRF cookie; cross-site ones can't, so fall back to the Authorization header,
     const csrfToken = readCookie("csrf_token");
     if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
     const token = TokenStore.get();
@@ -146,7 +130,7 @@ async function rawFetch(path, { method = "GET", body, isForm = false } = {}) {
   return data;
 }
 
-/* Saved copies of read requests: show the last known data at once, then refresh quietly and tell the page if anything changed. */
+// Saved copies of read requests: show the last known data at once, then refresh quietly and tell the page if anything
 const SWR_PREFIX = "know_swr:";
 const SWR_MAX_AGE = 7 * 24 * 3600 * 1000;
 const swrInFlight = new Set();
@@ -180,7 +164,7 @@ function swrMark() {
   try { return Number(localStorage.getItem(SWR_MARK) || 0); } catch { return 0; }
 }
 
-/* After a write the saved copies are kept for offline use but no longer shown as current. */
+// After a write the saved copies are kept for offline use but no longer shown as current.
 function swrMarkStale() {
   swrEpoch += 1;
   try { localStorage.setItem(SWR_MARK, String(Date.now())); } catch { /* storage blocked */ }
@@ -244,11 +228,7 @@ async function apiFetch(path, options = {}) {
   return data;
 }
 
-/**
- * Shared submit handler for both login pages. Each page only accepts its
- * own role — staff and super admins each have their own dedicated door
- * even though both hit the same /api/auth/login endpoint.
- */
+// Shared submit handler for both login pages.
 async function handleLoginSubmit({ username, password, expectedRole, wrongRoleMessage, form, msgEl, submitBtn }) {
   msgEl.classList.remove("visible");
   submitBtn.disabled = true;
@@ -258,8 +238,7 @@ async function handleLoginSubmit({ username, password, expectedRole, wrongRoleMe
     const data = await Api.login(username, password);
     const allowedRoles = Array.isArray(expectedRole) ? expectedRole : [expectedRole];
     if (!allowedRoles.includes(data.role)) {
-      // Wrong-role login still set session cookies server-side — clear
-      // them immediately so a half-authenticated cookie doesn't linger.
+      // Wrong-role login still set session cookies server-side — clear them immediately so a half-authenticated cookie doesn't
       await Api.logout().catch(() => {});
       msgEl.textContent = wrongRoleMessage;
       msgEl.classList.add("visible");
@@ -267,11 +246,7 @@ async function handleLoginSubmit({ username, password, expectedRole, wrongRoleMe
       submitBtn.textContent = "Log in";
       return;
     }
-    // The httpOnly cookie carries auth day-to-day; the token is also kept
-    // in sessionStorage (tab-scoped, cleared on logout) purely so
-    // state-changing requests can authenticate via the Authorization
-    // header when the CSRF cookie isn't readable cross-site — see the
-    // TokenStore comment above.
+    // The httpOnly cookie carries auth day-to-day; the token is also kept in sessionStorage (tab-scoped, cleared on logout)
     const { user_id, role, staff_type, full_name, institution_id, institution_type, individual, access_token } = data;
     TokenStore.set(access_token);
     Session.set({ user_id, role, staff_type, full_name, institution_id, institution_type, individual });
@@ -310,10 +285,7 @@ const Api = {
     list: () => apiFetch("/api/institutions"),
     get: (id) => apiFetch(`/api/institutions/${id}`),
     create: (payload) => apiFetch("/api/institutions", { method: "POST", body: payload }),
-    // logo_path is served directly (Supabase Storage public URL, or the
-    // static /uploads mount for older records) — this must stay
-    // unauthenticated since <img> tags can't send credentials
-    // cross-origin the way fetch can.
+    // logo_path is served directly (Supabase Storage public URL, or the static /uploads mount for older records) — this must
     logoUrl: (institution) => (institution?.logo_path ? (/^https?:\/\//.test(institution.logo_path) ? institution.logo_path : `${API_BASE}/${institution.logo_path}`) : null),
     async uploadLogo(id, file) {
       const form = new FormData();
@@ -378,9 +350,7 @@ const Api = {
   },
 
   mpesa: {
-    /** Best-effort: amount/code/payer_name only — M-Pesa messages never
-     * carry item or quantity info. matched=false is a normal "not an
-     * M-Pesa message" result, not an error. */
+    // Best-effort: amount/code/payer_name only — M-Pesa messages never carry item or quantity info.
     parse: (message) => apiFetch("/api/mpesa/parse", { method: "POST", body: { message } }),
   },
 
@@ -410,15 +380,7 @@ const Api = {
   transactions: {
     list: (params = {}) => apiFetch(`/api/transactions?${new URLSearchParams(params)}`),
     imageUrl: (txn) => (txn?.image_path ? (/^https?:\/\//.test(txn.image_path) ? txn.image_path : `${API_BASE}/${txn.image_path}`) : null),
-    /**
-     * Multipart. Always: type, method, amount. For an OTHER entry
-     * (category_type omitted or "OTHER"): category is required (e.g.
-     * "rent"). For a STOCK entry (category_type: "STOCK"): stock_item_id
-     * and quantity are required instead — category defaults to the
-     * item's own name if not given. mpesa_code/mpesa_payer_name are
-     * optional on any entry (usually prefilled via Api.mpesa.parse).
-     * description and image are always optional. Date is set server-side.
-     */
+    // Multipart.
     async create({ type, method, category_type, category, description, amount, stock_item_id, quantity, mpesa_code, mpesa_payer_name, batch_id, member_id, image }) {
       const form = new FormData();
       form.append("type", type);
@@ -436,20 +398,14 @@ const Api = {
       if (image) form.append("image", image);
       return apiFetch("/api/transactions", { method: "POST", body: form, isForm: true });
     },
-    /* Several items paid for together: every line is saved, or none. Safe to send again with the same batch_id. */
+    // Several items paid for together: every line is saved, or none.
     async batch(payload, image) {
       const form = new FormData();
       form.append("payload", JSON.stringify(payload));
       if (image) form.append("image", image);
       return apiFetch("/api/transactions/batch", { method: "POST", body: form, isForm: true });
     },
-    /**
-     * Multipart, any subset. transaction_date, category_type and
-     * stock_item_id are never editable here — delete and re-create a
-     * STOCK entry instead if it's linked to the wrong item. Changing
-     * type/quantity on an existing STOCK entry still correctly adjusts
-     * the item's running count on the backend.
-     */
+    // Multipart, any subset.
     async update(id, { type, method, category, description, amount, quantity, mpesa_code, mpesa_payer_name, image }) {
       const form = new FormData();
       if (type !== undefined) form.append("type", type);
@@ -479,7 +435,7 @@ const Api = {
   posts: {
     list: (params = {}) => apiFetch(`/api/posts?${new URLSearchParams(params)}`),
     imageUrl: (post) => (post?.image_path ? (/^https?:\/\//.test(post.image_path) ? post.image_path : `${API_BASE}/${post.image_path}`) : null),
-    /** Multipart: title, body, image? (File, no video support). */
+    // Multipart: title, body, image?
     async create({ title, body, image }) {
       const form = new FormData();
       form.append("title", title);
@@ -494,7 +450,7 @@ const Api = {
   moderation: {
     posts: (params = {}) => apiFetch(`/api/moderation/posts?${new URLSearchParams(params)}`),
     reports: (params = {}) => apiFetch(`/api/moderation/reports?${new URLSearchParams(params)}`),
-    /** action: "dismiss" | "remove_post" */
+    // action: "dismiss" | "remove_post"
     resolveReport: (reportId, action) => apiFetch(`/api/moderation/reports/${reportId}/resolve?${new URLSearchParams({ action })}`, { method: "POST" }),
   },
 
@@ -509,7 +465,7 @@ const Api = {
       if (!res.ok) throw new ApiError("Could not generate the report.", res.status);
       return res.blob();
     },
-    /** method: "cash" | "mpesa" | "bank" | null (null = combined). start/end: Date objects. */
+    // method: "cash" | "mpesa" | "bank" | null (null = combined).
     async downloadStatementPdf({ method, start, end }) {
       const params = new URLSearchParams({ start: start.toISOString(), end: end.toISOString() });
       if (method) params.set("method", method);

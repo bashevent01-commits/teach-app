@@ -78,10 +78,4 @@ class UsersRepository(private val api: ApiService) {
         }
     }
 
-    private fun errorFor(code: Int): String = when (code) {
-        409 -> "That username is already taken."
-        403 -> "You don't have permission to do that."
-        422 -> "Check the fields — password needs 8+ characters, username 3+."
-        else -> "Something went wrong (code $code). Please try again."
-    }
 }

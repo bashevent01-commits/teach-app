@@ -133,7 +133,6 @@ def restore_into(db: Session, institution_id: int, owner: User, payload: dict) -
 
     db.query(Account).filter(Account.institution_id == institution_id).delete()
     maps: dict = {name: {} for name in REMAPPED}
-    admin_ids = {u.id for u in db.query(User).filter(User.institution_id == institution_id, User.role == UserRole.INSTITUTION_ADMIN)}
     taken = {u for (u,) in db.query(User.username).all()}
 
     def fk_target(col):

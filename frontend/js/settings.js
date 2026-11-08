@@ -13,9 +13,7 @@
   $("#acctName").textContent = session.full_name;
   $("#acctRole").textContent = roleLabel(session.role);
 
-  // Username isn't in the login response — pull it from /api/users if we
-  // have access (super_admin or institution_admin); plain staff just see
-  // role + institution.
+  // Username isn't in the login response — pull it from /api/users if we have access (super_admin or institution_admin);
   const usernameEl = $("#acctUsername");
   usernameEl.textContent = "—";
   if (session.role === "super_admin" || session.role === "institution_admin") {
@@ -163,10 +161,7 @@
     try {
       await Api.users.changeMyPassword($("#pwCurrent").value, $("#pwNew").value);
       toast("Password updated. Please log back in.");
-      // The server just invalidated this session's token as part of the
-      // change, so the cookie/bearer token this page is holding is
-      // already dead — send them to log in fresh rather than leaving
-      // them on a page that will 401 on the next action.
+      // The server just invalidated this session's token as part of the change, so the cookie/bearer token this page is holding
       await logout();
     } catch (err) {
       showFormMessage(msg, err.message || "Could not update your password.");
@@ -181,7 +176,7 @@
   });
   applyTheme();
 
-  /* ---------------- Vault: encrypted backup, locked with the owner's own password ---------------- */
+  // ---------------- Vault: encrypted backup, locked with the owner's own password ----------------
 
   if (session.role === "institution_admin") {
     $("#vaultCard").hidden = false;

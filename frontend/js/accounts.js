@@ -103,7 +103,7 @@
     $$("[data-edit]", body).forEach((btn) => btn.addEventListener("click", () => openEditSheet(btn.dataset.edit)));
   }
 
-  /* ---------------- Edit account sheet ---------------- */
+
 
   function openEditSheet(userId) {
     const user = users.find((u) => String(u.id) === String(userId));
@@ -198,7 +198,7 @@
     `);
   }
 
-  /* ---------------- Issue credentials sheet ---------------- */
+
 
   $("#newUserBtn").addEventListener("click", () => {
     const institutionOptions = institutions.length
@@ -298,8 +298,7 @@
           payload.constituency = $("#userConstituency").value;
         }
         if (role !== "super_admin" && isSuperAdmin) payload.institution_id = parseInt($("#userSchool").value, 10);
-        // institution_admin actors never send institution_id — the backend
-        // pins it to their own institution regardless of what's sent.
+        // institution_admin actors never send institution_id — the backend pins it to their own institution regardless of what's
         await Api.users.create(payload);
         Sheet.close();
         toast("Account created.");
@@ -312,7 +311,7 @@
     });
   });
 
-  /* ---------------- Reset password sheet ---------------- */
+
 
   function openResetSheet(userId) {
     Sheet.open("Reset password", `

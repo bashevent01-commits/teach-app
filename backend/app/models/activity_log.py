@@ -5,11 +5,7 @@ from app.core.database import Base
 
 
 class ActivityLog(Base):
-    """
-    Security/accountability trail — who did what, when, from where.
-    Distinct from the school "Audit" model (financial audits teachers
-    submit) — this is the app's own activity log.
-    """
+    """Security/accountability trail — who did what, when, from where."""
     __tablename__ = "activity_logs"
 
     id = Column(Integer, primary_key=True, index=True)

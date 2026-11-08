@@ -25,20 +25,14 @@ def _already_there(existing: ProductCategory) -> JSONResponse:
 
 @router.get("", response_model=list[ProductCategoryOut])
 def list_categories(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    """Open to any authenticated user — staff need this list to populate the
-    Add/Edit Stock Item category picker. Any authenticated user can create a
-    new category too; only super_admin can rename or delete one."""
+    """Open to any authenticated user — staff need this list to populate the Add/Edit Stock Item category picker."""
     return db.query(ProductCategory).order_by(ProductCategory.name).all()
 
 
 @router.post("", response_model=ProductCategoryOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
 def create_category(payload: ProductCategoryCreate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Open to any authenticated user — staff can add a category inline
-    from the Stock page instead of waiting on a super admin. Rename/delete
-    stay super_admin-only since those affect the shared taxonomy more
-    broadly. Case-insensitive dedup check to keep near-duplicates
-    ("Pencils" vs "pencils") from piling up now that anyone can add one."""
+    """Open to any authenticated user — staff can add a category inline from the Stock page instead of waiting on a super"""
     existing = find_similar(payload.name, db.query(ProductCategory).all(), lambda c: c.name)
     if existing:
         return _already_there(existing)

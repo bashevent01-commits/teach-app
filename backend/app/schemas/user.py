@@ -54,9 +54,7 @@ def clean_email(v: str | None) -> str | None:
 
 
 class UserCreate(BaseModel):
-    """Used by a super_admin (any institution) or an institution_admin
-    (their own institution only — enforced in the router, not here) to
-    issue credentials for a new account."""
+    """Used by a super_admin (any institution) or an institution_admin (their own institution only — enforced in the router,"""
     username: str
     full_name: str
     password: str
@@ -202,16 +200,12 @@ class UserOut(BaseModel):
 
 
 class AuditSharingUpdate(BaseModel):
-    """Self-service toggle: a staff member opting their own audits in/out of
-    same-institution visibility. Never touches edit/delete rights."""
+    """Self-service toggle: a staff member opting their own audits in/out of same-institution visibility."""
     share_audits: bool
 
 
 class UserUpdate(BaseModel):
-    """Used by a super_admin or institution_admin to edit an existing
-    user's identity/assignment, or promote/demote them between STAFF and
-    INSTITUTION_ADMIN (router enforces who can set which role). All
-    fields optional so a caller can patch just one at a time."""
+    """Used by a super_admin or institution_admin to edit an existing user's identity/assignment, or promote/demote them"""
     username: str | None = None
     full_name: str | None = None
     institution_id: int | None = None

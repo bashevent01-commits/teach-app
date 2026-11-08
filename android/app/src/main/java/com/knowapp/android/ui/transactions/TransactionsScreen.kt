@@ -88,8 +88,7 @@ fun TransactionsScreen(
 
 @Composable
 private fun TransactionRow(txn: TransactionOut) {
-    // Matches .txn-row: category badge-style tag, description, amount
-    // colored by --in (income) / --out (expense).
+    // Matches .txn-row: category badge-style tag, description, amount colored by --in (income) / --out (expense).
     AppCard(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(14.dp)) {
         Badge(text = txn.category)
         txn.description?.let {

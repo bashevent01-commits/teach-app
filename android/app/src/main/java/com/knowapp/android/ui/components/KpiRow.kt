@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 
 data class KpiEntry(val value: String, val label: String)
 
-/** Matches .kpi-row / .kpi: a horizontal row of small value/label stacks. */
+// Matches .kpi-row / .kpi: a horizontal row of small value/label stacks.
 @Composable
 fun KpiRow(entries: List<KpiEntry>, modifier: Modifier = Modifier) {
     Row(

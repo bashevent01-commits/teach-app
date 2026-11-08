@@ -11,10 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.knowapp.android.ui.theme.CardRadius
 
-/**
- * Matches .card in styles.css: surface background, --radius (18dp),
- * subtle elevation standing in for the web's --shadow.
- */
+// Matches .card in styles.css: surface background, --radius (18dp), subtle elevation standing in for the web's --shadow.
 @Composable
 fun AppCard(
     modifier: Modifier = Modifier,

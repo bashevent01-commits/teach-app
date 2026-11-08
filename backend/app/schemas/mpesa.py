@@ -16,14 +16,7 @@ class MpesaParseRequest(BaseModel):
 
 
 class MpesaParseResult(BaseModel):
-    """
-    Best-effort extraction from a pasted Safaricom M-Pesa confirmation
-    SMS. Only amount, transaction code, and payer name are ever present
-    in these messages — M-Pesa has no concept of items, so it can never
-    tell you what was bought. matched=False means the text didn't look
-    like an M-Pesa message at all (still returns 200 — this is an
-    everyday "no result" case, not an error).
-    """
+    """Best-effort extraction from a pasted Safaricom M-Pesa confirmation SMS."""
     matched: bool
     code: str | None = None
     amount: Decimal | None = None

@@ -226,10 +226,6 @@ class HomeViewModel(
         }
     }
 
-    fun clearRecordError() {
-        _state.value = _state.value.copy(recordError = null)
-    }
-
     fun messageShown() {
         _state.value = _state.value.copy(message = null)
     }

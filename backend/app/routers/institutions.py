@@ -62,11 +62,7 @@ def upload_institution_logo(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin_scope),
 ):
-    """
-    Sets the icon shown across the portal (and on generated reports) for
-    this institution. A super_admin can change any institution's icon; an
-    institution_admin can only change their own.
-    """
+    """Sets the icon shown across the portal (and on generated reports) for this institution."""
     if admin.role == UserRole.INSTITUTION_ADMIN and admin.institution_id != institution_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to change this institution's icon")
 

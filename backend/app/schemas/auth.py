@@ -7,14 +7,7 @@ class LoginRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """
-    Includes the raw access token for non-browser clients (scripts, CI,
-    Postman, other API integrations) that authenticate with a Bearer
-    header instead of a cookie. The bundled frontend still receives this
-    field but no longer needs to decode the JWT for user_id — it's
-    provided directly — and never persists the token itself, relying on
-    the httpOnly cookie set alongside this response instead.
-    """
+    """Includes the raw access token for non-browser clients (scripts, CI, Postman, other API integrations) that authenticate"""
     access_token: str
     token_type: str = "bearer"
     user_id: int

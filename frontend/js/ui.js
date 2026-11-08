@@ -1,14 +1,9 @@
-/* ============================================================
-   KNOW — shared page chrome
-   Auth guarding, role-based nav (sidebar + tabbar), theme,
-   toasts and small formatting helpers. Loaded after api.js on
-   every app page (not on login.html / admin-login.html).
-   ============================================================ */
+// ============================================================ KNOW — shared page chrome Auth guarding, role-based nav
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
-/* ---------------- auth guards ---------------- */
+
 
 function requireAuth(fallbackLoginPage = "login.html") {
   if (!Session.isAuthenticated()) {
@@ -42,7 +37,7 @@ async function logout() {
   location.href = loginPage;
 }
 
-/* ---------------- formatting helpers ---------------- */
+
 
 function initials(name) {
   if (!name) return "?";
@@ -83,7 +78,7 @@ function hideFormMessage(el) {
   el.classList.remove("visible");
 }
 
-/* ---------------- toast ---------------- */
+
 
 function toast(msg) {
   const el = $("#toast");
@@ -94,7 +89,7 @@ function toast(msg) {
   toast._t = setTimeout(() => (el.hidden = true), 2600);
 }
 
-/* ---------------- offline status banner (persistent, not auto-hiding) ---------------- */
+
 
 function ensureOfflineBanner() {
   let el = document.getElementById("offlineBanner");
@@ -114,7 +109,7 @@ function setOfflineBanner() {
   if (el) el.hidden = true;
 }
 
-/* ---------------- icons ---------------- */
+
 
 const ICONS = {
   home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.8V21h14V9.8"/>',
@@ -139,9 +134,7 @@ const ICONS = {
   download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/>',
 };
 
-// Fixed list so institution region stays a controlled value (needed for
-// regional market-analysis breakdowns) rather than free text, same
-// reasoning as the product-category taxonomy in js/stock.js.
+// Fixed list so institution region stays a controlled value (needed for regional market-analysis breakdowns) rather than
 const KENYA_COUNTIES = [
   "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita-Taveta",
   "Garissa", "Wajir", "Mandera", "Marsabit", "Isiolo", "Meru",
@@ -292,7 +285,7 @@ function paintIcons(root = document) {
   });
 }
 
-/* ---------------- theme (light/dark) ---------------- */
+
 
 const THEME_KEY = "know.theme";
 
@@ -319,7 +312,7 @@ function bindThemeToggle() {
   }
 }
 
-/* ---------------- nav (sidebar + tabbar), per role ---------------- */
+// ---------------- nav (sidebar + tabbar), per role ----------------
 
 const NAV_ITEMS = {
   staff: [
@@ -399,12 +392,7 @@ function greetingFor(fullName) {
   return first ? `${part}, ${first}` : part;
 }
 
-/**
- * Fills in the topbar/sidebar identity (greeting, institution name +
- * logo) for the current session. Staff show their institution's name
- * and portal icon; super admins aren't tied to one institution, so they
- * get a generic admin identity instead.
- */
+// Fills in the topbar/sidebar identity (greeting, institution name + logo) for the current session.
 async function renderIdentity(session) {
   const greetingEl = $("#greeting");
   const institutionLineEl = $("#schoolLine");
@@ -441,12 +429,7 @@ async function renderIdentity(session) {
   }
 }
 
-/**
- * Standard bootstrap for every app page (not login pages): enforce the
- * role guard, paint chrome (nav, identity, theme, icons), wire the
- * logout + theme-toggle buttons. Returns the session for the page's
- * own script to use.
- */
+// Standard bootstrap for every app page (not login pages): enforce the role guard, paint chrome (nav, identity, theme,
 const Splash = (() => {
   const SEEN = "know_splash_seen";
   let el = null;
@@ -502,7 +485,7 @@ async function initShell(page, allowedRoles) {
     loader.onload = () => PayFlow.start(session);
     document.head.appendChild(loader);
   }
-  if (session && session.role === "institution_admin" && session.institution_type === "gym") {
+  if (session && session.institution_type === "gym" && (session.role === "institution_admin" || (session.role === "staff" && session.individual))) {
     const due = document.createElement("script");
     due.src = "./js/memberdue.js";
     document.head.appendChild(due);
@@ -510,7 +493,7 @@ async function initShell(page, allowedRoles) {
   return session;
 }
 
-/* ---------------- bottom sheet (used for all forms) ---------------- */
+
 
 const Sheet = {
   el: null,
@@ -537,10 +520,7 @@ const Sheet = {
   },
 };
 
-// ui.js is loaded near the end of <body>, after #sheetBackdrop already
-// exists in the DOM, so this can run immediately rather than waiting on
-// DOMContentLoaded (pages that don't have a sheet, like News, simply
-// have Sheet.el === null, and every Sheet method no-ops in that case).
+// ui.js is loaded near the end of <body>, after #sheetBackdrop already exists in the DOM, so this can run immediately
 Sheet.init();
 
 // "Today", "Yesterday", "3 Oct": a short way to say when something last happened

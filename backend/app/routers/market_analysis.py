@@ -1,5 +1,4 @@
 from collections import defaultdict
-from datetime import datetime, timezone
 from decimal import Decimal
 from statistics import median
 
@@ -18,9 +17,7 @@ from app.schemas.market_analysis import CategoryInsightOut, CategoryDetailOut, R
 
 router = APIRouter(prefix="/api/market-analysis", tags=["market-analysis"])
 
-# Core anti-re-identification safeguard: no aggregate stat is ever returned
-# for a slice (a category, a category+region, a category+month) backed by
-# fewer than this many distinct institutions. Applies everywhere below.
+# Core anti-re-identification safeguard: no aggregate stat is ever returned for a slice (a category, a category+region, a
 MIN_INSTITUTIONS = 5
 
 
@@ -89,9 +86,7 @@ def _quantity_sold(db: Session, category_id: int, unit: str | None = None) -> tu
 
 @router.get("/categories", response_model=list[CategoryInsightOut])
 def list_category_insights(db: Session = Depends(get_db), _: User = Depends(require_super_admin)):
-    """Category-level aggregate list. Categories with fewer than
-    MIN_INSTITUTIONS distinct institutions carrying a priced item are left
-    out entirely — not returned with nulled-out fields."""
+    """Category-level aggregate list."""
     categories = db.query(ProductCategory).order_by(ProductCategory.name).all()
     results = []
     for cat in categories:
@@ -139,8 +134,7 @@ def get_category_detail(category_id: int, db: Session = Depends(get_db), _: User
         )
     stats = _price_stats(_per_institution((r[0], r[1]) for r in rows))
 
-    # Regional breakdown — same threshold applied per region
-    # An item is placed where its branch trades; stock without a branch uses the head office location
+    # Regional breakdown — same threshold applied per region An item is placed where its branch trades; stock without a
     region_rows = (
         db.query(StockItem.institution_id, StockItem.unit_price, Institution.region, Institution.constituency, User.county, User.constituency)
         .join(Institution, StockItem.institution_id == Institution.id)

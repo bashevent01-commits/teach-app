@@ -1,15 +1,4 @@
-"""
-Builds PDF reports: the signed-off Audit report (title/period), and the
-Statements feature (Cash / M-Pesa / Bank / Combined movement statements).
-
-Both use the same grouped, coloured-band table layout: single-method
-statements are split into an Income band and an Expenses band (each
-with its own subtotal, like a standard income statement); the Combined
-statement bands by payment method instead, so consecutive entries for
-the same method always read as one solid coloured block rather than
-being interleaved by date. Every row's optional evidence photo is
-embedded inline, in a small bordered box.
-"""
+"""Builds PDF reports: the signed-off Audit report (title/period), and the Statements feature (Cash / M-Pesa / Bank /"""
 import io
 from datetime import datetime
 from decimal import Decimal
@@ -50,12 +39,7 @@ def _money(value) -> str:
 
 
 def _fetch_image_bytes(url: str | None) -> io.BytesIO | None:
-    """
-    Images now live in Supabase Storage (a public URL), not on local
-    disk, so they have to be fetched over HTTP rather than opened by
-    path. Best-effort: a slow/unreachable image should degrade to the
-    placeholder dash, never fail the whole report.
-    """
+    """Images now live in Supabase Storage (a public URL), not on local disk, so they have to be fetched over HTTP rather than"""
     if not url:
         return None
     try:
@@ -111,12 +95,7 @@ def _subtotal_row(label: str, value: Decimal):
 
 
 def _build_statement_table(transactions: list[Transaction], body_style, combined: bool):
-    """
-    Returns (table_data, style_commands) — row-by-row data plus the
-    TableStyle commands needed to colour the band/subtotal rows and
-    span their labels across the row, since band + subtotal rows are
-    assembled dynamically and their row indices aren't known up front.
-    """
+    """Returns (table_data, style_commands) — row-by-row data plus the TableStyle commands needed to colour the band/subtotal"""
     header = ["Date", "Category", "Description", "Evidence", "Amount"]
     data = [header]
     style = [

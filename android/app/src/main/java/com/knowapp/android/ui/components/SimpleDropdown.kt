@@ -15,7 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.knowapp.android.ui.theme.SmallRadius
 
-/** A simple single-select dropdown built on Material3's ExposedDropdownMenuBox. */
+// A simple single-select dropdown built on Material3's ExposedDropdownMenuBox.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SimpleDropdown(

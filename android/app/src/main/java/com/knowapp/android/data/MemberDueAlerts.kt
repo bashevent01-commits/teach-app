@@ -21,7 +21,7 @@ object MemberDueAlerts {
 
     suspend fun check(context: Context, container: AppContainer) {
         val session = container.sessionStore.session.value ?: return
-        if (session.role != "institution_admin") return
+        if (session.role != "institution_admin" && !(session.role == "staff" && session.individual)) return
         if (session.institutionType == null) container.apiService.getMe().body()?.let { container.sessionStore.setInstitutionType(it.institutionType) }
         if (container.sessionStore.session.value?.institutionType != "gym") return
         val now = ZonedDateTime.now(ZoneId.of("Africa/Nairobi"))

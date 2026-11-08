@@ -64,7 +64,7 @@ import com.knowapp.android.ui.stock.StockViewModel
 import com.knowapp.android.ui.transactions.TransactionsScreen
 import com.knowapp.android.ui.transactions.TransactionsViewModel
 
-/** Simple factory-per-screen — matches the rest of the app's manual-DI approach. */
+// Simple factory-per-screen — matches the rest of the app's manual-DI approach.
 private fun <T> vmFactory(create: () -> T) = object : androidx.lifecycle.ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <VM : androidx.lifecycle.ViewModel> create(modelClass: Class<VM>): VM = create() as VM

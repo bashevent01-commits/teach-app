@@ -26,7 +26,7 @@ import com.knowapp.android.data.repository.StockRepository
 import com.knowapp.android.data.repository.TransactionRepository
 import com.knowapp.android.data.repository.UsersRepository
 
-/** One instance built in KnowApplication.onCreate, threaded down to ViewModels. */
+// One instance built in KnowApplication.onCreate, threaded down to ViewModels.
 class AppContainer(context: Context) {
     val sessionStore = SessionStore(context.applicationContext)
     val apiService = NetworkModule.buildApiService(sessionStore, context.applicationContext.cacheDir)

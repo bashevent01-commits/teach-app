@@ -61,9 +61,7 @@ async def security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-    # Sent unconditionally: browsers only honor HSTS on responses actually
-    # delivered over HTTPS, so this is inert over local plain HTTP and
-    # active as soon as this sits behind TLS.
+    # Sent unconditionally: browsers only honor HSTS on responses actually delivered over HTTPS, so this is inert over local
     response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
 
     if not any(request.url.path.startswith(p) for p in _DOCS_PATHS):
@@ -78,14 +76,7 @@ _CSRF_EXEMPT_PATHS = ("/api/auth/login", "/api/auth/signup", "/api/auth/forgot-p
 
 @app.middleware("http")
 async def csrf_protection(request: Request, call_next):
-    """
-    Double-submit CSRF check for cookie-authenticated requests. If the
-    request carries its own Authorization: Bearer header, it's exempt —
-    browsers never attach that header automatically on a cross-site
-    request, so it isn't vulnerable to CSRF the way an automatically-sent
-    cookie is. /api/auth/login is exempt because there's no session yet
-    to compare against.
-    """
+    """Double-submit CSRF check for cookie-authenticated requests."""
     if request.method in _UNSAFE_METHODS and not any(request.url.path.startswith(p) for p in _CSRF_EXEMPT_PATHS):
         if "authorization" not in request.headers:
             cookie_token = request.cookies.get("csrf_token")
@@ -122,9 +113,7 @@ app.include_router(profit.router)
 app.include_router(partner.router)
 app.include_router(partners_admin.router)
 
-# Institution logos are not sensitive, so they're served as plain static
-# files — this lets the frontend use them directly in <img src> without
-# attaching credentials the way fetch can.
+# Institution logos are not sensitive, so they're served as plain static files — this lets the frontend use them directly
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
@@ -158,8 +147,7 @@ def ensure_columns():
 
 @app.on_event("startup")
 def on_startup():
-    # In production, prefer Alembic migrations over create_all. This is kept
-    # for fast local setup; see README for the migration-based path.
+    # In production, prefer Alembic migrations over create_all.
     Base.metadata.create_all(bind=engine)
     ensure_columns()
     db = SessionLocal()

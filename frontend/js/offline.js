@@ -1,11 +1,4 @@
-/* ============================================================
-   KNOW — Offline support
-   IndexedDB-backed: (1) a "pending_transactions" queue for transactions
-   recorded while offline, synced automatically once back online, and
-   (2) a generic "cache" store holding the last-known server data (a
-   transactions list, an audits list, a specific audit's transactions)
-   so pages can still render with real data when the network is down.
-   ============================================================ */
+// ============================================================ KNOW — Offline support IndexedDB-backed: (1) a
 
 const Offline = (() => {
   const DB_NAME = "know_offline_v1";
@@ -49,7 +42,7 @@ const Offline = (() => {
     });
   }
 
-  /* ---------------- generic cache (last-known server data) ---------------- */
+
 
   // Cache and queue rows belong to the logged-in user, so a shared device never shows or syncs another person's data
   function currentUserId() {
@@ -71,11 +64,9 @@ const Offline = (() => {
     return row ? row.value : null;
   }
 
-  /* ---------------- pending transactions queue ---------------- */
 
-  // fields matches Api.transactions.create()'s argument shape; image, if
-  // present, is stored as the actual File/Blob — IndexedDB handles that
-  // natively, no base64 encoding needed.
+
+  // fields matches Api.transactions.create()'s argument shape; image, if present, is stored as the actual File/Blob —
   async function queueTransaction(fields) {
     const record = { ...fields, userId: currentUserId(), createdAt: new Date().toISOString(), status: "pending", errorMessage: null };
     const db = await openDb();
@@ -114,11 +105,7 @@ const Offline = (() => {
     return new Promise((resolve) => { t.oncomplete = () => resolve(); });
   }
 
-  /**
-   * Represents one queued item as a fake "transaction" object shaped like
-   * the server's TransactionOut, so it can be merged straight into the
-   * same render functions that already handle real transactions.
-   */
+  // Represents one queued item as a fake "transaction" object shaped like the server's TransactionOut, so it can be merged
   function pendingAsTransaction(row) {
     return {
       id: `pending-${row.localId}`,
@@ -143,13 +130,7 @@ const Offline = (() => {
     };
   }
 
-  /**
-   * Pushes every queued transaction to the server in the order recorded.
-   * Stops at the first network failure (still offline) so the remaining
-   * queue stays intact for the next attempt; a server-side rejection
-   * (validation error, etc.) marks that one item "failed" — visible to
-   * the user, not silently retried forever — and moves on to the rest.
-   */
+  // Pushes every queued transaction to the server in the order recorded.
   async function syncPendingTransactions() {
     const rows = await listPending();
     let synced = 0, failed = 0;
@@ -185,7 +166,7 @@ const Offline = (() => {
     return { synced, failed, remaining: remaining.length };
   }
 
-  /* ---------------- offline-friendly CSV export ---------------- */
+
 
   function csvEscape(value) {
     const str = String(value ?? "");

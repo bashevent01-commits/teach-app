@@ -5,11 +5,7 @@ from app.core.database import Base
 
 
 class StockPriceHistory(Base):
-    """
-    One row per price snapshot for a stock item — written on item creation
-    and on every unit_price change. Feeds the market-analysis price-trend
-    charts; never edited or deleted after the fact.
-    """
+    """One row per price snapshot for a stock item — written on item creation and on every unit_price change."""
     __tablename__ = "stock_price_history"
 
     id = Column(Integer, primary_key=True, index=True)

@@ -9,7 +9,7 @@ import com.knowapp.android.ui.theme.DisplayFontFamily
 import com.knowapp.android.ui.theme.ExpenseOrange
 import com.knowapp.android.ui.theme.IncomeGreen
 
-/** Matches .txn-amount styling + the web app's --in (green) / --out (orange) tokens. */
+// Matches .txn-amount styling + the web app's --in (green) / --out (orange) tokens.
 @Composable
 fun AmountText(amountKes: String, isIncome: Boolean, modifier: Modifier = Modifier) {
     Text(

@@ -15,7 +15,7 @@
     await loadAuditGrid();
   }
 
-  /* ---------------- Records panel (filterable by method) ---------------- */
+
 
   async function loadRecords() {
     try {
@@ -55,15 +55,7 @@
     return method === "mpesa" ? "M-Pesa" : method[0].toUpperCase() + method.slice(1);
   }
 
-  /* ================================================================
-     Statements — printable, well-organised movement tables.
-     Single-method statements (Cash / M-Pesa / Bank) are grouped into
-     an Income band and an Expenses band, each with its own subtotal —
-     the same shape as a typical income statement. The Combined
-     statement instead bands by METHOD (cash/mpesa/bank), so if two
-     methods' entries fall next to each other in time they still each
-     read as one solid coloured block, never interleaved.
-     ================================================================ */
+  // ================================================================ Statements — printable, well-organised movement tables.
 
   const METHOD_LABEL = { cash: "Cash", mpesa: "M-Pesa", bank: "Bank" };
   const METHOD_COLOR = { cash: "#0f766e", mpesa: "#15803d", bank: "#1d4ed8" };
@@ -118,7 +110,7 @@
       </tr>`;
   }
 
-  /** One coloured band: header row + line items + subtotal row. */
+  // One coloured band: header row + line items + subtotal row.
   function typeBand(title, color, rows) {
     if (!rows.length) return "";
     const total = rows.reduce((s, t) => s + parseFloat(t.amount), 0);
@@ -282,7 +274,7 @@
     });
   });
 
-  /* ---------------- Audit reports (title/period, finalize, PDF) ---------------- */
+
 
   const recordsView = $("#auditRecordsView");
   const detailView = $("#auditDetailView");
@@ -560,7 +552,7 @@
     });
   });
 
-  /* ---------------- boot ---------------- */
+
 
   const params = new URLSearchParams(location.search);
   const auditId = params.get("id");

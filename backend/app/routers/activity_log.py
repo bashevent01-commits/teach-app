@@ -17,10 +17,7 @@ def list_activity(
     db: Session = Depends(get_db),
     _: User = Depends(require_super_admin),
 ):
-    """
-    Security/accountability trail — logins, lockouts, account and school
-    changes, and audit/transaction edits. Super admin only.
-    """
+    """Security/accountability trail — logins, lockouts, account and school changes, and audit/transaction edits."""
     q = db.query(ActivityLog)
     if action:
         q = q.filter(ActivityLog.action == action)

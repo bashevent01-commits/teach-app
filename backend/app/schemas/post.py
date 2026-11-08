@@ -6,11 +6,7 @@ from app.models.post_report import ReportStatus
 
 
 class PostCreate(BaseModel):
-    """
-    The actual create endpoint accepts multipart/form-data (to allow an
-    optional image upload alongside these fields) rather than this model
-    directly, but the same field names/validation apply.
-    """
+    """The actual create endpoint accepts multipart/form-data (to allow an optional image upload alongside these fields)"""
     title: str
     body: str
 

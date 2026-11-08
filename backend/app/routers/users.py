@@ -21,11 +21,7 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 def _assert_can_manage(actor: User, target: User) -> None:
-    """
-    super_admin manages anyone, anywhere. An institution_admin only
-    manages STAFF and other INSTITUTION_ADMIN accounts at their OWN
-    institution — never a super_admin, and never a different institution.
-    """
+    """super_admin manages anyone, anywhere."""
     if actor.role == UserRole.SUPER_ADMIN:
         return
     if target.role == UserRole.SUPER_ADMIN or target.institution_id != actor.institution_id:
@@ -40,15 +36,11 @@ def get_my_profile(current_user: User = Depends(require_institution_scope)):
 @router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("5/minute")
 def change_my_password(payload: SelfPasswordChange, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_institution_scope)):
-    """Any user changing their own password. Requires the current password,
-    unlike the admin reset-password endpoint which is for issuing someone
-    else's password without it."""
+    """Any user changing their own password."""
     if not verify_password(payload.current_password, current_user.hashed_password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
     current_user.hashed_password = hash_password(payload.new_password)
-    # Bumping this invalidates the token used for this very request too, so
-    # the frontend must treat a successful change as an implicit logout —
-    # the old cookie/bearer token stops working on the next call regardless.
+    # Bumping this invalidates the token used for this very request too, so the frontend must treat a successful change as an
     current_user.token_version += 1
     db.commit()
     log_activity(db, action="self_password_change", actor=current_user, target_type="user", target_id=current_user.id,
@@ -104,8 +96,7 @@ def update_my_profile(
 @router.patch("/me/audit-sharing", response_model=UserOut)
 @limiter.limit("20/minute")
 def update_audit_sharing(payload: AuditSharingUpdate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_institution_scope)):
-    """Staff self-service: opt their own audits in/out of same-institution
-    visibility for other staff. Never affects edit/delete rights."""
+    """Staff self-service: opt their own audits in/out of same-institution visibility for other staff."""
     if current_user.role != UserRole.STAFF:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only staff accounts have audits to share")
     current_user.share_audits = payload.share_audits
@@ -117,13 +108,7 @@ def update_audit_sharing(payload: AuditSharingUpdate, request: Request, db: Sess
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
 def create_user(payload: UserCreate, request: Request, db: Session = Depends(get_db), admin: User = Depends(require_admin_scope)):
-    """
-    A super_admin issues credentials for anyone, anywhere. An
-    institution_admin can only issue STAFF or INSTITUTION_ADMIN accounts —
-    never SUPER_ADMIN — and only for their own institution; institution_id
-    is silently pinned to their own rather than trusting the payload.
-    Standalone staff or personal accounts register themselves through /api/auth/signup instead.
-    """
+    """A super_admin issues credentials for anyone, anywhere."""
     if payload.role == UserRole.AGENT:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Agents are added from the Partners page")
     if admin.role == UserRole.INSTITUTION_ADMIN:
@@ -187,8 +172,7 @@ def list_users(db: Session = Depends(get_db), current_user: User = Depends(requi
 @router.patch("/{user_id}", response_model=UserOut)
 @limiter.limit("20/minute")
 def update_user(user_id: int, payload: UserUpdate, request: Request, db: Session = Depends(get_db), admin: User = Depends(require_admin_scope)):
-    """Edits an existing account's username, display name, staff type, or
-    institution assignment. See _assert_can_manage for who can touch whom."""
+    """Edits an existing account's username, display name, staff type, or institution assignment."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -270,10 +254,7 @@ def deactivate_user(user_id: int, request: Request, db: Session = Depends(get_db
     if user.id == admin.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot deactivate your own account")
     user.is_active = False
-    # Belt-and-suspenders: is_active is already re-checked on every request,
-    # but bumping the token version too means this account's sessions die
-    # immediately even in a code path that only checked the token, not the
-    # live DB row.
+    # Belt-and-suspenders: is_active is already re-checked on every request, but bumping the token version too means this
     user.token_version += 1
     db.commit()
     db.refresh(user)
@@ -306,9 +287,7 @@ def reset_password(user_id: int, payload: PasswordReset, request: Request, db: S
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     _assert_can_manage(admin, user)
     user.hashed_password = hash_password(payload.new_password)
-    # Any session started with the old password stops working immediately,
-    # not just at its natural expiry — important if the reset was prompted
-    # by a compromised or carelessly-shared password.
+    # Any session started with the old password stops working immediately, not just at its natural expiry — important if the
     user.token_version += 1
     user.failed_login_attempts = 0
     user.locked_until = None

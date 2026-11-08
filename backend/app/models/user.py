@@ -14,10 +14,7 @@ class UserRole(str, enum.Enum):
 
 
 class StaffType(str, enum.Enum):
-    """Only meaningful when role=STAFF. TEACHER accounts never see or use
-    the stock/inventory feature — enforced both in the UI and server-side,
-    since a school's finances (fees, rent) are a different concern from a
-    shop's inventory even when they share the same platform."""
+    """Only meaningful when role=STAFF."""
     TEACHER = "teacher"
     GENERAL = "general"
 
@@ -35,23 +32,17 @@ class User(Base):
     staff_type = Column(Enum(StaffType), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
 
-    # Brute-force protection: incremented on each wrong password, reset on
-    # success. locked_until blocks login attempts entirely while in the future.
+    # Brute-force protection: incremented on each wrong password, reset on success.
     failed_login_attempts = Column(Integer, nullable=False, default=0)
     locked_until = Column(DateTime(timezone=True), nullable=True)
 
-    # Bumped on password reset / deactivation so previously-issued JWTs for
-    # this user stop being accepted immediately, without needing a token
-    # blocklist. Embedded in the JWT as "tv" and checked on every request.
+    # Bumped on password reset / deactivation so previously-issued JWTs for this user stop being accepted immediately,
     token_version = Column(Integer, nullable=False, default=0)
 
     # Nullable because a super_admin is not scoped to a single institution.
     institution_id = Column(Integer, ForeignKey("institutions.id"), nullable=True)
 
-    # Staff self-service toggle: when False (default), only this staff
-    # member and super_admins can see their audits. When True, other staff
-    # at the same institution can also see them. Never affects edit/delete
-    # rights — only the submitter (or a super_admin) can modify an audit.
+    # Staff self-service toggle: when False (default), only this staff member and super_admins can see their audits.
     share_audits = Column(Boolean, nullable=False, default=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

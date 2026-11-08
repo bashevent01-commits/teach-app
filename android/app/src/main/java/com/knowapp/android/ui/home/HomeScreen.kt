@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -16,9 +15,6 @@ import com.knowapp.android.data.convertQty
 import com.knowapp.android.data.compatibleUnits
 import com.knowapp.android.data.model.resolveMediaUrl
 import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Image as ImageIcon
@@ -85,10 +81,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -105,7 +99,6 @@ import com.knowapp.android.ui.components.categoryIcon
 import com.knowapp.android.ui.components.kes
 import com.knowapp.android.ui.components.kesNumber
 import com.knowapp.android.ui.statements.dateOf
-import com.knowapp.android.ui.theme.CardRadius
 import com.knowapp.android.ui.theme.DangerRed
 import com.knowapp.android.ui.theme.DisplayFontFamily
 import com.knowapp.android.ui.theme.ExpenseOrange
@@ -120,8 +113,6 @@ import java.time.format.DateTimeFormatter
 
 private val METHOD_LABELS = listOf("Cash", "M-Pesa", "Bank")
 private val METHOD_VALUES = listOf("cash", "mpesa", "bank")
-private val HeroTeal = Color(0xFF00695F)
-
 private fun methodLabel(value: String) = METHOD_LABELS.getOrElse(METHOD_VALUES.indexOf(value)) { value }
 
 private fun amountOf(raw: String): BigDecimal = raw.toBigDecimalOrNull() ?: BigDecimal.ZERO
@@ -1255,34 +1246,6 @@ private fun DetailLine(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-@Composable
-private fun SuccessCheck() {
-    val scale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 380f),
-        label = "successScale",
-    )
-    androidx.compose.ui.window.Dialog(
-        onDismissRequest = {},
-        properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
-    ) {
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(28.dp))
-                .padding(horizontal = 36.dp, vertical = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                Icons.Filled.CheckCircle,
-                contentDescription = null,
-                tint = IncomeGreen,
-                modifier = Modifier.size(64.dp).graphicsLayer(scaleX = scale, scaleY = scale),
-            )
-            Text("Saved", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 12.dp))
-        }
     }
 }
 

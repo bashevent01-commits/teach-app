@@ -57,8 +57,6 @@ class BillingGate(context: Context, private val repository: BillingRepository, p
         _state.update { it.copy(dismissedDay = today(), payOpen = false) }
     }
 
-    fun reminderHidden(): Boolean = _state.value.dismissedDay == today()
-
     fun openPay() { _state.update { it.copy(payOpen = true) } }
     fun closePay() { _state.update { it.copy(payOpen = false) } }
     fun startPreview() { _state.update { it.copy(preview = true) } }

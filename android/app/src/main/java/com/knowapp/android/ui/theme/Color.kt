@@ -2,8 +2,7 @@ package com.knowapp.android.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Pulled directly from frontend/css/styles.css's :root token block — keep
-// these two files in sync if the web app's palette ever changes.
+// Pulled directly from frontend/css/styles.css's :root token block — keep these two files in sync if the web app's
 
 // Brand
 val Brand = Color(0xFF0F766E)

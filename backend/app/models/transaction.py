@@ -18,9 +18,7 @@ class TransactionMethod(str, enum.Enum):
 
 
 class TransactionCategoryType(str, enum.Enum):
-    """STOCK entries move inventory (a sale or a restock) and link to a
-    StockItem + quantity. OTHER entries are the original free-form ledger
-    line (rent, utilities, etc.) with no item/quantity attached."""
+    """STOCK entries move inventory (a sale or a restock) and link to a StockItem + quantity."""
     STOCK = "STOCK"
     OTHER = "OTHER"
 
@@ -31,18 +29,13 @@ class Transaction(Base):
     id = Column(Integer, primary_key=True, index=True)
     institution_id = Column(Integer, ForeignKey("institutions.id"), nullable=False, index=True)
 
-    # `type` is the original column — it already stores "INCOME"/"EXPENSE"
-    # (the enum member NAME, SQLAlchemy's default) from before this
-    # feature existed, so it stays on that default behavior.
+    # `type` is the original column — it already stores "INCOME"/"EXPENSE" (the enum member NAME, SQLAlchemy's default) from
     type = Column(Enum(TransactionType), nullable=False)
 
-    # `method` was written as lowercase text ("cash"/"mpesa"/"bank") by an
-    # earlier migration, so — unlike `type` — it needs values_callable to
-    # map by .value instead of .name.
+    # `method` was written as lowercase text ("cash"/"mpesa"/"bank") by an earlier migration, so — unlike `type` — it needs
     method = Column(Enum(TransactionMethod, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=TransactionMethod.CASH)
 
-    # Written as the enum member NAME ("STOCK"/"OTHER"), matching `type`'s
-    # existing convention rather than `method`'s.
+    # Written as the enum member NAME ("STOCK"/"OTHER"), matching `type`'s existing convention rather than `method`'s.
     category_type = Column(Enum(TransactionCategoryType), nullable=False, default=TransactionCategoryType.OTHER)
 
     category = Column(String(100), nullable=False)   # e.g. "tuition fees", "utilities" — or the stock item's name when category_type=STOCK
@@ -50,16 +43,12 @@ class Transaction(Base):
     amount = Column(Numeric(12, 2), nullable=False)
 
     # Only set when category_type=STOCK: which item, and how many units.
-    # A STOCK expense adds this quantity to the item's stock (a restock);
-    # a STOCK income subtracts it (a sale).
     stock_item_id = Column(Integer, ForeignKey("stock_items.id", ondelete="SET NULL"), nullable=True)
     quantity = Column(Numeric(12, 2), nullable=True)
     # For a stock sale: what the units cost when they were sold, fixed at that moment so later cost changes never rewrite history
     cost_total = Column(Numeric(12, 2), nullable=True)
 
-    # Populated when a staff member pastes an M-Pesa confirmation message —
-    # parsed client-request, not verified against Safaricom directly, but
-    # gives a reconcilable code/payer name attached to the ledger entry.
+    # Populated when a staff member pastes an M-Pesa confirmation message — parsed client-request, not verified against
     mpesa_code = Column(String(30), nullable=True)
     mpesa_payer_name = Column(String(150), nullable=True)
 

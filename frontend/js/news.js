@@ -43,7 +43,7 @@
     }
   }
 
-  /* ---------------- Report post sheet ---------------- */
+
 
   function openReportSheet(postId) {
     Sheet.open("Report post", `
@@ -75,7 +75,7 @@
     });
   }
 
-  /* ---------------- Compose ---------------- */
+
 
   const form = $("#postForm");
   const msg = $("#postMsg");

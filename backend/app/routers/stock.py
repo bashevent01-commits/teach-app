@@ -76,9 +76,7 @@ def create_stock_item(payload: StockItemCreate, request: Request, db: Session = 
 
 @router.get("", response_model=list[StockItemOut])
 def list_stock_items(institution_id: int | None = None, branch_id: int | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Read access: any staff (non-teacher)/institution_admin sees their own
-    institution; super_admin can view any institution's stock (oversight,
-    read-only) by passing institution_id explicitly."""
+    """Read access: any staff (non-teacher)/institution_admin sees their own institution; super_admin can view any"""
     if current_user.role == UserRole.STAFF and current_user.staff_type == StaffType.TEACHER:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Personal accounts don't use stock")
     scoped_institution_id = _scoped_institution_id(current_user, institution_id)
@@ -119,9 +117,7 @@ def get_stock_item(item_id: int, db: Session = Depends(get_db), current_user: Us
 @router.patch("/{item_id}", response_model=StockItemOut)
 @limiter.limit("20/minute")
 def update_stock_item(item_id: int, payload: StockItemUpdate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_stock_access)):
-    """Edits catalog info only (name/description/price) — quantity is never
-    set directly here; it only moves through recorded transactions, so
-    every change to it has a transaction behind it."""
+    """Edits catalog info only (name/description/price) — quantity is never set directly here; it only moves through recorded"""
     item = _get_stock_item_scoped(item_id, current_user, db)
     if payload.name is not None and payload.name != item.name:
         if db.query(StockItem).filter(StockItem.institution_id == item.institution_id, StockItem.name == payload.name, StockItem.id != item_id).first():

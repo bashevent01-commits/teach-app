@@ -1,6 +1,4 @@
-# Fixed list so institution region stays a controlled value (needed for
-# regional market-analysis breakdowns) instead of free text that would
-# fragment and break aggregation, same reasoning as product categories.
+# Fixed list so institution region stays a controlled value (needed for regional market-analysis breakdowns) instead of
 KENYA_COUNTIES = [
     "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita-Taveta",
     "Garissa", "Wajir", "Mandera", "Marsabit", "Isiolo", "Meru",

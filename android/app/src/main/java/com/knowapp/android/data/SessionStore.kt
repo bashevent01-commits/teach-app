@@ -6,13 +6,7 @@ import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/**
- * Holds the current session: the bearer token plus the small bits of user
- * context the login response already gives us (role, staff_type,
- * institution_id, full_name) — no separate "/me" round trip needed.
- * Persisted in EncryptedSharedPreferences since this is a live session
- * token for a financial-audit app.
- */
+// Holds the current session: the bearer token plus the small bits of user context the login response already gives us
 data class Session(
     val accessToken: String,
     val userId: Int,

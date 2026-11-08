@@ -21,8 +21,6 @@ private val SINGULAR = mapOf(
     "loaves" to "loaf", "bales" to "bale", "gallons" to "gallon", "tonnes" to "tonne",
 )
 
-fun unitLabel(key: String?): String = STOCK_UNITS.firstOrNull { it.first == key }?.second ?: (key ?: "Pieces")
-
 // The label shown in a dropdown for a stored unit; an unknown unit is a custom one
 fun unitChoice(key: String?): String = STOCK_UNITS.firstOrNull { it.first == key }?.second ?: OTHER_UNIT
 

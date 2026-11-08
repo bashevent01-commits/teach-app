@@ -10,13 +10,7 @@ logger = logging.getLogger("know.bootstrap")
 
 
 def ensure_super_admin(db: Session) -> None:
-    """
-    Creates the very first super_admin account from env vars if no
-    super_admin exists yet. This is the one bootstrap exception to
-    "credentials only come from a super admin" — someone has to create
-    the first one. Emits a loud warning so the operator changes the
-    password immediately.
-    """
+    """Creates the very first super_admin account from env vars if no super_admin exists yet."""
     existing = db.query(User).filter(User.role == UserRole.SUPER_ADMIN).first()
     if existing:
         return

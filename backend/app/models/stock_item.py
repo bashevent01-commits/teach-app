@@ -5,18 +5,12 @@ from app.core.database import Base
 
 
 class StockItem(Base):
-    """
-    An inventory line for an institution's shop-style stock (e.g. items
-    sold in a school canteen, or a supermarket/shop's actual product
-    catalog). Quantity is a running count: transactions of category
-    STOCK adjust it up (a restock, an expense) or down (a sale, income).
-    """
+    """An inventory line for an institution's shop-style stock (e.g."""
     __tablename__ = "stock_items"
 
     id = Column(Integer, primary_key=True, index=True)
     institution_id = Column(Integer, ForeignKey("institutions.id", ondelete="CASCADE"), nullable=False, index=True)
-    # Nullable at first for existing rows created before the market-analysis
-    # taxonomy existed; required going forward at the schema/router level.
+    # Nullable at first for existing rows created before the market-analysis taxonomy existed; required going forward at the
     category_id = Column(Integer, ForeignKey("product_categories.id"), nullable=True, index=True)
     # The branch account that owns this stock; null means legacy shared stock the owner has not assigned yet.
     branch_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)

@@ -10,9 +10,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// Maps 1:1 onto frontend/css/styles.css's :root / [data-mode="dark"] tokens:
-// surface -> surface, surface-2 -> surfaceVariant, ink -> onSurface,
-// ink-soft -> onSurfaceVariant, line -> outline, bg -> background.
+// Maps 1:1 onto frontend/css/styles.css's :root / [data-mode="dark"] tokens: surface -> surface, surface-2 ->
 private val LightColors = lightColorScheme(
     primary = Brand,
     onPrimary = BrandInk,
@@ -60,9 +58,7 @@ fun KnowTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    // Dynamic (wallpaper-derived) color is deliberately not offered here —
-    // the whole point of this pass is to keep the app's teal brand
-    // consistent with the web app rather than per-device.
+    // Dynamic (wallpaper-derived) color is deliberately not offered here — the whole point of this pass is to keep the app's
     val colorScheme = if (darkTheme) DarkColors else LightColors
 
     val view = LocalView.current

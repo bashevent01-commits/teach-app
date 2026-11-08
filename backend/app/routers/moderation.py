@@ -83,10 +83,7 @@ def resolve_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_super_admin),
 ):
-    """
-    action is "dismiss" (report reviewed, post kept) or "remove_post"
-    (report reviewed, the reported post is deleted).
-    """
+    """action is "dismiss" (report reviewed, post kept) or "remove_post" (report reviewed, the reported post is deleted)."""
     if action not in ("dismiss", "remove_post"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="action must be 'dismiss' or 'remove_post'")
 

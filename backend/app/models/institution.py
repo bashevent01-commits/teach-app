@@ -9,12 +9,10 @@ class Institution(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, unique=True)
-    # Free text on purpose (school, shop, supermarket, ...) rather than a
-    # fixed enum, so new institution types don't need a migration to add.
+    # Free text on purpose (school, shop, supermarket, ...) rather than a fixed enum, so new institution types don't need a
     type = Column(String(50), nullable=False)
     address = Column(String(300), nullable=True)
-    # One of app.core.constants.KENYA_COUNTIES — nullable for existing rows
-    # created before regional market-analysis breakdowns existed.
+    # One of app.core.constants.KENYA_COUNTIES — nullable for existing rows created before regional market-analysis
     region = Column(String(50), nullable=True)
     # The head office constituency; stock without a branch uses it
     constituency = Column(String(80), nullable=True)

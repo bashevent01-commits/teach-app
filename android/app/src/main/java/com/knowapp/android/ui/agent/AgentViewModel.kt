@@ -37,8 +37,6 @@ class AgentViewModel(private val repository: PartnerRepository) : ViewModel() {
         load(target.toString())
     }
 
-    fun thisMonth() = load(null)
-
     // Asks for the commission of one confirmed payment, or everything not yet asked for when no notice is given
     fun requestPayout(noticeId: Int?) {
         viewModelScope.launch {

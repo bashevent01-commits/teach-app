@@ -13,7 +13,7 @@ from app.core.deps import get_current_user
 from app.core.limiter import limiter
 from app.models.stock_item import StockItem
 from app.models.transaction import Transaction, TransactionCategoryType, TransactionType
-from app.models.user import StaffType, User, UserRole
+from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/api/profit", tags=["profit"])
 
@@ -113,7 +113,6 @@ def set_cost(item_id: int, payload: CostUpdate, request: Request, db: Session = 
     item = db.query(StockItem).filter(StockItem.id == item_id, StockItem.institution_id == owner.institution_id).first()
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock item not found")
-    before = item.avg_cost
     item.avg_cost = payload.avg_cost.quantize(Decimal("0.0001"))
     db.commit()
     log_activity(db, action="stock_cost_set", actor=owner, target_type="stock_item", target_id=item.id,

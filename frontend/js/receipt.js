@@ -7,7 +7,7 @@ const Receipt = (() => {
     return Number.isNaN(d.getTime()) ? "" : d.toLocaleString("en-KE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Africa/Nairobi" });
   };
 
-  /* A saved receipt: every entry that shares one receipt id, or a single entry on its own. */
+  // A saved receipt: every entry that shares one receipt id, or a single entry on its own.
   function fromTransactions(entries, business, servedBy) {
     const rows = [...entries].sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
     const first = rows[0];
@@ -29,7 +29,7 @@ const Receipt = (() => {
     };
   }
 
-  /* A sale kept on this device while offline: shown as pending until it syncs. */
+  // A sale kept on this device while offline: shown as pending until it syncs.
   function fromFields(lines, common, business, servedBy, number) {
     const mapped = lines.map((l) => ({ name: l.category, quantity: l.quantity ?? null, unit: l.quantity ? Number(l.amount) / l.quantity : null, unitName: l.unit, amount: Number(l.amount) }));
     return {
@@ -69,7 +69,7 @@ const Receipt = (() => {
     .rc-thanks { text-align: center; font-weight: 700; margin: 14px 0 2px; } .rc-made { text-align: center; color: #5d6f6b; font-size: 9px; margin: 0; }
     .rc-pending { color: #b45309; font-weight: 700; font-size: 10px; }`;
 
-  /* Opens the browser's print dialog, which can print on any printer or save as a PDF to share. */
+  // Opens the browser's print dialog, which can print on any printer or save as a PDF to share.
   function print(d) {
     const frame = document.createElement("iframe");
     frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
@@ -90,7 +90,7 @@ const Receipt = (() => {
     $("#rcPrint").addEventListener("click", () => print(d));
   }
 
-  /* Shown after saving: the entry is stored, and the receipt can be printed straight away. */
+  // Shown after saving: the entry is stored, and the receipt can be printed straight away.
   function saved(d) {
     Sheet.open("Saved", `
       <div class="rc-saved"><div class="rc-check">&#10003;</div><strong>${d.pending ? "Saved on this device" : "Saved"}</strong>

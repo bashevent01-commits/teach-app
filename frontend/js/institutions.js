@@ -69,7 +69,7 @@
   $("#instSearch").addEventListener("input", renderInstitutions);
   $("#instSort").addEventListener("change", renderInstitutions);
 
-  /* ---------------- Add institution sheet ---------------- */
+
 
   $("#newSchoolBtn").addEventListener("click", () => {
     const typeOptions = COMMON_TYPES.map((t) => `<option value="${t}">${t[0].toUpperCase() + t.slice(1)}</option>`).join("");
@@ -146,7 +146,7 @@
     });
   });
 
-  /* ---------------- Change icon sheet ---------------- */
+
 
   function openLogoSheet(institutionId) {
     Sheet.open("Update portal icon", `
@@ -181,7 +181,7 @@
     });
   }
 
-  /* ---------------- Billing sheet: agent, monthly fee, payments ---------------- */
+  // ---------------- Billing sheet: agent, monthly fee, payments ----------------
 
   async function openBilling(id) {
     const inst = institutions.find((i) => i.id === id);

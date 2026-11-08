@@ -27,12 +27,7 @@ router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 
 
 def _scoped_institution_id(current_user: User, requested_institution_id: int | None) -> int:
-    """
-    Staff and institution_admin are locked to their own institution —
-    an institution_admin passing a different institution_id must NOT see
-    another institution's transactions. Only a super admin may specify
-    institution_id explicitly, since they aren't tied to one institution.
-    """
+    """Staff and institution_admin are locked to their own institution — an institution_admin passing a different"""
     if current_user.role in (UserRole.STAFF, UserRole.INSTITUTION_ADMIN):
         return current_user.institution_id
     if requested_institution_id is None:
@@ -60,8 +55,7 @@ def _sale_cost(db, txn_type: TransactionType, stock_item_id: int | None, quantit
 
 
 def _apply_stock_delta(item: StockItem, txn_type: TransactionType, quantity: Decimal, amount: Decimal | None = None) -> None:
-    """A STOCK expense is a restock (adds to inventory); a STOCK income is
-    a sale (removes from inventory, and can never go negative)."""
+    """A STOCK expense is a restock (adds to inventory); a STOCK income is a sale (removes from inventory, and can never go"""
     if txn_type == TransactionType.EXPENSE:
         if amount is not None and quantity > 0:
             item.avg_cost = weighted_cost(item.quantity, item.avg_cost, quantity, amount / quantity)
@@ -76,8 +70,7 @@ def _apply_stock_delta(item: StockItem, txn_type: TransactionType, quantity: Dec
 
 
 def _reverse_stock_delta(item: StockItem, txn_type: TransactionType, quantity: Decimal) -> None:
-    """Undoes _apply_stock_delta — used when editing/deleting a STOCK
-    transaction, so the running count stays correct."""
+    """Undoes _apply_stock_delta — used when editing/deleting a STOCK transaction, so the running count stays correct."""
     if txn_type == TransactionType.EXPENSE:
         item.quantity -= quantity
     else:
@@ -135,17 +128,7 @@ def create_transaction(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_institution_scope),
 ):
-    """
-    Records a Receiving (income) or Paying (expense) entry. The evidence
-    photo is optional; the date is never taken from the client — it's
-    always "now" on the server, so it can't be backdated or mismatched.
-
-    A STOCK entry (category_type=STOCK) links to a stock_item_id and a
-    quantity: an EXPENSE restocks it (quantity goes up), an INCOME sells
-    it (quantity goes down, capped at what's on hand). An OTHER entry
-    (rent, utilities, ...) behaves exactly like before — free-text
-    category, no item/quantity.
-    """
+    """Records a Receiving (income) or Paying (expense) entry."""
     if current_user.role != UserRole.STAFF:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only staff record transactions")
 
@@ -235,12 +218,7 @@ def create_batch(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_institution_scope),
 ):
-    """
-    Records several items sold or bought together as one payment: every line becomes its own
-    entry (with its own stock change and ledger posting), all sharing one method, proof and photo.
-    All lines are saved or none are. Sending the same batch_id again returns the saved lines
-    instead of recording them twice, so a retry after a dropped connection is safe.
-    """
+    """Records several items sold or bought together as one payment: every line becomes its own entry (with its own stock"""
     if current_user.role != UserRole.STAFF:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only staff record transactions")
     try:
@@ -293,7 +271,6 @@ def create_batch(
     db.commit()
     for txn in created:
         db.refresh(txn)
-    total = sum((t.amount for t in created), Decimal("0"))
     log_activity(db, action="transaction_batch_created", actor=current_user, target_type="transaction", target_id=created[0].id,
                  detail=f"Recorded {batch.type.value} across {len(created)} items", request=request)
     return created
@@ -347,14 +324,7 @@ def _get_transaction_scoped(transaction_id: int, current_user: User, db: Session
 
 
 def _transaction_is_locked(txn: Transaction, db: Session) -> bool:
-    """
-    Transactions aren't linked to an audit by foreign key — a finalized
-    audit's "statements" are whatever fell inside its period_start/
-    period_end for its institution (see routers/audits.py). So a
-    transaction is locked once ANY finalized audit for its institution
-    covers its date, since editing it afterward would silently change a
-    report that's already been signed off.
-    """
+    """Transactions aren't linked to an audit by foreign key — a finalized audit's "statements" are whatever fell inside its"""
     return (
         db.query(Audit)
         .filter(
@@ -385,13 +355,7 @@ def update_transaction(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_institution_scope),
 ):
-    """
-    transaction_date is never editable here — it's set once, server-side,
-    at creation (see create_transaction) and stays that way. category_type
-    and stock_item_id are also immutable after creation, to keep stock
-    reconciliation tractable — delete and re-create instead if a stock
-    entry was linked to the wrong item entirely.
-    """
+    """transaction_date is never editable here — it's set once, server-side, at creation (see create_transaction) and stays"""
     if current_user.role != UserRole.STAFF:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only staff edit transactions")
 

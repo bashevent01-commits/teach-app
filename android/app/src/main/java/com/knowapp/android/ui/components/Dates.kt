@@ -25,7 +25,6 @@ fun lastSeen(iso: String?): String {
 
 fun daysSince(iso: String?): Long? = iso?.let { java.time.temporal.ChronoUnit.DAYS.between(dateOf(it), LocalDate.now()) }
 
-private val AMBIGUOUS = setOf('0', 'O', 'o', '1', 'l', 'I')
 private const val PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
 
 // A temporary password that is easy to read out over the phone: no look-alike characters, always a letter and a digit

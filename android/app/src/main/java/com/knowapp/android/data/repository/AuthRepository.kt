@@ -52,8 +52,7 @@ class AuthRepository(
         try {
             api.logout()
         } catch (_: Exception) {
-            // Logging out clears local state regardless of whether the
-            // network call succeeds — same behavior as the web app's logout.
+            // Logging out clears local state regardless of whether the network call succeeds — same behavior as the web app's logout.
         }
         sessionStore.clear()
     }

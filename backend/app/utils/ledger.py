@@ -67,8 +67,7 @@ def _category_account(db: Session, institution_id: int, txn: Transaction) -> Acc
 
 
 def post_transaction(db: Session, txn: Transaction) -> JournalEntry:
-    # Receiving: money account up (debit), income up (credit). Paying: expense up (debit), money account down (credit).
-    # Replaces any existing entry so edits to a transaction keep the books in step.
+    # Receiving: money account up (debit), income up (credit).
     if txn.journal_entry is not None:
         db.delete(txn.journal_entry)
         db.flush()

@@ -5,13 +5,7 @@ from app.core.database import Base
 
 
 class ProductCategory(Base):
-    """
-    Shared, curated taxonomy stock items are matched into (e.g. "Pencils",
-    "Bread (400g)") — super_admin managed only. Staff pick from this list
-    rather than typing a free-text category, so cross-institution market
-    analysis can group items accurately instead of relying on fuzzy
-    text matching.
-    """
+    """Shared, curated taxonomy stock items are matched into (e.g."""
     __tablename__ = "product_categories"
 
     id = Column(Integer, primary_key=True, index=True)
