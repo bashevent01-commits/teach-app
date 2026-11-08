@@ -45,7 +45,7 @@ ok("trial: no reminder yet", st(ho)["state"] == "trial" and not st(ho)["popup_du
 clock(at(2026, 10, 8, 13, 30))
 s = st(ho)
 ok("after 4pm on the due day the reminder shows", s["popup_due"] and not s["locked"] and s["total"] == 500 and s["can_pay"] and s["agent_registered"])
-ok("status carries the paybill and account", s["paybill"] == "4396353" and s["paybill_name"] == "Obsidian Labs" and s["account_ref"] == "mamaowner")
+ok("status carries the till number and name", s["till"] == "4396353" and s["till_name"] == "Obsidian Labs" and s["paybill"] == "4396353")
 ok("staff are not shown the reminder", not st(hst)["popup_due"] and not st(hst)["can_pay"])
 clock(at(2026, 10, 9, 2, 0))
 ok("still open before 6am", c.get("/api/stock", headers=ho).status_code == 200)
@@ -89,7 +89,7 @@ ok("reused M-Pesa code refused", c.post("/api/billing/proof", json={"message": g
 # next month: due again, then a rejected proof
 clock(at(2026, 11, 8, 13, 30)); _b._CACHE.clear()
 ok("next month the reminder returns", st(ho)["popup_due"])
-second = good.replace("SJK4X9PQLM", "SKL5Y0QRMN").replace("9/10/26 at 6:30 AM", "8/11/26 at 4:10 PM")
+second = "SKL5Y0QRMN Confirmed. Ksh500.00 paid to OBSIDIAN LABS. on 8/11/26 at 4:10 PM.New M-PESA balance is Ksh1,000.00. Transaction cost, Ksh0.00."
 ok("second proof accepted", c.post("/api/billing/proof", json={"message": second}, headers=ho).status_code == 201)
 pid2 = c.get("/api/admin/payment-proofs", headers=hs).json()[0]["id"]
 rj = c.post(f"/api/admin/payment-proofs/{pid2}/reject", json={"note": "Not on the statement"}, headers=hs)

@@ -15,7 +15,7 @@ from app.core.security import hash_password
 from app.models.user import StaffType, User, UserRole
 from app.schemas.user import check_password, clean_email
 from app.utils import billing as bill
-from app.utils.billing import (UPGRADE_PRICE, EXTRA_ACCOUNT_PRICE, OWNER_INCLUDED_ACCOUNTS, PAYBILL, PAYBILL_NAME, TRIAL_DAYS)
+from app.utils.billing import (UPGRADE_PRICE, EXTRA_ACCOUNT_PRICE, OWNER_INCLUDED_ACCOUNTS, TILL, TILL_NAME, TRIAL_DAYS)
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
@@ -45,8 +45,11 @@ class BillingStatus(BaseModel):
     can_pay: bool = False
     proof_status: str = "none"
     proof_note: str | None = None
-    paybill: str = PAYBILL
-    paybill_name: str = PAYBILL_NAME
+    till: str = TILL
+    till_name: str = TILL_NAME
+    # Older installed apps still read these two names
+    paybill: str = TILL
+    paybill_name: str = TILL_NAME
     account_ref: str = ""
     agent_registered: bool = False
     preview_allowed: bool = False

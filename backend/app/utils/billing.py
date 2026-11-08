@@ -24,8 +24,8 @@ EXTRA_ACCOUNT_PRICE = 200
 # The reminder appears from 4pm Nairobi time; an unpaid workspace closes at 6am the next morning
 POPUP_HOUR = 16
 LOCK_HOUR = 6
-PAYBILL = "4396353"
-PAYBILL_NAME = "Obsidian Labs"
+TILL = "4396353"
+TILL_NAME = "Obsidian Labs"
 PREVIEW_USERNAME = "obsidian"
 CACHE_SECONDS = 45
 
@@ -171,7 +171,7 @@ def check_proof(message: str, total_due: int, now: datetime | None = None) -> di
         raise ValueError("We couldn't read that message. Paste the whole M-Pesa confirmation exactly as it arrived.")
     recipient = parsed["counterparty"] or ""
     if "OBSIDIAN" not in re.sub(r"[^A-Z]", "", recipient.upper()):
-        raise ValueError(f"That payment went to {recipient or 'someone else'}, not {PAYBILL_NAME}. Pay paybill {PAYBILL} and paste that message.")
+        raise ValueError(f"That payment went to {recipient or 'someone else'}, not {TILL_NAME}. Pay till {TILL} ({TILL_NAME}) and paste that message.")
     if parsed["amount"] < Decimal(total_due):
         raise ValueError(f"That message shows KES {parsed['amount']:,.2f} but KES {total_due:,} is due.")
     when = parsed["when"].replace(tzinfo=LOCAL)

@@ -101,7 +101,7 @@ fun PaymentsScreen(viewModel: PaymentsViewModel, onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { approving = null },
             title = { Text("Approve this payment?") },
-            text = { Text("Check that M-Pesa code ${p.code} for ${kes(p.amount)} is on the paybill statement first. Approving books ${p.months} month(s) for ${p.business}${if (p.agent != null) " and tells ${p.agent} they can ask for a payout" else ""}.") },
+            text = { Text("Check that M-Pesa code ${p.code} for ${kes(p.amount)} is on the till statement first. Approving books ${p.months} month(s) for ${p.business}${if (p.agent != null) " and tells ${p.agent} they can ask for a payout" else ""}.") },
             confirmButton = { TextButton(onClick = { approving = null; viewModel.approve(p.id) }) { Text("Approve") } },
             dismissButton = { TextButton(onClick = { approving = null }) { Text("Cancel") } },
         )

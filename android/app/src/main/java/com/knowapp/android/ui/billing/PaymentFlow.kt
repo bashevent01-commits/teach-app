@@ -1,9 +1,22 @@
 package com.knowapp.android.ui.billing
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Receipt
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,6 +72,7 @@ enum class FlowMode { REMINDER, LOCKED, PAY, PREVIEW }
 private val Deep = Color(0xFF134E4A)
 private val Teal = Color(0xFF0F766E)
 private val Mint = Color(0xFF5EEAD4)
+private val Amber = Color(0xFFB45309)
 
 private fun today(): String = LocalDate.now(ZoneId.of("Africa/Nairobi")).toString()
 
@@ -178,115 +192,84 @@ fun PaymentFlow(
     var sending by remember { mutableStateOf(false) }
     var copied by remember { mutableStateOf<String?>(null) }
     val preview = mode == FlowMode.PREVIEW
+    val locked = mode == FlowMode.LOCKED
+    val upgrade = status.tier == "free"
     val firstBill = status.state == "trial_ended" || preview
+    val amount = kesInt(status.total)
     val commission = status.total * 20 / 100
+    val planName = if (upgrade) "Paid plan" else if (status.plan == "owner") "Business plan" else "Individual plan"
 
     Column(
-        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(22.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (preview) {
-            Text(
-                "PREVIEW. Nothing is sent or charged.",
-                color = Teal, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
-                modifier = Modifier.background(Mint.copy(alpha = 0.25f), PillShape).padding(horizontal = 12.dp, vertical = 5.dp),
-            )
-        }
+        if (preview) PreviewTag()
 
         if (!status.canPay && !preview) {
-            Text("This workspace is closed", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-            Text("The monthly fee has not been paid. Ask your owner to pay it, and the app opens again for everyone.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(onClick = onRecheck, shape = PillShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Check again", fontWeight = FontWeight.Bold) }
-            OutlinedButton(onClick = onSignOut, shape = PillShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Sign out") }
+            Header(Icons.Outlined.Lock, Amber, "Your workspace is paused", "Your business fee hasn't been paid yet. Please ask your owner to pay it. As soon as it's paid, KNOW opens again for everyone.")
+            BigButton("Check again", onRecheck)
+            QuietLink("Sign out", onSignOut)
             return@Column
         }
 
         when (step) {
             0 -> {
-                Text(
-                    if (mode == FlowMode.LOCKED) "Your KNOW fee is overdue" else if (firstBill) "Your free week has ended" else "Your KNOW fee is due",
-                    fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp,
-                )
-                Text("${kesInt(status.total)} a month", fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, color = Teal)
-                Text(
-                    if (mode == FlowMode.LOCKED) "The app is closed until the fee is paid. Pay, then paste your M-Pesa message and it opens again straight away."
-                    else "Pay to keep KNOW running for your business. You can keep using the app until 6am tomorrow. After that it closes until the fee is paid.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (locked) Header(Icons.Outlined.Lock, Amber, "Your workspace is paused", "This month's fee isn't paid yet, so we've paused KNOW for now. Your records are safe. Pay in a minute and carry on.")
+                else if (upgrade) Header(Icons.Outlined.Star, Teal, "Upgrade your plan", "Store documents and photos, and print your statements.")
+                else Header(Icons.Outlined.Receipt, Teal, if (firstBill) "Your free week is over" else "Time to renew", "You can carry on until 6am tomorrow. After that KNOW pauses until the fee is paid.")
+                AmountBox(amount, planName, if (upgrade) "per month" else "every month")
                 if (status.proofStatus == "rejected") {
-                    Text(
-                        "Your last payment message could not be confirmed" + (status.proofNote?.let { ": $it." } ?: "."),
-                        color = DangerRed, fontSize = 13.sp,
-                        modifier = Modifier.fillMaxWidth().background(DangerRed.copy(alpha = 0.12f), SmallRadius).padding(12.dp),
-                    )
+                    Notice("We couldn't confirm your last payment" + (status.proofNote?.let { ": $it" } ?: "") + ". Please check the message you pasted and try again.")
                 }
-                if (preview) {
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Pretend an agent registered this account", modifier = Modifier.weight(1f), fontSize = 14.sp)
-                        Switch(checked = previewAgent, onCheckedChange = onPreviewAgent)
-                    }
-                }
-                Button(onClick = { onStep(1) }, shape = PillShape, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text("Pay now", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
-                if (mode == FlowMode.REMINDER) TextButton(onClick = onLater, modifier = Modifier.fillMaxWidth()) { Text("Remind me later") }
-                if (preview) TextButton(onClick = onClose, modifier = Modifier.fillMaxWidth()) { Text("Close preview") }
-                if (mode == FlowMode.LOCKED) TextButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Sign out") }
+                if (preview) AgentSwitch(previewAgent, onPreviewAgent)
+                BigButton(if (locked) "Pay with M-Pesa" else if (upgrade) "Upgrade now" else "Pay now") { onStep(1) }
+                if (locked) SecondaryButton("I've already paid") { onStep(2) }
+                if (mode == FlowMode.REMINDER) QuietLink("Remind me tomorrow", onLater)
+                if (preview) QuietLink("Close preview", onClose)
+                if (locked) QuietLink("Sign out", onSignOut)
             }
             1 -> {
-                Text("Pay with M-Pesa", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-                Text("On your phone: M-Pesa, Lipa na M-Pesa, Pay Bill. Then enter these details.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Column(
-                    modifier = Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Teal, Deep)), RoundedCornerShape(22.dp)).padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    PayRow("Paybill number", status.paybill) { clipboard.setText(AnnotatedString(status.paybill)); copied = "Paybill copied" }
-                    PayRow("Account name", status.paybillName, null)
-                    PayRow("Account number", status.accountRef.ifBlank { "your username" }) { clipboard.setText(AnnotatedString(status.accountRef)); copied = "Account number copied" }
-                    PayRow("Amount", kesInt(status.total)) { clipboard.setText(AnnotatedString(status.total.toString())); copied = "Amount copied" }
-                }
+                Steps(1)
+                Header(null, Teal, "Pay $amount with M-Pesa", "It only takes a minute.")
+                HowTo(listOf("Open M-Pesa and choose Lipa na M-Pesa", "Choose Buy Goods and Services", "Enter the till number below", "Enter $amount, then your M-Pesa PIN"))
+                TillCard(status.till, status.tillName, amount, onCopyTill = { clipboard.setText(AnnotatedString(status.till)); copied = "Till number copied" }, onCopyAmount = { clipboard.setText(AnnotatedString(status.total.toString())); copied = "Amount copied" })
                 copied?.let { Text(it, color = IncomeGreen, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
-                Button(onClick = { onStep(2) }, shape = PillShape, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text("I have paid", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
-                TextButton(onClick = { onStep(0) }, modifier = Modifier.fillMaxWidth()) { Text("Back") }
+                Text("Check that the name shows as ${status.tillName} before you enter your PIN.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, textAlign = TextAlign.Center)
+                BigButton("I've paid") { onStep(2) }
+                QuietLink("Back") { onStep(0) }
             }
             2 -> {
-                Text("Show us your payment", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-                Text("Paste the whole M-Pesa message you got from Safaricom. The app stays open while we check it.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Steps(2)
+                Header(null, Teal, "Confirm your payment", "M-Pesa sends you a confirmation message. Paste it here so we can match your payment. It starts with a code like SJK4X9PQLM.")
                 OutlinedTextField(
                     value = message,
                     onValueChange = { message = it; error = null },
-                    label = { Text("M-Pesa message") },
+                    label = { Text("M-Pesa confirmation message") },
                     minLines = 4,
                     maxLines = 8,
                     modifier = Modifier.fillMaxWidth(),
                     shape = SmallRadius,
                 )
-                error?.let {
-                    Text(it, color = DangerRed, fontSize = 13.sp, modifier = Modifier.fillMaxWidth().background(DangerRed.copy(alpha = 0.12f), SmallRadius).padding(12.dp))
+                TextButton(onClick = { clipboard.getText()?.text?.let { message = it; error = null } }) {
+                    Icon(Icons.Outlined.ContentPaste, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text("Paste from clipboard", modifier = Modifier.padding(start = 8.dp))
                 }
-                Button(
-                    onClick = {
-                        if (preview) { onStep(3); return@Button }
-                        sending = true
-                        scope.launch {
-                            onSend(message.trim())
-                                .onSuccess { onStep(3) }
-                                .onFailure { error = it.message }
-                            sending = false
-                        }
-                    },
-                    enabled = !sending && (preview || message.trim().length >= 20),
-                    shape = PillShape,
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
-                ) { Text(if (sending) "Sending…" else if (preview) "Send (preview only)" else "Send message", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
-                TextButton(onClick = { onStep(1) }, modifier = Modifier.fillMaxWidth()) { Text("Back") }
+                error?.let { Notice(it) }
+                BigButton(if (sending) "Checking…" else "Confirm payment", enabled = !sending && (preview || message.trim().length >= 20)) {
+                    if (preview) { onStep(3); return@BigButton }
+                    sending = true
+                    scope.launch {
+                        onSend(message.trim()).onSuccess { onStep(3) }.onFailure { error = it.message }
+                        sending = false
+                    }
+                }
+                QuietLink("Back") { onStep(1) }
             }
             else -> {
-                Text("Thank you", fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = IncomeGreen)
-                Text(thanks ?: "Your payment message is being checked and the app stays open.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Header(Icons.Outlined.CheckCircle, IncomeGreen, "Thank you!", thanks ?: "We're checking your payment. You can keep using KNOW in the meantime.")
                 if (preview) {
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Pretend an agent registered this account", modifier = Modifier.weight(1f), fontSize = 14.sp)
-                        Switch(checked = previewAgent, onCheckedChange = onPreviewAgent)
-                    }
+                    AgentSwitch(previewAgent, onPreviewAgent)
                     if (previewAgent) {
                         Column(
                             modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(18.dp)).padding(16.dp),
@@ -298,19 +281,124 @@ fun PaymentFlow(
                         }
                     }
                 }
-                Button(onClick = onClose, shape = PillShape, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text("Done", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+                BigButton("Done", onClose)
             }
         }
     }
 }
 
 @Composable
-private fun PayRow(label: String, value: String, onCopy: (() -> Unit)?) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label.uppercase(), color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-            Text(value, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+private fun Header(icon: ImageVector?, tint: Color, title: String, subtitle: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (icon != null) {
+            Box(modifier = Modifier.size(68.dp).background(tint.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(32.dp))
+            }
         }
-        if (onCopy != null) TextButton(onClick = onCopy) { Text("Copy", color = Mint, fontWeight = FontWeight.Bold) }
+        Text(title, fontFamily = DisplayFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, textAlign = TextAlign.Center)
+        Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, fontSize = 15.sp, lineHeight = 22.sp)
     }
+}
+
+@Composable
+private fun AmountBox(amount: String, plan: String, caption: String) {
+    Column(
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp)).padding(vertical = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(plan.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, color = Teal)
+        Text(amount, fontWeight = FontWeight.ExtraBold, fontSize = 34.sp)
+        Text(caption, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun Steps(current: Int) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        listOf("1  Pay", "2  Confirm").forEachIndexed { index, label ->
+            val active = index + 1 == current
+            Text(
+                label, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                color = if (active) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.background(if (active) Teal else MaterialTheme.colorScheme.surfaceVariant, PillShape).padding(horizontal = 14.dp, vertical = 6.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HowTo(items: List<String>) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        items.forEachIndexed { index, text ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(modifier = Modifier.size(26.dp).background(Teal.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
+                    Text("${index + 1}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Teal)
+                }
+                Text(text, fontSize = 15.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TillCard(till: String, name: String, amount: String, onCopyTill: () -> Unit, onCopyAmount: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Teal, Deep)), RoundedCornerShape(24.dp)).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Column {
+                Text("TILL NUMBER", color = Mint, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(till, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+            }
+            TextButton(onClick = onCopyTill) { Text("Copy", color = Mint, fontWeight = FontWeight.Bold) }
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("BUSINESS NAME", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(name.uppercase(), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text("AMOUNT", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(amount, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable(onClick = onCopyAmount))
+            }
+        }
+    }
+}
+
+@Composable
+private fun Notice(text: String) {
+    Text(text, color = DangerRed, fontSize = 14.sp, modifier = Modifier.fillMaxWidth().background(DangerRed.copy(alpha = 0.10f), SmallRadius).padding(14.dp))
+}
+
+@Composable
+private fun PreviewTag() {
+    Text(
+        "PREVIEW. Nothing is sent or charged.",
+        color = Teal, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
+        modifier = Modifier.background(Mint.copy(alpha = 0.25f), PillShape).padding(horizontal = 12.dp, vertical = 5.dp),
+    )
+}
+
+@Composable
+private fun AgentSwitch(on: Boolean, onChange: (Boolean) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("Pretend an agent registered this account", modifier = Modifier.weight(1f), fontSize = 14.sp)
+        Switch(checked = on, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun BigButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+    Button(onClick = onClick, enabled = enabled, shape = PillShape, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text(text, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+}
+
+@Composable
+private fun SecondaryButton(text: String, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, shape = PillShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text(text, fontWeight = FontWeight.SemiBold) }
+}
+
+@Composable
+private fun QuietLink(text: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick) { Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }

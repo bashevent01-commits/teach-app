@@ -55,7 +55,7 @@ def list_proofs(state: str = "pending", db: Session = Depends(get_db), admin: Us
 @router.post("/payment-proofs/{proof_id}/approve")
 @limiter.limit("60/hour")
 def approve_proof(proof_id: int, payload: Approve, request: Request, db: Session = Depends(get_db), admin: User = Depends(require_super_admin)):
-    """Confirms a payment against the paybill statement: books the fee, fixes the agent's share and tells the agent."""
+    """Confirms a payment against the till statement: books the fee, fixes the agent's share and tells the agent."""
     proof = db.get(PaymentProof, proof_id)
     if not proof or proof.status != "pending":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No waiting payment message with that id")

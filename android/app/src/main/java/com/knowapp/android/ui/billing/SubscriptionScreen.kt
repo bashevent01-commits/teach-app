@@ -266,7 +266,7 @@ private fun PayCard(status: BillingStatusOut, onPay: () -> Unit, onPreview: (() 
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
         Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Pay with", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            MethodTile("M-Pesa paybill ${status.paybill}", "Account name ${status.paybillName}")
+            MethodTile("M-Pesa till ${status.till}", "Business name ${status.tillName}")
             Text(status.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
             if (status.canPay && status.state != "trial" && status.proofStatus != "pending") {
                 androidx.compose.material3.Button(onClick = onPay, shape = CircleShape, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Pay now", fontWeight = FontWeight.Bold) }

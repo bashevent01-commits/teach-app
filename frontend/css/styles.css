@@ -794,3 +794,27 @@ body.payflow-open { overflow: hidden; }
 .free-list .no { opacity: .6; } .free-list .no::before { content: "\2717  "; font-weight: 700; }
 
 .adv-links { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+
+/* Pay and closed screens */
+.payflow-card { gap: 16px; align-items: stretch; padding: 28px 24px; }
+.pf-head { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.pf-head h2 { margin: 0; }
+.pf-head p { margin: 0; opacity: .75; line-height: 1.45; }
+.pf-icon { width: 68px; height: 68px; border-radius: 50%; display: grid; place-items: center; }
+.pf-teal { background: rgba(15,118,110,.14); color: #0f766e; } .pf-amber { background: rgba(180,83,9,.14); color: #b45309; } .pf-green { background: rgba(22,163,74,.14); color: #16a34a; }
+.pf-amountbox { background: var(--surface-2, rgba(128,128,128,.12)); border-radius: 20px; padding: 18px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.pf-amountbox small { font-weight: 700; letter-spacing: .12em; color: #0f766e; }
+.pf-amountbox strong { font-size: 2.1rem; font-weight: 800; }
+.pf-amountbox span { opacity: .7; font-size: .85rem; }
+.pf-steps { display: flex; justify-content: center; gap: 8px; }
+.pf-steps span { padding: 6px 14px; border-radius: 999px; font-size: .78rem; font-weight: 700; background: var(--surface-2, rgba(128,128,128,.12)); opacity: .8; }
+.pf-steps span.on { background: #0f766e; color: #fff; opacity: 1; }
+.pf-howto { margin: 0; padding: 0; list-style: none; counter-reset: pf; display: flex; flex-direction: column; gap: 10px; }
+.pf-howto li { counter-increment: pf; display: flex; gap: 12px; align-items: center; }
+.pf-howto li::before { content: counter(pf); width: 26px; height: 26px; flex: none; border-radius: 50%; background: rgba(15,118,110,.14); color: #0f766e; font-weight: 700; display: grid; place-items: center; font-size: .82rem; }
+.payflow-card .pf-till { font-size: 2.1rem; letter-spacing: .08em; }
+.payflow-card .pf-row2 { display: flex !important; justify-content: space-between; }
+.payflow-card .pf-row2 small { display: block; grid-column: auto; }
+.payflow-card .pf-row2 b { font-size: 1rem; }
+.pf-note { font-size: .85rem; text-align: center; }
+.pf-link { background: none; border: 0; color: inherit; opacity: .7; cursor: pointer; font: inherit; padding: 8px; }

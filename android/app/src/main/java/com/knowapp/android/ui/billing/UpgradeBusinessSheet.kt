@@ -115,7 +115,7 @@ fun UpgradeBusinessSheet(
                     shape = PillShape, modifier = Modifier.fillMaxWidth().height(54.dp),
                 ) { Text(if (due == 0) (if (busy) "Setting up…" else "Become a business") else "Continue to payment", fontWeight = FontWeight.Bold) }
             } else {
-                Text("Pay KES $due with M-Pesa paybill ${status.paybill}, account name ${status.paybillName}, account number ${status.accountRef}.", fontWeight = FontWeight.SemiBold)
+                Text("Pay KES $due to till number ${status.till} (${status.tillName}) using Lipa na M-Pesa, then Buy Goods and Services.", fontWeight = FontWeight.SemiBold)
                 OutlinedTextField(value = message, onValueChange = { message = it; error = null }, label = { Text("Paste the M-Pesa message") }, minLines = 4, maxLines = 8, modifier = Modifier.fillMaxWidth(), shape = SmallRadius)
                 error?.let { Text(it, color = DangerRed, fontSize = 13.sp) }
                 Button(onClick = { send() }, enabled = message.trim().length >= 20 && !busy, shape = PillShape, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text(if (busy) "Sending…" else "Send message", fontWeight = FontWeight.Bold) }

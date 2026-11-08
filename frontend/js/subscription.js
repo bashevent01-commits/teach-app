@@ -52,7 +52,7 @@
     }
     function payment(f) {
       el.innerHTML = `<div class="payflow-card"><h2>Pay KES ${quote.due_now}</h2>
-        <p>M-Pesa paybill <strong>${s.paybill}</strong>, account name <strong>${escapeHtml(s.paybill_name)}</strong>, account number <strong>${escapeHtml(s.account_ref)}</strong>.</p>
+        <p>Pay <strong>KES ${quote.due_now}</strong> to till number <strong>${s.till}</strong> (${escapeHtml(s.till_name)}) using Lipa na M-Pesa, then Buy Goods and Services.</p>
         <textarea id="bMsg" rows="5" placeholder="Paste the M-Pesa message"></textarea><p class="pf-error" id="bErr" hidden></p>
         <button class="primary-btn" id="bSend">Send message</button><button class="ghost-btn" id="bBack">Back</button></div>`;
       el.querySelector("#bBack").addEventListener("click", details);

@@ -4,7 +4,7 @@ from app.core.database import Base
 
 
 class PaymentProof(Base):
-    """The M-Pesa message a business pasted to show it paid; a super admin checks it against the paybill statement."""
+    """The M-Pesa message a business pasted to show it paid; a super admin checks it against the till statement."""
     __tablename__ = "payment_proofs"
 
     id = Column(Integer, primary_key=True, index=True)

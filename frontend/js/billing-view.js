@@ -51,7 +51,7 @@ const BillingView = (() => {
 
   function pay(s) {
     return `<div class="sub-panel"><h3>Pay with</h3>
-      <div class="sub-method"><div><strong>M-Pesa paybill ${s.paybill}</strong><small>Account name ${s.paybill_name}</small></div></div>
+      <div class="sub-method"><div><strong>M-Pesa till ${s.till}</strong><small>Business name ${s.till_name}</small></div></div>
       <p class="hint">${s.note}</p>
       ${s.can_pay && s.state !== "trial" && s.proof_status !== "pending" ? `<button class="primary-btn" id="payNowBtn">Pay now</button>` : ""}
       ${s.preview_allowed ? `<button class="ghost-btn" id="previewPayBtn">Preview the payment reminder</button>` : ""}</div>`;
