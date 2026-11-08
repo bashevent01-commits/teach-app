@@ -208,7 +208,7 @@ fun PaymentFlow(
 
         if (!status.canPay && !preview) {
             Header(Icons.Outlined.Lock, Amber, "Your workspace is paused", "Your business fee hasn't been paid yet. Please ask your owner to pay it. As soon as it's paid, KNOW opens again for everyone.")
-            BigButton("Check again", onRecheck)
+            BigButton("Check again") { onRecheck() }
             QuietLink("Sign out", onSignOut)
             return@Column
         }
@@ -281,7 +281,7 @@ fun PaymentFlow(
                         }
                     }
                 }
-                BigButton("Done", onClose)
+                BigButton("Done") { onClose() }
             }
         }
     }
