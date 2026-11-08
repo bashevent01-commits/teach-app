@@ -13,6 +13,66 @@ data class TokenResponse(
     val individual: Boolean = false,
 )
 
+data class TransactionOut(
+    val id: Int,
+    @SerializedName("institution_id") val institutionId: Int,
+    val type: String, // "income" | "expense"
+    val method: String, // "cash" | "mpesa" | "bank"
+    @SerializedName("category_type") val categoryType: String, // "STOCK" | "OTHER"
+    val category: String,
+    val description: String? = null,
+    val amount: String, // Decimal serialized as string by FastAPI/Pydantic
+    @SerializedName("stock_item_id") val stockItemId: Int? = null,
+    val quantity: String? = null,
+    val unit: String? = null,
+    @SerializedName("mpesa_code") val mpesaCode: String? = null,
+    @SerializedName("mpesa_payer_name") val mpesaPayerName: String? = null,
+    @SerializedName("transaction_date") val transactionDate: String,
+    @SerializedName("image_path") val imagePath: String? = null,
+    @SerializedName("batch_id") val batchId: String? = null,
+    @SerializedName("recorded_by_id") val recordedById: Int,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("member_id") val memberId: Int? = null,
+    @SerializedName("member_name") val memberName: String? = null,
+)
+
+data class StockItemOut(
+    val id: Int,
+    @SerializedName("institution_id") val institutionId: Int,
+    @SerializedName("category_id") val categoryId: Int? = null,
+    @SerializedName("category_name") val categoryName: String? = null,
+    @SerializedName("branch_id") val branchId: Int? = null,
+    @SerializedName("branch_name") val branchName: String? = null,
+    val name: String,
+    val description: String? = null,
+    @SerializedName("unit_price") val unitPrice: String? = null,
+    val quantity: String,
+    val unit: String = "pieces",
+    @SerializedName("low_stock_threshold") val lowStockThreshold: String? = null,
+    @SerializedName("created_at") val createdAt: String,
+)
+
+data class PostOut(
+    val id: Int,
+    @SerializedName("institution_id") val institutionId: Int,
+    @SerializedName("author_id") val authorId: Int,
+    @SerializedName("author_name") val authorName: String? = null,
+    @SerializedName("author_avatar_path") val authorAvatarPath: String? = null,
+    @SerializedName("author_bio") val authorBio: String? = null,
+    @SerializedName("author_institution") val authorInstitution: String? = null,
+    @SerializedName("comment_count") val commentCount: Int = 0,
+    val title: String,
+    val body: String,
+    @SerializedName("image_path") val imagePath: String? = null,
+    @SerializedName("created_at") val createdAt: String,
+)
+
+// Matches Api.posts.imageUrl / Api.institutions.logoUrl in frontend/js/api.js: image_path is either already a full URL or
+fun resolveMediaUrl(path: String?): String? {
+    if (path.isNullOrBlank()) return null
+    return if (path.startsWith("http://") || path.startsWith("https://")) path else "${com.knowapp.android.BuildConfig.API_BASE_URL}/$path"
+}
+
 data class AuditOut(
     val id: Int,
     @SerializedName("institution_id") val institutionId: Int,
