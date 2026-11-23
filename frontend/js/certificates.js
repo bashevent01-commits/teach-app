@@ -5,7 +5,7 @@
   const catLabel = (k) => (CATS.find((c) => c[0] === k) || [k, k])[1];
   const niceDay = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
   const niceTime = (iso) => new Date(iso).toLocaleString("en-KE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Nairobi" });
-  const ACTIONS = { certificate_created: "Created", certificate_updated: "Edited", certificate_renewed: "Renewed", certificate_withdrawn: "Withdrawn", certificate_viewed: "Viewed" };
+  const ACTIONS = { certificate_created: "Created", certificate_updated: "Edited", certificate_renewed: "Renewed", certificate_withdrawn: "Withdrawn", certificate_viewed: "Viewed", certificate_image_added: "Photo added", certificate_image_removed: "Photo removed", certificate_images_viewed: "Photos viewed" };
   const stateText = (c) => {
     if (c.status === "withdrawn") return ["Withdrawn", "mem-paused"];
     if (c.status === "no_expiry") return ["No expiry", "mem-ok"];
@@ -39,7 +39,7 @@
     $("#certBody").innerHTML = rows.length ? rows.map((c) => {
       const [text, cls] = stateText(c);
       return `<tr>
-        <td><strong>${escapeHtml(c.title)}</strong><br><small>${escapeHtml(c.holder)}${c.reference_no ? " · " + escapeHtml(c.reference_no) : ""}</small></td>
+        <td><strong>${escapeHtml(c.title)}</strong><br><small>${escapeHtml(c.holder)}${c.reference_no ? " · " + escapeHtml(c.reference_no) : ""}${c.image_count ? ` · ${c.image_count} photo${c.image_count === 1 ? "" : "s"}` : ""}</small></td>
         <td>${escapeHtml(catLabel(c.category))}</td>
         <td>${escapeHtml(c.station || "HQ")}</td>
         <td class="${cls}"><strong>${text}</strong>${c.expires_on ? `<br><small>${niceDay(c.expires_on)}</small>` : ""}</td>
@@ -65,6 +65,8 @@
         <label class="field"><span>Issued on (optional)</span><input type="date" id="cIssued" value="${c && c.issued_on ? c.issued_on : ""}" /></label>
         <label class="field"><span>Expires on (leave empty if it never expires)</span><input type="date" id="cExpires" value="${c && c.expires_on ? c.expires_on : ""}" /></label>
         <label class="field"><span>Notes (optional)</span><input type="text" id="cNotes" maxlength="300" value="${c && c.notes ? escapeHtml(c.notes) : ""}" /></label>
+        <div class="field"><span>Photos or scans (optional, up to 5)</span><div class="cert-thumbs" id="cThumbs"></div>
+          <input type="file" id="cPhotos" accept="image/png,image/jpeg,image/webp" multiple /></div>
         <div class="form-actions">
           <button type="submit" class="primary-btn" id="certSave">${c ? "Save" : "Add certificate"}</button>
           ${c && c.is_active ? `<button type="button" class="ghost-btn" id="certWithdraw">Withdraw</button>` : ""}
@@ -77,17 +79,33 @@
         issuer: $("#cIssuer").value.trim() || null, station: $("#cStation").value.trim() || null, issued_on: $("#cIssued").value || null,
         expires_on: $("#cExpires").value || null, notes: $("#cNotes").value.trim() || null,
       };
+      const files = Array.from($("#cPhotos").files || []);
       try {
-        if (c) await Api.certificates.update(c.id, body); else await Api.certificates.add(body);
+        const saved = c ? await Api.certificates.update(c.id, body) : await Api.certificates.add(body);
+        let failed = 0;
+        for (const file of files) { try { await Api.certificates.addImage(saved.id, file); } catch (e) { failed += 1; } }
         Sheet.close();
-        toast(c ? "Certificate saved" : "Certificate added");
+        toast(failed ? `Saved, but ${failed} photo${failed === 1 ? "" : "s"} could not be uploaded` : c ? "Certificate saved" : "Certificate added");
         await load();
       } catch (err) { showFormMessage($("#certMsg"), err.message || "Could not save the certificate."); }
     });
+    if (c && c.image_count) loadThumbs(c);
     $("#certWithdraw")?.addEventListener("click", async () => {
       if (!confirm("Withdraw this certificate? It stays in the records and its history is kept.")) return;
       try { await Api.certificates.update(c.id, { is_active: false }); Sheet.close(); toast("Certificate withdrawn"); await load(); } catch (err) { toast(err.message || "Could not withdraw."); }
     });
+  }
+
+  async function loadThumbs(c) {
+    const box = $("#cThumbs");
+    try {
+      const imgs = await Api.certificates.images(c.id);
+      box.innerHTML = imgs.map((i) => `<div class="cert-thumb"><a href="${escapeHtml(i.url)}" target="_blank" rel="noopener"><img src="${escapeHtml(i.url)}" alt="Certificate photo" loading="lazy" /></a><button type="button" class="ghost-btn" data-rmimg="${i.id}">Remove</button></div>`).join("");
+      $$("[data-rmimg]").forEach((b) => b.addEventListener("click", async () => {
+        if (!confirm("Remove this photo? The removal is written to the history.")) return;
+        try { await Api.certificates.removeImage(c.id, Number(b.dataset.rmimg)); c.image_count = Math.max(0, (c.image_count || 1) - 1); toast("Photo removed"); await loadThumbs(c); load(); } catch (err) { toast(err.message || "Could not remove the photo."); }
+      }));
+    } catch (err) { box.innerHTML = `<p class="subtle">${escapeHtml(err.message || "Could not load the photos.")}</p>`; }
   }
 
   function renewSheet(c) {

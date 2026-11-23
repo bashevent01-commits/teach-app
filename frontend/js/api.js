@@ -315,6 +315,9 @@ const Api = {
     add: (body) => apiFetch("/api/certificates", { method: "POST", body }),
     update: (id, body) => apiFetch(`/api/certificates/${id}`, { method: "PATCH", body }),
     history: (id) => apiFetch(`/api/certificates/${id}/history`),
+    images: (id) => apiFetch(`/api/certificates/${id}/images`),
+    addImage: (id, file) => { const form = new FormData(); form.append("image", file); return apiFetch(`/api/certificates/${id}/images`, { method: "POST", body: form, isForm: true }); },
+    removeImage: (id, imageId) => apiFetch(`/api/certificates/${id}/images/${imageId}`, { method: "DELETE" }),
   },
   members: {
     list: () => apiFetch("/api/members"),

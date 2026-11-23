@@ -126,6 +126,12 @@ def save_transaction_image(file: UploadFile, contents: bytes) -> str:
     return _process_and_upload(contents, "transactions", settings.MAX_TRANSACTION_IMAGE_SIZE_BYTES, (1600, 1600), photo=True)
 
 
+def save_certificate_image(file: UploadFile, contents: bytes) -> str:
+    """Optional photo or scan kept with a certificate; larger than other photos so small print stays readable."""
+    _validate_content_type(file)
+    return _process_and_upload(contents, "certificates", settings.MAX_TRANSACTION_IMAGE_SIZE_BYTES, (2000, 2000), photo=True)
+
+
 def save_post_image(file: UploadFile, contents: bytes) -> str:
     """Optional image attached to a news post."""
     _validate_content_type(file)

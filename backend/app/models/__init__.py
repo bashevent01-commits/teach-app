@@ -16,7 +16,7 @@ from app.models.stock_transfer import StockTransfer
 from app.models.password_reset import PasswordReset
 from app.models.partner import Partner, FeePayment, PartnerPayout
 from app.models.member import Member
-from app.models.certificate import Certificate
+from app.models.certificate import Certificate, CertificateImage
 from app.models.billing import PaymentProof, PartnerNotice, PayoutRequest
 
 __all__ = [

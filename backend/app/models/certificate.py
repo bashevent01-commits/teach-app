@@ -25,3 +25,15 @@ class Certificate(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class CertificateImage(Base):
+    """An optional photo or scan kept with a certificate; a certificate can have several."""
+    __tablename__ = "certificate_images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    certificate_id = Column(Integer, ForeignKey("certificates.id", ondelete="CASCADE"), nullable=False, index=True)
+    institution_id = Column(Integer, ForeignKey("institutions.id", ondelete="CASCADE"), nullable=False, index=True)
+    image_path = Column(String(500), nullable=False)
+    uploaded_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

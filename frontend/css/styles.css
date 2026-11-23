@@ -826,3 +826,6 @@ html[data-theme="kq"] .sidebar { border-top: 4px solid var(--brand); box-shadow:
 html[data-theme="kq"] .tabbar { border-top: 3px solid var(--brand); }
 html[data-theme="kq"] .mem-counter strong.mem-ok { color: var(--accent); }
 .cert-counters { grid-template-columns: repeat(4, 1fr); }
+.cert-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.cert-thumb { display: flex; flex-direction: column; gap: 4px; }
+.cert-thumb img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); display: block; }
