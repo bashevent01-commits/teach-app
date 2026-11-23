@@ -17,6 +17,7 @@ from app.models.password_reset import PasswordReset
 from app.models.partner import Partner, FeePayment, PartnerPayout
 from app.models.member import Member
 from app.models.certificate import Certificate, CertificateImage
+from app.models.flight_check import FlightCheck
 from app.models.billing import PaymentProof, PartnerNotice, PayoutRequest
 
 __all__ = [

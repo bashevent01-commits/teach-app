@@ -309,6 +309,16 @@ const Api = {
     resetPassword: (id, new_password) => apiFetch(`/api/users/${id}/reset-password`, { method: "POST", body: { new_password } }),
   },
 
+  flightChecks: {
+    template: () => apiFetch("/api/flight-checks/template"),
+    list: (qs = "") => apiFetch(`/api/flight-checks${qs}`),
+    summary: () => apiFetch("/api/flight-checks/summary"),
+    submit: (body) => apiFetch("/api/flight-checks", { method: "POST", body }),
+    get: (id) => apiFetch(`/api/flight-checks/${id}`),
+    review: (id, body) => apiFetch(`/api/flight-checks/${id}/review`, { method: "POST", body }),
+    history: (id) => apiFetch(`/api/flight-checks/${id}/history`),
+    verify: () => apiFetch("/api/flight-checks/verify"),
+  },
   certificates: {
     list: () => apiFetch("/api/certificates"),
     summary: () => apiFetch("/api/certificates/summary"),

@@ -365,7 +365,8 @@ function renderNav(session, activePage) {
   if (session.institution_type === "aviation") {
     const cert = { href: "certificates.html", nav: "certificates", label: "Certificates", icon: "audit" };
     const keep = session.role === "institution_admin" ? ["accounts", "settings"] : ["settings"];
-    items = [cert, ...items.filter((item) => keep.includes(item.nav))];
+    const checks = { href: "checks.html", nav: "checks", label: "Checks", icon: "activity" };
+    items = [cert, checks, ...items.filter((item) => keep.includes(item.nav))];
   } else if (session.institution_type === "gym") {
     // A gym counts members where other businesses count stock
     items = items.map((item) => (item.nav === "stock" ? { href: "members.html", nav: "members", label: "Members", icon: "accounts" } : item));
@@ -484,7 +485,7 @@ async function initShell(page, allowedRoles) {
       Session.set({ ...session });
     } catch (e) { /* offline: try again next page */ }
   }
-  if (session && session.institution_type === "aviation" && !["certificates", "settings", "accounts"].includes(page)) {
+  if (session && session.institution_type === "aviation" && !["certificates", "checks", "settings", "accounts"].includes(page)) {
     location.href = "certificates.html";
     throw new Error("redirecting: aviation workspace");
   }

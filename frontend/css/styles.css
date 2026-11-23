@@ -829,3 +829,18 @@ html[data-theme="kq"] .mem-counter strong.mem-ok { color: var(--accent); }
 .cert-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-bottom: 8px; }
 .cert-thumb { display: flex; flex-direction: column; gap: 4px; }
 .cert-thumb img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); display: block; }
+.chk-stations { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.chk-chip { padding: 6px 12px; border-radius: 999px; background: var(--surface-2); font-size: 0.8rem; font-weight: 700; }
+.chk-chip.has-issue { background: rgba(220, 38, 38, 0.12); color: var(--danger); }
+.chk-group { margin: 14px 0 4px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.chk-item { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.chk-item p { margin: 0 0 8px; font-size: 0.92rem; }
+.chk-choice { display: flex; gap: 8px; }
+.chk-choice label { flex: 1; text-align: center; padding: 8px 0; border-radius: 12px; border: 1.5px solid var(--line); font-weight: 700; font-size: 0.85rem; cursor: pointer; }
+.chk-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.chk-choice label.on-ok { border-color: var(--in); background: var(--in-soft); color: var(--in); }
+.chk-choice label.on-issue { border-color: var(--danger); background: rgba(220, 38, 38, 0.12); color: var(--danger); }
+.chk-note { margin-top: 8px; width: 100%; }
+.sig-pad { width: 100%; height: auto; aspect-ratio: 600 / 160; border: 1.5px dashed var(--line); border-radius: 14px; background: #fff; touch-action: none; display: block; }
+.chk-sig-img { max-width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #fff; display: block; }
+.chk-hash { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.74rem; color: var(--ink-soft); word-break: break-all; }
