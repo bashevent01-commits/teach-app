@@ -300,6 +300,16 @@ function applyTheme(mode = getTheme()) {
   });
 }
 
+// Aviation workspaces use the Kenya Airways red and green look
+function applyBrandTheme(session) {
+  const kq = !!session && session.institution_type === "aviation";
+  document.documentElement.dataset.theme = kq ? "kq" : "";
+  const quote = $(".principle");
+  if (kq && quote) quote.innerHTML = "&ldquo;Every record signed, every certificate current.&rdquo;";
+  const color = $('meta[name="theme-color"]');
+  if (color) color.setAttribute("content", kq ? "#c8102e" : "#0f766e");
+}
+
 function setTheme(mode) {
   localStorage.setItem(THEME_KEY, mode);
   applyTheme(mode);
@@ -351,8 +361,13 @@ const NAV_ITEMS = {
 
 function renderNav(session, activePage) {
   let items = NAV_ITEMS[session.role] || NAV_ITEMS.staff;
-  // A gym counts members where other businesses count stock
-  if (session.institution_type === "gym") {
+  // An aviation workspace keeps to certificates, with accounts for the HQ owner
+  if (session.institution_type === "aviation") {
+    const cert = { href: "certificates.html", nav: "certificates", label: "Certificates", icon: "audit" };
+    const keep = session.role === "institution_admin" ? ["accounts", "settings"] : ["settings"];
+    items = [cert, ...items.filter((item) => keep.includes(item.nav))];
+  } else if (session.institution_type === "gym") {
+    // A gym counts members where other businesses count stock
     items = items.map((item) => (item.nav === "stock" ? { href: "members.html", nav: "members", label: "Members", icon: "accounts" } : item));
   }
   // An individual account keeps to a few pages; plan, books and audits sit under Settings
@@ -469,6 +484,11 @@ async function initShell(page, allowedRoles) {
       Session.set({ ...session });
     } catch (e) { /* offline: try again next page */ }
   }
+  if (session && session.institution_type === "aviation" && !["certificates", "settings", "accounts"].includes(page)) {
+    location.href = "certificates.html";
+    throw new Error("redirecting: aviation workspace");
+  }
+  applyBrandTheme(session);
   applyTheme();
   renderNav(session, page);
   await renderIdentity(session);
@@ -479,7 +499,13 @@ async function initShell(page, allowedRoles) {
   if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
   Splash.hide();
-  if (session && (session.role === "staff" || session.role === "institution_admin")) {
+  const aviation = session && session.institution_type === "aviation";
+  if (aviation && (session.role === "staff" || session.role === "institution_admin")) {
+    const alerts = document.createElement("script");
+    alerts.src = "./js/certdue.js";
+    document.head.appendChild(alerts);
+  }
+  if (session && !aviation && (session.role === "staff" || session.role === "institution_admin")) {
     const loader = document.createElement("script");
     loader.src = "./js/payflow.js";
     loader.onload = () => PayFlow.start(session);

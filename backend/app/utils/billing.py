@@ -158,7 +158,9 @@ def workspace_locked(db: Session, institution_id: int) -> bool:
     hit = _CACHE.get(institution_id)
     if hit and hit[0] > time.monotonic():
         return hit[1]
-    locked = cycle(db, db.get(Institution, institution_id)).state == "locked"
+    inst = db.get(Institution, institution_id)
+    # Aviation pilot workspaces are never billed through the M-Pesa flow
+    locked = False if inst is not None and inst.type == "aviation" else cycle(db, inst).state == "locked"
     _CACHE[institution_id] = (time.monotonic() + CACHE_SECONDS, locked)
     return locked
 

@@ -309,6 +309,13 @@ const Api = {
     resetPassword: (id, new_password) => apiFetch(`/api/users/${id}/reset-password`, { method: "POST", body: { new_password } }),
   },
 
+  certificates: {
+    list: () => apiFetch("/api/certificates"),
+    summary: () => apiFetch("/api/certificates/summary"),
+    add: (body) => apiFetch("/api/certificates", { method: "POST", body }),
+    update: (id, body) => apiFetch(`/api/certificates/${id}`, { method: "PATCH", body }),
+    history: (id) => apiFetch(`/api/certificates/${id}/history`),
+  },
   members: {
     list: () => apiFetch("/api/members"),
     due: () => apiFetch("/api/members/due"),
