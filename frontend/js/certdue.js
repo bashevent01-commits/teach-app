@@ -1,3 +1,17 @@
+// Uploads signed checks that were saved offline, from whichever aviation page is open
+(function syncWaitingChecks() {
+  const run = async () => {
+    if (!navigator.onLine || typeof Offline === "undefined" || !Offline.syncPendingChecks) return;
+    try { const r = await Offline.syncPendingChecks(); if (r.synced) toast(`${r.synced} saved check${r.synced === 1 ? "" : "s"} uploaded`); } catch (e) { /* retried on the next page or when back online */ }
+  };
+  const start = () => { run(); window.addEventListener("online", run); };
+  if (typeof Offline !== "undefined") return start();
+  const loader = document.createElement("script");
+  loader.src = "./js/offline.js";
+  loader.onload = start;
+  document.head.appendChild(loader);
+})();
+
 // Once a day, the first time someone opens the app: certificates that are expired or close to expiry
 (async () => {
   const key = "know_cert_due_" + (Session.get()?.user_id || "");

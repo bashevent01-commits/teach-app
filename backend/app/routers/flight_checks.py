@@ -2,7 +2,7 @@ import base64
 import binascii
 import hashlib
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
@@ -17,6 +17,8 @@ from app.models.flight_check import FlightCheck
 from app.models.institution import Institution
 from app.models.user import User, UserRole
 from app.utils.members import today_local
+
+NAIROBI = timezone(timedelta(hours=3))
 
 router = APIRouter(prefix="/api/flight-checks", tags=["flight-checks"])
 
@@ -51,6 +53,7 @@ class CheckIn(BaseModel):
     items: list[ItemIn]
     remarks: str | None = Field(default=None, max_length=300)
     signature: str = Field(max_length=150000)
+    performed_at: datetime | None = None
 
     @field_validator("tail_number", "station", "flight_no")
     @classmethod
@@ -103,14 +106,18 @@ def compute_hash(rec: dict, prev_hash: str) -> str:
 
 
 def _hash_input(c: FlightCheck) -> dict:
-    return {"institution_id": c.institution_id, "branch_id": c.branch_id, "tail_number": c.tail_number, "flight_no": c.flight_no, "station": c.station,
+    rec = {"institution_id": c.institution_id, "branch_id": c.branch_id, "tail_number": c.tail_number, "flight_no": c.flight_no, "station": c.station,
             "check_type": c.check_type, "items": c.items, "result": c.result, "remarks": c.remarks, "signed_by_id": c.signed_by_id,
             "signed_name": c.signed_name, "signature_sha256": hashlib.sha256(c.signature.encode()).hexdigest(), "submitted_at": c.submitted_at}
+    # Only present for checks saved offline, so records made before this field existed still verify
+    if c.performed_at:
+        rec["performed_at"] = c.performed_at
+    return rec
 
 
 def _out(c: FlightCheck, full: bool = False) -> dict:
     row = {"id": c.id, "tail_number": c.tail_number, "flight_no": c.flight_no, "station": c.station, "check_type": c.check_type, "result": c.result,
-           "status": c.status, "signed_name": c.signed_name, "submitted_at": c.submitted_at, "check_date": c.check_date.isoformat(),
+           "status": c.status, "signed_name": c.signed_name, "submitted_at": c.submitted_at, "performed_at": c.performed_at, "check_date": c.check_date.isoformat(),
            "reviewed_name": c.reviewed_name, "review_note": c.review_note, "issue_count": sum(1 for i in c.items if not i.get("ok"))}
     if full:
         row.update({"items": c.items, "remarks": c.remarks, "signature": c.signature, "record_hash": c.record_hash, "prev_hash": c.prev_hash,
@@ -196,10 +203,19 @@ def submit_check(payload: CheckIn, request: Request, db: Session = Depends(get_d
         items.append({"key": item.key, "ok": item.ok, "note": note})
     items.sort(key=lambda i: TEMPLATE_KEYS.index(i["key"]))
     now = datetime.now(timezone.utc).replace(microsecond=0)
+    performed = None
+    if payload.performed_at is not None:
+        when = payload.performed_at if payload.performed_at.tzinfo else payload.performed_at.replace(tzinfo=timezone.utc)
+        when = when.astimezone(timezone.utc).replace(microsecond=0)
+        if when > now + timedelta(minutes=5) or when < now - timedelta(days=14):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The time the check was done is not plausible; check the device clock")
+        # A check sent within a few minutes was not really saved offline
+        performed = when.isoformat() if now - when > timedelta(minutes=5) else None
     check = FlightCheck(
         institution_id=user.institution_id, branch_id=user.id, tail_number=payload.tail_number, flight_no=payload.flight_no, station=payload.station,
         check_type=payload.check_type, items=items, result="clear" if all(i["ok"] for i in items) else "issue", remarks=payload.remarks,
-        signed_by_id=user.id, signed_name=user.full_name, signature=payload.signature, submitted_at=now.isoformat(), check_date=today_local(),
+        signed_by_id=user.id, signed_name=user.full_name, signature=payload.signature, submitted_at=now.isoformat(), performed_at=performed,
+        check_date=when.astimezone(NAIROBI).date() if performed else today_local(),
     )
     last = db.query(FlightCheck).filter(FlightCheck.institution_id == user.institution_id).order_by(FlightCheck.id.desc()).with_for_update().first()
     check.prev_hash = last.record_hash if last else ""

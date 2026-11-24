@@ -3,6 +3,7 @@
   const isHq = session.role === "institution_admin";
   let checks = [];
   let template = [];
+  let waiting = [];
   const niceTime = (iso) => new Date(iso).toLocaleString("en-KE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Nairobi" });
   const ACTIONS = { flight_check_submitted: "Submitted and signed", flight_check_viewed: "Viewed", flight_check_approved: "Approved", flight_check_rejected: "Rejected" };
   const STATUS = { pending: ["Awaiting review", "badge-draft"], approved: ["Approved", "badge-finalized"], rejected: ["Rejected", "badge-inactive"] };
@@ -14,15 +15,35 @@
   $("#verifyBtn").addEventListener("click", verifyChain);
   $("#chkSearch").addEventListener("input", draw);
   $("#chkFilter").addEventListener("change", draw);
+  window.addEventListener("online", () => { syncWaiting(); });
   await load();
   onFreshData(load);
+  syncWaiting();
+
+  async function syncWaiting() {
+    if (isHq || !navigator.onLine) return;
+    try {
+      const r = await Offline.syncPendingChecks();
+      if (r.synced) { toast(`${r.synced} saved check${r.synced === 1 ? "" : "s"} uploaded`); await load(); }
+      if (r.failed) toast(`${r.failed} saved check${r.failed === 1 ? " was" : "s were"} rejected by the server`);
+    } catch (err) { /* stays queued */ }
+  }
 
   async function load() {
     try {
       const [rows, sum] = await Promise.all([Api.flightChecks.list(), Api.flightChecks.summary()]);
       checks = rows;
       drawSummary(sum);
-    } catch (err) { toast(err.message || "Could not load the checks."); }
+      await Offline.cacheSet("flight_checks", rows);
+      await Offline.cacheSet("flight_summary", sum);
+    } catch (err) {
+      if (err.status === 0) {
+        checks = (await Offline.cacheGet("flight_checks")) || [];
+        const sum = await Offline.cacheGet("flight_summary");
+        if (sum) drawSummary(sum);
+      } else toast(err.message || "Could not load the checks.");
+    }
+    waiting = isHq ? [] : await Offline.listPendingChecks();
     draw();
   }
 
@@ -37,14 +58,28 @@
     const filter = $("#chkFilter").value;
     const q = $("#chkSearch").value.trim().toLowerCase();
     const rows = checks.filter((c) => (filter === "all" || (filter === "issue" ? c.result === "issue" : c.status === filter)) && (!q || [c.tail_number, c.flight_no || "", c.station, c.signed_name].some((v) => v.toLowerCase().includes(q))));
-    $("#chkBody").innerHTML = rows.length ? rows.map((c) => `<tr>
+    const waitingRows = waiting.map((w) => `<tr class="chk-waiting">
+      <td><strong>${escapeHtml(w.payload.tail_number.toUpperCase())}</strong><br><small>${escapeHtml(w.payload.flight_no || "No flight")} · ${w.payload.check_type === "search" ? "Search" : "Check"}</small></td>
+      <td>${escapeHtml(w.payload.station.toUpperCase())}</td>
+      <td>${w.payload.items.every((i) => i.ok) ? `<span class="badge badge-active">Clear</span>` : `<span class="badge badge-inactive">Issues</span>`}</td>
+      <td>${w.status === "failed" ? `<span class="badge badge-inactive">Rejected</span>` : `<span class="badge badge-draft">Waiting to upload</span>`}</td>
+      <td>${escapeHtml(session.full_name || "")}<br><small>${niceTime(w.payload.performed_at)}</small></td>
+      <td>${w.status === "failed" ? `<button class="ghost-btn" data-discard="${w.localId}" title="${escapeHtml(w.errorMessage || "")}">Discard</button>` : ""}</td>
+    </tr>`).join("");
+    $("#chkBody").innerHTML = waitingRows + (rows.length ? rows.map((c) => `<tr>
       <td><strong>${escapeHtml(c.tail_number)}</strong><br><small>${escapeHtml(c.flight_no || "No flight")} · ${c.check_type === "search" ? "Search" : "Check"}</small></td>
       <td>${escapeHtml(c.station)}</td>
       <td>${resultBadge(c)}</td>
       <td>${statusBadge(c)}</td>
       <td>${escapeHtml(c.signed_name)}<br><small>${niceTime(c.submitted_at)}</small></td>
       <td><button class="ghost-btn" data-open="${c.id}">Open</button></td>
-    </tr>`).join("") : `<tr class="empty-row"><td colspan="6">${checks.length ? "Nothing matches." : isHq ? "No checks yet." : "No checks yet. Tap New check."}</td></tr>`;
+    </tr>`).join("") : (waiting.length ? "" : `<tr class="empty-row"><td colspan="6">${checks.length ? "Nothing matches." : isHq ? "No checks yet." : "No checks yet. Tap New check."}</td></tr>`));
+    $$("[data-discard]").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm("Discard this rejected check? It will be lost from this device.")) return;
+      await Offline.removePendingCheck(Number(b.dataset.discard));
+      waiting = await Offline.listPendingChecks();
+      draw();
+    }));
     $$("[data-open]").forEach((b) => b.addEventListener("click", () => openDetail(Number(b.dataset.open))));
   }
 
@@ -58,7 +93,10 @@
 
   async function openForm() {
     if (!template.length) {
-      try { template = await Api.flightChecks.template(); } catch (err) { toast(err.message || "Could not load the checklist."); return; }
+      try { template = await Api.flightChecks.template(); await Offline.cacheSet("flight_template", template); } catch (err) {
+        template = (err.status === 0 ? await Offline.cacheGet("flight_template") : null) || [];
+        if (!template.length) { toast(err.status === 0 ? "Open Checks once with a connection so the checklist is saved on this device." : (err.message || "Could not load the checklist.")); return; }
+      }
     }
     let lastGroup = "";
     const itemsHtml = template.map((t) => {
@@ -99,16 +137,25 @@
       if (!pad.signed()) return showFormMessage($("#chkMsg"), "Sign in the box before submitting.");
       const btn = $("#kSubmit");
       btn.disabled = true;
+      const station = $("#kStation").value.trim();
+      const payload = { tail_number: $("#kTail").value.trim(), flight_no: $("#kFlight").value.trim() || null, station, check_type: $("#kType").value, items, remarks: $("#kRemarks").value.trim() || null, signature: pad.data(), performed_at: new Date().toISOString() };
+      localStorage.setItem("know_last_station", station);
       try {
-        const station = $("#kStation").value.trim();
-        await Api.flightChecks.submit({ tail_number: $("#kTail").value.trim(), flight_no: $("#kFlight").value.trim() || null, station, check_type: $("#kType").value, items, remarks: $("#kRemarks").value.trim() || null, signature: pad.data() });
-        localStorage.setItem("know_last_station", station);
+        if (!navigator.onLine) throw Object.assign(new Error("offline"), { status: 0 });
+        await Api.flightChecks.submit(payload);
         Sheet.close();
         toast("Check signed and submitted");
         await load();
       } catch (err) {
-        btn.disabled = false;
-        showFormMessage($("#chkMsg"), err && err.status === 0 ? "No connection. Checks cannot be saved offline in this version." : (err.message || "Could not submit the check."));
+        if (err && err.status === 0) {
+          await Offline.queueCheck(payload);
+          Sheet.close();
+          toast("No connection. Check saved on this device and will upload when you are back online.");
+          await load();
+        } else {
+          btn.disabled = false;
+          showFormMessage($("#chkMsg"), err.message || "Could not submit the check.");
+        }
       }
     });
   }

@@ -24,6 +24,8 @@ class FlightCheck(Base):
     signature = Column(Text, nullable=False)
     # ISO time in UTC with seconds; kept as text so the hash never depends on a database round trip
     submitted_at = Column(String(32), nullable=False)
+    # When the officer did it by the device clock; differs from submitted_at only for checks saved offline first
+    performed_at = Column(String(32), nullable=True)
     check_date = Column(Date, nullable=False, index=True)
     prev_hash = Column(String(64), nullable=False, default="")
     record_hash = Column(String(64), nullable=False, default="")

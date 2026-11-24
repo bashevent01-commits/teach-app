@@ -2,7 +2,7 @@
 
 const Offline = (() => {
   const DB_NAME = "know_offline_v1";
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   let dbPromise = null;
 
   function openDb() {
@@ -13,6 +13,9 @@ const Offline = (() => {
         const db = req.result;
         if (!db.objectStoreNames.contains("pending_transactions")) {
           db.createObjectStore("pending_transactions", { keyPath: "localId", autoIncrement: true });
+        }
+        if (!db.objectStoreNames.contains("pending_checks")) {
+          db.createObjectStore("pending_checks", { keyPath: "localId", autoIncrement: true });
         }
         if (!db.objectStoreNames.contains("cache")) {
           db.createObjectStore("cache", { keyPath: "key" });
@@ -168,6 +171,54 @@ const Offline = (() => {
 
 
 
+  // Signed security checks saved on this device until the server accepts them; the signature and the time done travel with them
+  async function queueCheck(payload) {
+    const record = { payload: { ...payload, performed_at: payload.performed_at || new Date().toISOString() }, userId: currentUserId(), createdAt: new Date().toISOString(), status: "pending", errorMessage: null };
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction("pending_checks", "readwrite").objectStore("pending_checks").add(record);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function listPendingChecks() {
+    const db = await openDb();
+    const all = await requestToPromise(db.transaction("pending_checks", "readonly").objectStore("pending_checks").getAll());
+    return all.filter((r) => r.userId === currentUserId()).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  }
+
+  async function removePendingCheck(localId) {
+    await tx("pending_checks", "readwrite", (store) => store.delete(localId));
+  }
+
+  async function markCheckFailed(localId, message) {
+    const db = await openDb();
+    const t = db.transaction("pending_checks", "readwrite");
+    const store = t.objectStore("pending_checks");
+    const row = await requestToPromise(store.get(localId));
+    if (row) { row.status = "failed"; row.errorMessage = message; store.put(row); }
+    return new Promise((resolve) => { t.oncomplete = () => resolve(); });
+  }
+
+  // Sends queued checks oldest first so the record chain follows the order they were done; stops at the first connection failure
+  async function syncPendingChecks() {
+    const rows = (await listPendingChecks()).filter((r) => r.status !== "failed");
+    let synced = 0, failed = 0;
+    for (const row of rows) {
+      try {
+        await apiFetch("/api/flight-checks", { method: "POST", body: row.payload });
+        await removePendingCheck(row.localId);
+        synced++;
+      } catch (err) {
+        if (err.status === 0) break;
+        await markCheckFailed(row.localId, err.message || "The server rejected this check.");
+        failed++;
+      }
+    }
+    return { synced, failed, remaining: (await listPendingChecks()).length };
+  }
+
   function csvEscape(value) {
     const str = String(value ?? "");
     return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
@@ -202,6 +253,7 @@ const Offline = (() => {
     cacheSet, cacheGet,
     queueTransaction, listPending, removePending, pendingAsTransaction,
     syncPendingTransactions,
+    queueCheck, listPendingChecks, removePendingCheck, syncPendingChecks,
     csvFromTransactions, downloadBlob,
   };
 })();

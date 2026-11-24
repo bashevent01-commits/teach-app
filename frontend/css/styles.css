@@ -822,8 +822,6 @@ body.payflow-open { overflow: hidden; }
 /* Kenya Airways theme for aviation workspaces */
 html[data-theme="kq"] { --brand: #c8102e; --brand-soft: rgba(200, 16, 46, 0.1); --brand-ink: #ffffff; --accent: #006b3f; --in: #006b3f; --in-soft: rgba(0, 107, 63, 0.12); --bg: #f7f6f5; --surface-2: #f1efee; --ink: #1c1517; --ink-soft: #6a5f62; --line: #e7e2e1; }
 html[data-theme="kq"][data-mode="dark"] { --bg: #140d0f; --surface: #1d1315; --surface-2: #261a1c; --ink: #f6eeee; --ink-soft: #b1a1a4; --line: #35272a; --brand: #e0213f; --brand-soft: rgba(224, 33, 63, 0.16); --accent: #1a9a66; --in: #1a9a66; }
-html[data-theme="kq"] .sidebar { border-top: 4px solid var(--brand); box-shadow: inset 0 -4px 0 var(--accent); }
-html[data-theme="kq"] .tabbar { border-top: 3px solid var(--brand); }
 html[data-theme="kq"] .mem-counter strong.mem-ok { color: var(--accent); }
 .cert-counters { grid-template-columns: repeat(4, 1fr); }
 .cert-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-bottom: 8px; }
@@ -844,3 +842,152 @@ html[data-theme="kq"] .mem-counter strong.mem-ok { color: var(--accent); }
 .sig-pad { width: 100%; height: auto; aspect-ratio: 600 / 160; border: 1.5px dashed var(--line); border-radius: 14px; background: #fff; touch-action: none; display: block; }
 .chk-sig-img { max-width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #fff; display: block; }
 .chk-hash { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.74rem; color: var(--ink-soft); word-break: break-all; }
+
+/* ============================================================
+   KQ claymorphism: soft, puffy, inflated surfaces (aviation workspaces only)
+   ============================================================ */
+html[data-theme="kq"] {
+  --bg: #f2eae8;
+  --clay-top: #fcf8f7;
+  --clay-bottom: #ece3e1;
+  --clay-shadow: rgba(170, 120, 126, 0.30);
+  --clay-light: rgba(255, 255, 255, 0.95);
+  --clay-edge: rgba(255, 255, 255, 0.85);
+  --clay-deep: rgba(176, 124, 130, 0.22);
+  --clay-out: 9px 10px 22px var(--clay-shadow), -7px -7px 18px var(--clay-light);
+  --clay-out-sm: 5px 6px 12px var(--clay-shadow), -4px -4px 10px var(--clay-light);
+  --clay-pop: inset 3px 3px 7px var(--clay-edge), inset -4px -5px 10px var(--clay-deep);
+  --clay-press: inset 5px 5px 11px var(--clay-deep), inset -5px -5px 11px var(--clay-light);
+  --radius: 28px;
+  --radius-sm: 20px;
+}
+html[data-theme="kq"][data-mode="dark"] {
+  --bg: #170f11;
+  --clay-top: #2a1c1f;
+  --clay-bottom: #1d1315;
+  --clay-shadow: rgba(0, 0, 0, 0.62);
+  --clay-light: rgba(255, 255, 255, 0.045);
+  --clay-edge: rgba(255, 255, 255, 0.09);
+  --clay-deep: rgba(0, 0, 0, 0.5);
+}
+html[data-theme="kq"] body {
+  background:
+    radial-gradient(520px 380px at 0% 0%, rgba(200, 16, 46, 0.13), transparent 70%),
+    radial-gradient(480px 360px at 100% 12%, rgba(0, 107, 63, 0.12), transparent 70%),
+    radial-gradient(520px 420px at 50% 100%, rgba(200, 16, 46, 0.07), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+html[data-theme="kq"] .card,
+html[data-theme="kq"] .sheet {
+  border: none;
+  background: linear-gradient(150deg, var(--clay-top), var(--clay-bottom));
+  box-shadow: var(--clay-out), var(--clay-pop);
+}
+html[data-theme="kq"] .card-head h2 { font-size: 1.35rem; letter-spacing: -0.01em; }
+html[data-theme="kq"] .sheet { border-radius: 34px 34px 0 0; }
+@media (min-width: 700px) { html[data-theme="kq"] .sheet { border-radius: 34px; } }
+html[data-theme="kq"] .sheet-backdrop { background: rgba(60, 20, 28, 0.38); backdrop-filter: blur(6px); }
+
+html[data-theme="kq"] .primary-btn {
+  border: none; border-radius: 22px; padding: 13px 24px; font-weight: 700; letter-spacing: 0.01em;
+  background: linear-gradient(150deg, #e8304b, #bd1029 60%, #a10c22);
+  box-shadow: 8px 10px 20px rgba(200, 16, 46, 0.34), -5px -5px 12px var(--clay-light), inset 3px 4px 8px rgba(255, 255, 255, 0.38), inset -4px -6px 10px rgba(100, 0, 18, 0.32);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+html[data-theme="kq"] .primary-btn:hover { transform: translateY(-2px); filter: none; }
+html[data-theme="kq"] .primary-btn:active { transform: translateY(1px) scale(0.98); box-shadow: 3px 4px 8px rgba(200, 16, 46, 0.3), inset 4px 5px 10px rgba(100, 0, 18, 0.4), inset -3px -3px 7px rgba(255, 255, 255, 0.2); }
+html[data-theme="kq"] .primary-btn:disabled { opacity: 0.6; transform: none; }
+html[data-theme="kq"] .ghost-btn,
+html[data-theme="kq"] .icon-btn {
+  border: none; border-radius: 20px; color: var(--ink);
+  background: linear-gradient(150deg, var(--clay-top), var(--clay-bottom));
+  box-shadow: var(--clay-out-sm), var(--clay-pop);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+html[data-theme="kq"] .ghost-btn:hover,
+html[data-theme="kq"] .icon-btn:hover { color: var(--brand); transform: translateY(-1px); background: linear-gradient(150deg, var(--clay-top), var(--clay-bottom)); }
+html[data-theme="kq"] .ghost-btn:active,
+html[data-theme="kq"] .icon-btn:active { transform: scale(0.97); box-shadow: var(--clay-press); }
+
+html[data-theme="kq"] textarea,
+html[data-theme="kq"] input[type="text"],
+html[data-theme="kq"] input[type="search"],
+html[data-theme="kq"] input[type="email"],
+html[data-theme="kq"] input[type="password"],
+html[data-theme="kq"] input[type="number"],
+html[data-theme="kq"] input[type="date"],
+html[data-theme="kq"] select {
+  border: none; border-radius: 18px; padding: 13px 16px; background: var(--surface-2);
+  box-shadow: var(--clay-press);
+}
+html[data-theme="kq"] textarea:focus,
+html[data-theme="kq"] input:focus,
+html[data-theme="kq"] select:focus { box-shadow: var(--clay-press), 0 0 0 3px var(--brand-soft); }
+html[data-theme="kq"] input[type="file"] { padding: 10px; border-radius: 18px; box-shadow: var(--clay-press); width: 100%; background: var(--surface-2); }
+
+html[data-theme="kq"] .mem-counter,
+html[data-theme="kq"] .kpi {
+  border: none; border-radius: 24px; padding: 14px 8px;
+  background: linear-gradient(150deg, var(--clay-top), var(--clay-bottom));
+  box-shadow: var(--clay-out-sm), var(--clay-pop);
+  transition: transform 0.15s ease;
+}
+html[data-theme="kq"] .mem-counter:hover { transform: translateY(-2px); }
+html[data-theme="kq"] .mem-counter:active { box-shadow: var(--clay-press); transform: scale(0.98); }
+html[data-theme="kq"] .mem-counter strong { font-family: var(--display); font-size: 1.9rem; }
+html[data-theme="kq"] .chk-chip {
+  background: linear-gradient(150deg, var(--clay-top), var(--clay-bottom)); box-shadow: var(--clay-out-sm), var(--clay-pop); padding: 8px 14px;
+}
+html[data-theme="kq"] .chk-chip.has-issue { background: linear-gradient(150deg, rgba(232, 48, 75, 0.2), rgba(200, 16, 46, 0.1)); }
+
+html[data-theme="kq"] .badge,
+html[data-theme="kq"] .badge-pending {
+  padding: 5px 12px; box-shadow: inset 1px 2px 3px var(--clay-edge), inset -1px -2px 3px var(--clay-deep), 2px 3px 6px var(--clay-deep);
+}
+html[data-theme="kq"] .data-table th { text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.08em; }
+html[data-theme="kq"] .data-table td { border-bottom: 1px dashed var(--clay-deep); }
+html[data-theme="kq"] .data-table tbody tr:hover { background: var(--brand-soft); }
+html[data-theme="kq"] .chk-waiting td { background: rgba(217, 119, 6, 0.07); }
+
+html[data-theme="kq"] .ex-row { border-bottom: 1px dashed var(--clay-deep); }
+html[data-theme="kq"] .chk-item { border-bottom: 1px dashed var(--clay-deep); }
+html[data-theme="kq"] .chk-choice label {
+  border: none; border-radius: 18px; padding: 10px 0;
+  background: linear-gradient(150deg, var(--clay-top), var(--clay-bottom)); box-shadow: var(--clay-out-sm), var(--clay-pop);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+html[data-theme="kq"] .chk-choice label.on-ok { color: #fff; background: linear-gradient(150deg, #1a9a66, #006b3f); box-shadow: 4px 6px 12px rgba(0, 107, 63, 0.32), inset 3px 3px 6px rgba(255, 255, 255, 0.35), inset -3px -4px 8px rgba(0, 60, 30, 0.3); }
+html[data-theme="kq"] .chk-choice label.on-issue { color: #fff; background: linear-gradient(150deg, #e8304b, #a10c22); box-shadow: 4px 6px 12px rgba(200, 16, 46, 0.32), inset 3px 3px 6px rgba(255, 255, 255, 0.35), inset -3px -4px 8px rgba(100, 0, 18, 0.3); }
+html[data-theme="kq"] .sig-pad { border: none; border-radius: 24px; box-shadow: var(--clay-press); }
+html[data-theme="kq"] .chk-sig-img { border: none; border-radius: 20px; box-shadow: var(--clay-press); }
+html[data-theme="kq"] .cert-thumb img { border: none; border-radius: 20px; box-shadow: var(--clay-out-sm); }
+
+html[data-theme="kq"] .topbar { background: linear-gradient(var(--bg) 70%, transparent); backdrop-filter: none; }
+html[data-theme="kq"] .topbar-logo { border: none; border-radius: 18px; box-shadow: var(--clay-out-sm), var(--clay-pop); }
+
+html[data-theme="kq"] .tabbar {
+  left: 12px; right: 12px; bottom: 12px; border: none; border-radius: 30px; padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(150deg, var(--clay-top), var(--clay-bottom)); backdrop-filter: none;
+  box-shadow: var(--clay-out), var(--clay-pop);
+}
+html[data-theme="kq"] .tab { border-radius: 22px; transition: transform 0.15s ease; }
+html[data-theme="kq"] .tab.is-active { color: var(--brand); background: transparent; box-shadow: var(--clay-press); }
+@media (max-width: 1023px) { html[data-theme="kq"] .main { padding-bottom: 130px; } }
+
+@media (min-width: 1024px) {
+  html[data-theme="kq"] .sidebar {
+    margin: 14px; height: calc(100dvh - 28px); border: none; border-radius: 34px;
+    background: linear-gradient(150deg, var(--clay-top), var(--clay-bottom)); box-shadow: var(--clay-out), var(--clay-pop);
+  }
+  html[data-theme="kq"] .side-link { border-radius: 20px; transition: transform 0.15s ease; }
+  html[data-theme="kq"] .side-link:hover { background: transparent; box-shadow: var(--clay-out-sm); transform: translateY(-1px); }
+  html[data-theme="kq"] .side-link.is-active {
+    color: #fff; background: linear-gradient(150deg, #e8304b, #bd1029 60%, #a10c22);
+    box-shadow: 6px 8px 16px rgba(200, 16, 46, 0.34), inset 3px 4px 8px rgba(255, 255, 255, 0.38), inset -4px -6px 10px rgba(100, 0, 18, 0.32);
+  }
+  html[data-theme="kq"] .principle { border-left: none; padding: 14px; border-radius: 22px; box-shadow: var(--clay-press); }
+}
+html[data-theme="kq"] input[type="search"], html[data-theme="kq"] input[type="date"] { width: 100%; box-sizing: border-box; }
+html[data-theme="kq"] .topbar { background: transparent; }
+html[data-theme="kq"] .file-hint { margin-top: 16px; line-height: 1.5; }

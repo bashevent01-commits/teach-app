@@ -133,6 +133,7 @@ def ensure_columns():
             conn.exec_driver_sql("ALTER TABLE institutions ADD COLUMN IF NOT EXISTS focus VARCHAR(10)")
             conn.exec_driver_sql("ALTER TABLE institutions ADD COLUMN IF NOT EXISTS fee_floor INTEGER")
             conn.exec_driver_sql("ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS payload TEXT")
+            conn.exec_driver_sql("ALTER TABLE flight_checks ADD COLUMN IF NOT EXISTS performed_at VARCHAR(32)")
             conn.exec_driver_sql("ALTER TABLE institutions ADD COLUMN IF NOT EXISTS billing_start TIMESTAMPTZ")
             conn.exec_driver_sql("ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS purpose VARCHAR(10) NOT NULL DEFAULT 'fee'")
             conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS county VARCHAR(50)")
